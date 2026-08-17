@@ -84,6 +84,10 @@ function renderCrops() {
       : `<span class="badge green">多次收获</span> ${esc(c.note)}`;
     return `
       <div class="card" data-id="${esc(c.id)}">
+        <div class="item-icon">
+        <span class="icon-fallback">${CROP_ICONS[c.id] || GENERIC_ICON}</span>
+        <img class="icon-img" src="img/${esc(c.id)}.png" alt="${esc(c.name)}" loading="lazy" onerror="this.remove()">
+      </div>
         <h3>${esc(c.name)}</h3>
         <div>${seasonBadges(c.season)}</div>
         <div class="meta">${growText}</div>
@@ -114,6 +118,10 @@ function renderCollect() {
 
   grid.innerHTML = list.map((c) => `
     <div class="card" data-id="${esc(c.id)}">
+      <div class="item-icon">
+        <span class="icon-fallback">${COLLECT_ICONS[c.id] || GENERIC_ICON}</span>
+        <img class="icon-img" src="img/${esc(c.id)}.png" alt="${esc(c.name)}" loading="lazy" onerror="this.remove()">
+      </div>
       <h3>${esc(c.name)}</h3>
       <div>${seasonBadges(c.season)}</div>
       <div class="meta">📍 ${esc(c.location)}</div>
