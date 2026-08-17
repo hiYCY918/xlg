@@ -61,7 +61,8 @@ $byTitle = @{}
 try {
     $json = Invoke-RestMethod -Uri $api -TimeoutSec 60 -Headers @{ "User-Agent" = "StardewGuideFanSite/1.0" }
     foreach ($page in $json.query.pages) {
-        if ($page.imageinfo -and $page.imageinfo.Count -gt 0) { $byTitle[$page.title] = $page.imageinfo[0].url }
+        # MediaWiki 会把标题中的下划线规范化为空格，统一转为下划线再匹配
+        if ($page.imageinfo -and $page.imageinfo.Count -gt 0) { $byTitle[($page.title -replace " ", "_")] = $page.imageinfo[0].url }
     }
 } catch {
     Write-Host "✗ Wiki 请求失败：$($_.Exception.Message)" -ForegroundColor Red
