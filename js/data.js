@@ -40,6 +40,20 @@ const CROPS = [
   { id: "grape-crop",   name: "葡萄",     season: ["夏"],     growth: 10, regrow: 3, seed: 80,  sell: 80,  note: "藤架作物，多次收获" },
   { id: "beet",         name: "甜菜",       season: ["秋"],       growth: 6,  regrow: 0, seed: 20,  sell: 100, note: "糖的来源" },
   { id: "bok-choy",     name: "小白菜",     season: ["秋"],       growth: 4,  regrow: 0, seed: 50,  sell: 80,  note: "成熟极快" },
+  { id: "rice",            name: "未碾米",     season: ["春"],       growth: "6-8", regrow: 0, seed: 20,  sell: 30,  note: "水稻，镰刀收获，靠近水源自动灌溉" },
+  { id: "carrot",          name: "胡萝卜",     season: ["春"],       growth: 3,  regrow: 0, seed: 15,  sell: 35,  note: "1.6 新作物，成熟极快" },
+  { id: "garlic",          name: "蒜",         season: ["春"],       growth: 4,  regrow: 0, seed: 20,  sell: 60,  note: "春季作物" },
+  { id: "summer-spangle",  name: "夏季亮片",   season: ["夏"],       growth: 8,  regrow: 0, seed: 25,  sell: 90,  note: "夏季花卉" },
+  { id: "radish",          name: "萝卜",       season: ["夏"],       growth: 6,  regrow: 0, seed: 20,  sell: 90,  note: "夏季作物" },
+  { id: "taro",            name: "芋头",       season: ["夏"],       growth: 10, regrow: 0, seed: 20,  sell: 100, note: "姜岛作物，靠近水源自动灌溉" },
+  { id: "fairy-rose",      name: "玫瑰仙子",   season: ["秋"],       growth: 12, regrow: 0, seed: 100, sell: 290, note: "秋季花卉，高价" },
+  { id: "sweet-gem-berry", name: "宝石甜莓",   season: ["秋"],       growth: 24, regrow: 0, seed: 200, sell: 3000, note: "顶级收益作物" },
+  { id: "broccoli",        name: "西蓝花",     season: ["秋"],       growth: 8,  regrow: 4, seed: 40,  sell: 70,  note: "1.6 新作物，可多次收获" },
+  { id: "powder-melon",    name: "霜瓜",       season: ["冬"],       growth: 7,  regrow: 0, seed: 20,  sell: 60,  note: "1.6 新冬季作物" },
+  { id: "tea-leaves",      name: "茶叶",       season: ["春","夏","秋","冬"], growth: 20, regrow: 1, seed: 250, sell: 50, note: "茶树每日可采，需茶苗" },
+  { id: "mango",           name: "芒果",       season: ["夏"],       growth: 28, regrow: 0, seed: 3000, sell: 130, note: "果树，每两天结果" },
+  { id: "pineapple",       name: "菠萝",       season: ["夏"],       growth: 14, regrow: 7, seed: 240, sell: 300, note: "姜岛作物，多次收获" },
+  { id: "qi-fruit",        name: "齐瓜",       season: ["春","夏","秋","冬"], growth: 4, regrow: 0, seed: 1, sell: 1, note: "齐先生挑战作物" },
   { id: "ancient-fruit", name: "上古水果",  season: ["春","夏","秋"], growth: 28, regrow: 7, seed: 550, sell: 550, note: "跨三季，每 7 天收获，顶级收益" },
 ];
 
@@ -70,6 +84,8 @@ const COLLECTIBLES = [
   { id: "rainbow-shell", name: "彩虹贝壳", season: ["夏"],       location: "海滩",     sell: 300, use: "高价值采集、送礼" },
   { id: "nautilus-shell",name: "鹦鹉螺",   season: ["冬"],       location: "海滩",     sell: 120, use: "冬季采集" },
   { id: "coconut",       name: "椰子",     season: ["春","夏","秋","冬"], location: "沙漠", sell: 100, use: "沙漠采集、送礼（海莉）" },
+  { id: "morel",        name: "羊肚菌",     season: ["春"],       location: "秘密森林", sell: 150, use: "春季采集、料理" },
+  { id: "salmonberry",  name: "美洲大树莓", season: ["春"],       location: "灌木丛",   sell: 5,   use: "春季采集、料理" },
   { id: "cactus-fruit",  name: "仙人掌果子", season: ["春","夏","秋","冬"], location: "沙漠", sell: 75,  use: "沙漠采集、送礼（山姆）" },
 ];
 
@@ -151,6 +167,9 @@ const FISH = [
   { id: "son-of-crimsonfish", name: "绯红鱼之子", location: "姜岛·东", locCat: "姜岛", season: SEASONS, time: "全天", weather: "任意", difficulty: 99, sell: 3000, use: "传说鱼（图鉴）" },
   { id: "legend-2",       name: "传说之鱼二代", location: "姜岛",       locCat: "姜岛", season: SEASONS, time: "全天", weather: "任意", difficulty: 110, sell: 5000, use: "传说鱼（图鉴）" },
   { id: "glacierfish-jr", name: "小冰川鱼", location: "姜岛·南",   locCat: "姜岛", season: SEASONS, time: "全天", weather: "任意", difficulty: 99, sell: 3000, use: "传说鱼（图鉴）" },
+  { id: "slimejack",       name: "史莱姆鱼",     location: "突变虫穴",   locCat: "其他", season: SEASONS, time: "任意时间", weather: "任意", difficulty: 55, sell: 100, use: "突变虫穴专属" },
+  { id: "radioactive-carp", name: "放射性鲤鱼",   location: "下水道",     locCat: "其他", season: SEASONS, time: "任意时间", weather: "任意", difficulty: 80, sell: 1000, use: "稀有鱼" },
+  { id: "goby",             name: "虾虎鱼",       location: "煤矿森林瀑布", locCat: "其他", season: SEASONS, time: "任意时间", weather: "任意", difficulty: 55, sell: 150, use: "姜岛/瀑布钓" },
   { id: "ms-angler",      name: "雌鮟鱇鱼",   location: "姜岛·北",   locCat: "姜岛", season: SEASONS, time: "全天", weather: "任意", difficulty: 99, sell: 3000, use: "传说鱼（图鉴）" },
 ];
 
@@ -189,6 +208,25 @@ const MINERALS = [
   { id: "thunder-egg",     name: "雷公蛋",     type: "矿物", level: "全层（稀有）",    sell: 100,  use: "售卖" },
   { id: "tigers-eye",      name: "虎眼石",     type: "矿物", level: "全层（稀有）",    sell: 275,  use: "售卖" },
   { id: "star-shard",      name: "星碎",       type: "矿物", level: "全层（稀有）",    sell: 500,  use: "高价值售卖" },
+  { id: "celestine",     name: "天青石",   type: "矿物", level: "晶球矿物",   sell: 125, use: "售卖" },
+  { id: "malachite",     name: "孔雀石",   type: "矿物", level: "晶球矿物",   sell: 100, use: "售卖" },
+  { id: "ghost-crystal", name: "幽灵水晶", type: "矿物", level: "晶球矿物",   sell: 200, use: "售卖" },
+  { id: "calcite",       name: "方解石",   type: "矿物", level: "晶球矿物",   sell: 75,  use: "售卖" },
+  { id: "fluorapatite",  name: "氟磷灰石", type: "矿物", level: "晶球矿物",   sell: 200, use: "售卖" },
+  { id: "mudstone",      name: "泥石",     type: "矿物", level: "晶球矿物",   sell: 25,  use: "售卖" },
+  { id: "soapstone",     name: "皂石",     type: "矿物", level: "晶球矿物",   sell: 120, use: "售卖" },
+  { id: "jasper",        name: "碧玉",     type: "矿物", level: "晶球矿物",   sell: 150, use: "售卖" },
+  { id: "kyanite",       name: "蓝晶石",   type: "矿物", level: "晶球矿物",   sell: 250, use: "售卖" },
+  { id: "hematite",      name: "赤铁矿",   type: "矿物", level: "晶球矿物",   sell: 150, use: "售卖" },
+  { id: "baryte",        name: "重晶石",   type: "矿物", level: "晶球矿物",   sell: 50,  use: "售卖" },
+  { id: "orpiment",      name: "雌黄",     type: "矿物", level: "晶球矿物",   sell: 80,  use: "售卖" },
+  { id: "pyrite",        name: "黄铁矿",   type: "矿物", level: "晶球矿物",   sell: 120, use: "售卖" },
+  { id: "hardwood",      name: "硬木",     type: "资源", level: "农场/秘密森林", sell: 15, use: "高级建造材料" },
+  { id: "stone",         name: "石头",     type: "资源", level: "全图",       sell: 2,   use: "建造、制作基础材料" },
+  { id: "fiber",         name: "纤维",     type: "资源", level: "全图割草",   sell: 1,   use: "制作材料" },
+  { id: "moss",          name: "苔藓",     type: "资源", level: "树木",       sell: 5,   use: "1.6 新资源，制作肥料" },
+  { id: "bone-fragment", name: "骨头碎片", type: "资源", level: "杀怪/挖掘", sell: 12,  use: "制作、兑换" },
+  { id: "refined-quartz",name: "精炼石英", type: "资源", level: "熔炉精炼",   sell: 50,  use: "制作玻璃等" },
   { id: "petrified-slime", name: "石化史莱姆", type: "矿物", level: "全层（稀有）",    sell: 120,  use: "售卖" },
 ];
 
@@ -229,6 +267,17 @@ const MONSTERS = [
   { id: "tiger-slime",  name: "虎纹史莱姆", hp: 500, damage: 12, location: "姜岛",       drops: ["史莱姆黏液"],   type: "史莱姆" },
   { id: "iridium-bat",  name: "铱蝙蝠",     hp: 300, damage: 24, location: "姜岛矿洞",   drops: ["铱矿石"],      type: "飞行" },
   { id: "iridium-crab", name: "铱蟹",       hp: 300, damage: 20, location: "姜岛矿洞",   drops: ["蟹壳"],         type: "甲壳" },
+  { id: "truffle-crab",   name: "松露蟹",     hp: 30,  damage: 5,  location: "矿井（稀有）", drops: ["蟹壳"],            type: "甲壳" },
+  { id: "magma-duggy",    name: "熔岩掘地虫", hp: 380, damage: 16, location: "姜岛火山",     drops: ["岩浆晶球"],        type: "地底" },
+  { id: "royal-serpent",  name: "皇家飞蛇",   hp: 150, damage: 32, location: "姜岛火山",     drops: ["虚空精华"],        type: "飞行" },
+  { id: "dwarvish-sentry",name: "矮人哨兵",   hp: 300, damage: 18, location: "姜岛火山",     drops: ["矮人小工具"],      type: "机械" },
+  { id: "stone-golem",    name: "石魔",       hp: 45,  damage: 5,  location: "矿井（稀有）", drops: ["石头"],            type: "傀儡" },
+  { id: "spider",         name: "蜘蛛",       hp: 200, damage: 15, location: "矿井 40 层+",  drops: ["纤维"],            type: "虫类" },
+  { id: "blue-squid",     name: "蓝鱿鱼",     hp: 310, damage: 18, location: "海滩",         drops: ["鱿鱼墨汁"],        type: "海洋" },
+  { id: "squid-kid",      name: "鱿鱼娃",     hp: 1,   damage: 18, location: "矿井 80 层+",  drops: ["鱿鱼墨汁"],        type: "海洋" },
+  { id: "skeleton-mage",  name: "骷髅法师",   hp: 355, damage: 20, location: "姜岛矿洞",     drops: ["骨头"],            type: "不死" },
+  { id: "iridium-golem",  name: "铱石魔",     hp: 430, damage: 15, location: "姜岛火山",     drops: ["铱矿石"],          type: "傀儡" },
+  { id: "false-magma-cap",name: "假熔岩菇",   hp: 290, damage: 15, location: "姜岛火山",     drops: ["岩浆晶球"],        type: "真菌" },
   { id: "magma-sparker",name: "熔岩潜伏怪", hp: 380, damage: 20, location: "姜岛火山",   drops: ["火水晶"],      type: "虫类" },
 ];
 
@@ -281,6 +330,13 @@ const NPCS = [
   { id: "rasmodius",    name: "法师",   birthday: "（无记录）", loves: ["虚空精华", "太阳精华", "紫蘑菇"], location: "法师塔", marriageable: false, desc: "神秘的法师，研究元素魔法与星象。" },
   { id: "marlon",       name: "马龙",         birthday: "（无记录）", loves: ["幸运午餐"],                location: "冒险者公会", marriageable: false, desc: "冒险者公会的会长，负责发放冒险委托。" },
   { id: "gunther",      name: "冈瑟",         birthday: "（无记录）", loves: ["绿宝石", "古代玩偶"],      location: "博物馆",     marriageable: false, desc: "博物馆馆长，收集古物与矿物。" },
+  { id: "linus",   name: "莱纳斯", birthday: "冬 3",  loves: ["蓝莓派", "仙人掌果子", "椰子", "海洋料理", "山药"], location: "深山帐篷", marriageable: false, desc: "隐居山林的流浪者，热爱自然，渴望友谊。" },
+  { id: "morris",  name: "莫里斯", birthday: "（无记录）", loves: ["不可送礼"], location: "乔家超市", marriageable: false, desc: "乔家超市的经理，唯利是图。" },
+  { id: "dwarf",   name: "矮人",   birthday: "夏 22", loves: ["紫水晶", "海蓝宝石", "绿宝石", "翡翠", "万象晶球", "红宝石"], location: "矿井", marriageable: false, desc: "住在矿井中的矮人商人，出售稀有物品。" },
+  { id: "grandpa", name: "爷爷",   birthday: "（无记录）", loves: ["（无礼物）"], location: "墓地", marriageable: false, desc: "农场主的祖父，第三年归来评估你的农场。" },
+  { id: "junimo",  name: "祝尼魔", birthday: "（无记录）", loves: ["（无礼物）"], location: "社区中心", marriageable: false, desc: "神秘的森林精灵，帮忙修复社区中心。" },
+  { id: "leo",     name: "雷欧",   birthday: "夏 26", loves: ["鸵鸟蛋"], location: "姜岛", marriageable: false, desc: "居住在姜岛雨林的小男孩。" },
+  { id: "qi",      name: "齐先生", birthday: "（无记录）", loves: ["不可送礼"], location: "赌场/齐氏核桃屋", marriageable: false, desc: "神秘莫测的幕后商人，发布特殊挑战。" },
   { id: "krobus",       name: "科罗布斯",     birthday: "冬 1",  loves: ["虚空蛋", "虚空鲑鱼", "钻石"],    location: "下水道",     marriageable: false, desc: "居住在下水道的怪物商人，出售稀有物品。" },
 ];
 
@@ -293,6 +349,10 @@ const FESTIVALS = [
   { id: "fair",           name: "星露谷展览会", season: "秋", day: 16, location: "广场", time: "09:00-15:00", desc: "展示你的农产品参与评比，还可玩小游戏赢星币。" },
   { id: "spirits-eve",    name: "万灵节",       season: "秋", day: 27, location: "广场", time: "22:00",       desc: "迷宫冒险与南瓜主题庆典，可获得金南瓜。" },
   { id: "festival-of-ice",name: "冰雪节",       season: "冬", day: 8,  location: "森林", time: "09:00-14:00", desc: "限时冰钓比赛，比拼谁钓的鱼最多。" },
+  { id: "desert-festival", name: "沙漠节",   season: "春", day: "15-17", location: "沙漠", time: "10:00起", desc: "沙漠限时盛会，可参加比赛赢取卡利科三花蛋。" },
+  { id: "trout-derby",     name: "鳟鱼大赛", season: "夏", day: "20-21", location: "煤矿森林河流", time: "全天", desc: "限时钓鱼比赛，钓到指定鱼获积分。" },
+  { id: "squid-fest",      name: "鱿鱼节",   season: "冬", day: "11-13", location: "海滩", time: "全天", desc: "钓鱿鱼比赛，可兑换奖品。" },
+  { id: "night-market",    name: "夜市",     season: "冬", day: "15-17", location: "海滩", time: "17:00-02:00", desc: "冬季夜市集市，可乘潜艇钓鱼、购物。" },
   { id: "winter-star",    name: "冬日星盛宴", season: "冬", day: 25, location: "广场", time: "09:00-14:00", desc: "与指定村民互赠礼物，共度温馨的冬日盛宴。" },
 ];
 

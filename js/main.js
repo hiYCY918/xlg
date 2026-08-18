@@ -368,7 +368,8 @@ function closeModal() {
 const SEASON_ORDER = { 春: 0, 夏: 1, 秋: 2, 冬: 3 };
 function renderFestivals() {
   const body = $("#body-festivals");
-  const sorted = [...FESTIVALS].sort((a, b) => (SEASON_ORDER[a.season] - SEASON_ORDER[b.season]) || (a.day - b.day));
+  const dayNum = (d) => parseInt(String(d), 10) || 0;
+  const sorted = [...FESTIVALS].sort((a, b) => (SEASON_ORDER[a.season] - SEASON_ORDER[b.season]) || (dayNum(a.day) - dayNum(b.day)));
   setCount("festivalsCount", FESTIVALS.length);
   const wrap = document.createElement("div");
   wrap.className = "list";
