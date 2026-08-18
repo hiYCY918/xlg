@@ -231,7 +231,7 @@ function renderCombat() {
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
   toolbar.appendChild(chipBar(
-    [{ value: "全部", label: "全部" }, { value: "矿井", label: "矿井" }, { value: "沙漠矿洞", label: "沙漠矿洞" }],
+    [{ value: "全部", label: "全部" }, { value: "矿井", label: "矿井" }, { value: "沙漠矿洞", label: "沙漠矿洞" }, { value: "姜岛", label: "姜岛" }, { value: "其他", label: "其他" }],
     state.combat,
     (v) => { state.combat = v; renderCombat(); }
   ));
@@ -239,7 +239,12 @@ function renderCombat() {
 
   const grid = document.createElement("div");
   grid.className = "grid";
-  const list = MONSTERS.filter((m) => state.combat === "全部" || m.location.includes(state.combat));
+  const MAIN_LOCS = ["矿井", "沙漠矿洞", "姜岛"];
+  const list = MONSTERS.filter((m) => {
+    if (state.combat === "全部") return true;
+    if (state.combat === "其他") return !MAIN_LOCS.some((l) => m.location.includes(l));
+    return m.location.includes(state.combat);
+  });
   setCount("combatCount", MONSTERS.length);
 
   grid.innerHTML = list.map((m) => `

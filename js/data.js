@@ -168,6 +168,30 @@ const MINERALS = [
   { id: "ruby",       name: "红宝石",   type: "宝石", level: "矿井 80 层+",    sell: 250, use: "送礼、售卖" },
   { id: "diamond",    name: "钻石",     type: "宝石", level: "矿井 50 层+",    sell: 750, use: "送礼（通用）" },
   { id: "prismatic",  name: "五彩碎片", type: "特殊", level: "全层（极稀有）",  sell: 2000, use: "兑换银河剑" },
+  /* ---- 宝石补全 ---- */
+  { id: "aquamarine", name: "海蓝宝石", type: "宝石", level: "全层",            sell: 180, use: "送礼、售卖" },
+  { id: "jade",       name: "翡翠",     type: "宝石", level: "矿井 40 层+",     sell: 200, use: "送礼、售卖" },
+  { id: "opal",       name: "蛋白石",   type: "宝石", level: "全层（稀有）",    sell: 150, use: "售卖" },
+  { id: "fire-opal",  name: "火蛋白石", type: "宝石", level: "全层（稀有）",    sell: 350, use: "售卖" },
+  /* ---- 矿物补全 ---- */
+  { id: "earth-crystal",   name: "地晶",       type: "矿物", level: "矿井 1-39 层",   sell: 50,   use: "制作材料" },
+  { id: "frozen-tear",     name: "冰冻之泪",   type: "矿物", level: "矿井 40-79 层",  sell: 75,   use: "送礼（塞巴斯蒂安）、制作" },
+  { id: "fire-quartz",     name: "火水晶",     type: "矿物", level: "矿井 80-119 层", sell: 100,  use: "精炼石英、制作" },
+  { id: "obsidian",        name: "黑曜石",     type: "矿物", level: "矿井 80 层+（稀有）", sell: 200, use: "送礼（塞巴斯蒂安）、售卖" },
+  { id: "clay",            name: "黏土",       type: "矿物", level: "全图挖掘/矿井",  sell: 20,   use: "制作材料" },
+  { id: "marble",          name: "大理石",     type: "矿物", level: "矿井（稀有）",    sell: 110,  use: "制作" },
+  { id: "granite",         name: "花岗岩",     type: "矿物", level: "全层",            sell: 75,   use: "制作" },
+  { id: "slate",           name: "板岩",       type: "矿物", level: "全层",            sell: 85,   use: "制作" },
+  { id: "sandstone",       name: "砂岩",       type: "矿物", level: "全层",            sell: 60,   use: "制作" },
+  { id: "limestone",       name: "石灰石",     type: "矿物", level: "全层",            sell: 15,   use: "制作" },
+  { id: "basalt",          name: "玄武岩",     type: "矿物", level: "全层（稀有）",    sell: 175,  use: "制作" },
+  { id: "dolomite",        name: "白云石",     type: "矿物", level: "全层（稀有）",    sell: 300,  use: "售卖" },
+  { id: "gypsum",          name: "石膏",       type: "矿物", level: "全层",            sell: 90,   use: "制作" },
+  { id: "salt",            name: "盐",         type: "矿物", level: "全层",            sell: 100,  use: "制作" },
+  { id: "thunder-egg",     name: "雷电蛋",     type: "矿物", level: "全层（稀有）",    sell: 100,  use: "售卖" },
+  { id: "tigers-eye",      name: "虎眼石",     type: "矿物", level: "全层（稀有）",    sell: 275,  use: "售卖" },
+  { id: "star-shard",      name: "星碎",       type: "矿物", level: "全层（稀有）",    sell: 500,  use: "高价值售卖" },
+  { id: "petrified-slime", name: "石化史莱姆", type: "矿物", level: "全层（稀有）",    sell: 120,  use: "售卖" },
 ];
 
 /* ---------- 战斗 ---------- */
@@ -184,6 +208,32 @@ const MONSTERS = [
   { id: "purple-slime", name: "紫色史莱姆", hp: 240, damage: 15, location: "沙漠矿洞",   drops: ["铱矿石"],      type: "史莱姆" },
   { id: "serpent",      name: "飞蛇",     hp: 150, damage: 23, location: "沙漠矿洞",     drops: ["虚空精华"],    type: "飞行" },
   { id: "mummy",        name: "木乃伊",   hp: 260, damage: 30, location: "沙漠矿洞",     drops: ["布料"],        type: "不死" },
+  /* ---- 矿井补充 ---- */
+  { id: "lava-crab",     name: "熔岩蟹",   hp: 130, damage: 15, location: "矿井 80-119 层", drops: ["蟹壳"],         type: "甲壳" },
+  { id: "cave-grub",     name: "洞穴蛴螬", hp: 25,  damage: 6,  location: "矿井 1-39 层",  drops: ["虫肉"],         type: "虫类" },
+  { id: "dust-sprite",   name: "灰尘精灵", hp: 50,  damage: 5,  location: "矿井 40-79 层", drops: ["煤炭"],         type: "暗影" },
+  { id: "stone-bat",     name: "石蝙蝠",   hp: 36,  damage: 7,  location: "矿井 40-79 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
+  { id: "frost-bat",     name: "霜冻蝙蝠", hp: 80,  damage: 11, location: "矿井 40-79 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
+  { id: "lava-bat",      name: "熔岩蝙蝠", hp: 90,  damage: 17, location: "矿井 80-119 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
+  { id: "shadow-shaman", name: "暗影萨满", hp: 80,  damage: 13, location: "矿井 80-119 层", drops: ["虚空精华"],    type: "暗影" },
+  { id: "red-slime",     name: "红史莱姆", hp: 200, damage: 8,  location: "矿井 120 层+",  drops: ["史莱姆黏液"],   type: "史莱姆" },
+  { id: "copper-slime",  name: "铜史莱姆", hp: 300, damage: 8,  location: "矿井（矿脉）",  drops: ["铜矿石"],      type: "史莱姆" },
+  { id: "iron-slime",    name: "铁史莱姆", hp: 400, damage: 8,  location: "矿井（矿脉）",  drops: ["铁矿石"],      type: "史莱姆" },
+  { id: "gold-slime",    name: "金史莱姆", hp: 500, damage: 8,  location: "矿井（矿脉）",  drops: ["金矿石"],      type: "史莱姆" },
+  { id: "iridium-slime", name: "铱史莱姆", hp: 600, damage: 10, location: "矿井/沙漠矿洞（稀有）", drops: ["铱矿石"], type: "史莱姆" },
+  /* ---- 沙漠矿洞补充 ---- */
+  { id: "metal-head",    name: "金属头",   hp: 100, damage: 20, location: "沙漠矿洞",     drops: ["铜矿石","铁矿石","金矿石"], type: "机械" },
+  { id: "magma-sprite",  name: "岩浆精灵", hp: 90,  damage: 12, location: "沙漠矿洞",     drops: ["火水晶"],      type: "精灵" },
+  /* ---- 其他区域 ---- */
+  { id: "wilderness-golem", name: "荒野傀儡", hp: 75,  damage: 10, location: "农场（夜晚）", drops: ["纤维"], type: "傀儡" },
+  { id: "mutant-grub",     name: "突变蛆",   hp: 55,  damage: 5,  location: "下水道",      drops: ["虫肉"],         type: "虫类" },
+  { id: "mutant-fly",      name: "突变蝇",   hp: 66,  damage: 8,  location: "下水道",      drops: ["虫肉"],         type: "飞行" },
+  /* ---- 姜岛 ---- */
+  { id: "tiger-slime",  name: "虎纹史莱姆", hp: 500, damage: 12, location: "姜岛",       drops: ["史莱姆黏液"],   type: "史莱姆" },
+  { id: "iridium-bat",  name: "铱蝙蝠",     hp: 300, damage: 24, location: "姜岛矿洞",   drops: ["铱矿石"],      type: "飞行" },
+  { id: "iridium-crab", name: "铱蟹",       hp: 300, damage: 20, location: "姜岛矿洞",   drops: ["蟹壳"],         type: "甲壳" },
+  { id: "zombie",       name: "僵尸",       hp: 250, damage: 28, location: "姜岛矿洞",   drops: ["骨头"],         type: "不死" },
+  { id: "magma-sparker",name: "岩浆火花虫", hp: 380, damage: 20, location: "姜岛火山",   drops: ["火水晶"],      type: "虫类" },
 ];
 
 /* ---------- 任务 ---------- */
