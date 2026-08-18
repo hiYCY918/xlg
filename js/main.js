@@ -131,6 +131,7 @@ function renderCollect() {
 }
 
 /* ---- 钓鱼 ---- */
+const FISH_LOCS = ["全部", "山湖", "河流", "海洋", "蟹笼", "矿井", "沙漠", "姜岛", "其他"];
 function renderFishing() {
   const body = $("#body-fishing");
   body.innerHTML = "";
@@ -138,7 +139,7 @@ function renderFishing() {
   toolbar.className = "toolbar";
   toolbar.append(
     chipBar(
-      [{ value: "全部", label: "全部水域" }, { value: "山湖", label: "山湖" }, { value: "河流", label: "河流" }, { value: "海洋", label: "海洋" }, { value: "蟹笼", label: "蟹笼" }],
+      FISH_LOCS.map((l) => ({ value: l, label: l === "全部" ? "全部水域" : l })),
       state.fishingLoc,
       (v) => { state.fishingLoc = v; renderFishing(); }
     ),
@@ -153,7 +154,7 @@ function renderFishing() {
   const grid = document.createElement("div");
   grid.className = "grid";
   const list = FISH.filter((f) => {
-    const okLoc = state.fishingLoc === "全部" || f.location.includes(state.fishingLoc);
+    const okLoc = state.fishingLoc === "全部" || f.locCat === state.fishingLoc;
     const okSea = state.fishingSeason === "全部" || f.season.includes(state.fishingSeason);
     return okLoc && okSea;
   });
@@ -161,7 +162,11 @@ function renderFishing() {
 
   grid.innerHTML = list.map((f) => `
     <div class="card" data-id="${esc(f.id)}">
-      <h3>🐟 ${esc(f.name)}</h3>
+      <div class="item-icon">
+        <span class="icon-fallback">${FISH_ICON}</span>
+        <img class="icon-img" src="img/${esc(f.id)}.png" alt="${esc(f.name)}" loading="lazy" onerror="this.remove()">
+      </div>
+      <h3>${esc(f.name)}</h3>
       <div><span class="badge brown">${esc(f.location)}</span> ${seasonBadges(f.season)}</div>
       <div class="meta">⏰ ${esc(f.time)} · ☀️ ${esc(f.weather)}</div>
       <div class="meta">难度 ${stars(f.difficulty)}</div>

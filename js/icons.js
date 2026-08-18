@@ -13,6 +13,14 @@ const GENERIC_ICON = ICON(
   '<path d="M32 50V24M32 24c-5-4-10-4-14 0M32 24c5-4 10-4 14 0" stroke="#5f9e3f" stroke-width="4" fill="none" stroke-linecap="round"/>'
 );
 
+/* 通用鱼兜底图标 */
+const FISH_ICON = ICON(
+  '<ellipse cx="32" cy="33" rx="22" ry="13" fill="#7fb3d5"/>' +
+  '<path d="M54 33l-10-6v12z" fill="#5a8fb0"/>' +
+  '<circle cx="22" cy="30" r="2.2" fill="#2c4a63"/>' +
+  '<path d="M28 26c2-2 6-2 8 0" stroke="#5a8fb0" stroke-width="2" fill="none" stroke-linecap="round"/>'
+);
+
 /* ---------- 农作物 ---------- */
 const CROP_ICONS = {
   parsnip: ICON(
