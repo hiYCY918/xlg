@@ -142,7 +142,7 @@ const MINERALS = [
   { id: "iridium",    name: "铱矿石",   type: "矿石", level: "115 层+ / 沙漠矿洞", sell: 100, use: "冶炼铱锭" },
   { id: "coal",       name: "煤炭",     type: "资源", level: "全层 / 烧制木材", sell: 15,  use: "燃料、冶炼" },
   { id: "quartz",     name: "石英",     type: "矿物", level: "矿井 1-39 层",    sell: 25,  use: "精炼石英、玻璃" },
-  { id: "amethyst",   name: "紫水晶",   type: "宝石", level: "全层",            sell: 100, use: "送礼（艾比盖尔）" },
+  { id: "amethyst",   name: "紫水晶",   type: "宝石", level: "全层",            sell: 100, use: "送礼（阿比盖尔）" },
   { id: "topaz",      name: "黄水晶",   type: "宝石", level: "全层",            sell: 80,  use: "送礼、售卖" },
   { id: "emerald",    name: "绿宝石",   type: "宝石", level: "矿井 80 层+",    sell: 250, use: "送礼（潘妮）" },
   { id: "ruby",       name: "红宝石",   type: "宝石", level: "矿井 80 层+",    sell: 250, use: "送礼、售卖" },
@@ -183,7 +183,7 @@ const QUESTS = [
 /* ---------- NPC ----------
  * birthday 格式 "季节 日"；loves 为最爱的礼物 */
 const NPCS = [
-  { id: "abigail",   name: "艾比盖尔",   birthday: "秋 13", loves: ["紫水晶", "南瓜", "巧克力蛋糕"], location: "皮埃尔家", marriageable: true,  desc: "紫发少女，喜欢冒险与电子游戏，是皮埃尔的女儿。" },
+  { id: "abigail",   name: "阿比盖尔",   birthday: "秋 13", loves: ["紫水晶", "南瓜", "巧克力蛋糕"], location: "皮埃尔家", marriageable: true,  desc: "紫发少女，喜欢冒险与电子游戏，是皮埃尔的女儿。" },
   { id: "leah",      name: "莉亚",       birthday: "冬 23", loves: ["沙拉", "羊奶酪", "葡萄酒"],   location: "森林木屋", marriageable: true,  desc: "住在森林里的艺术家，热爱自然与雕塑。" },
   { id: "penny",     name: "潘妮",       birthday: "秋 2",  loves: ["钻石", "翡翠", "罂粟"],       location: "拖车",     marriageable: true,  desc: "温柔的家庭教师，喜欢读书与孩子。" },
   { id: "maru",      name: "玛鲁",       birthday: "夏 10", loves: ["电池", "钻石", "草莓"],       location: "罗宾家",   marriageable: true,  desc: "罗宾的女儿，酷爱科学与发明。" },
@@ -224,7 +224,7 @@ const EVENTS = [
   { id: "capsule",      name: "外星胶囊",     type: "随机事件", trigger: "夜晚随机",   desc: "出现一个神秘的胶囊，几天后可能破碎（稀有）。" },
   { id: "mushroom-tree",name: "蘑菇树",       type: "随机事件", trigger: "秋季",       desc: "农场的一棵树可能长成巨大的蘑菇树，可采集蘑菇。" },
   { id: "earthquake",   name: "地震",         type: "随机事件", trigger: "夏季第 3 天", desc: "夜里地震打通了去往温泉与火车站的障碍。" },
-  { id: "heart-abigail2",name: "艾比盖尔 2 心", type: "心事件", trigger: "艾比盖尔 2 心", desc: "在皮埃尔家与她一起玩电子游戏，增进感情。" },
+  { id: "heart-abigail2",name: "阿比盖尔 2 心", type: "心事件", trigger: "阿比盖尔 2 心", desc: "在皮埃尔家与她一起玩电子游戏，增进感情。" },
   { id: "heart-leah2",  name: "莉亚 2 心",    type: "心事件", trigger: "莉亚 2 心",   desc: "拜访莉亚的木屋，欣赏她的雕塑作品。" },
   { id: "heart-seb4",   name: "塞巴斯蒂安 4 心", type: "心事件", trigger: "塞巴斯蒂安 4 心", desc: "在地下室与他共度骑机车的夜晚。" },
   { id: "heart-shane6", name: "谢恩 6 心",    type: "心事件", trigger: "谢恩 6 心",   desc: "在他情绪低落时给予支持，逐渐打开心扉。" },
