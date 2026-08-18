@@ -52,6 +52,17 @@ function setCount(id, val) {
   if (el) el.textContent = val;
 }
 
+/* 物品图标：真实贴图与备用 SVG 二选一（贴图加载成功移除 SVG，失败保留 SVG） */
+function itemIconHtml(id, name, svgFallback) {
+  return `
+      <span class="item-icon">
+        <span class="icon-fallback">${svgFallback}</span>
+        <img class="icon-img" src="img/${esc(id)}.png" alt="${esc(name)}" loading="lazy"
+             onload="this.previousElementSibling.remove()"
+             onerror="this.remove()">
+      </span>`;
+}
+
 /* ============================================================
  * 各模块渲染
  * ============================================================ */
@@ -90,10 +101,7 @@ function renderCrops() {
       : `<span class="badge green">多次收获</span> ${esc(c.note)}`;
     return `
       <div class="card" data-id="${esc(c.id)}">
-        <div class="item-icon">
-        <span class="icon-fallback">${CROP_ICONS[c.id] || GENERIC_ICON}</span>
-        <img class="icon-img" src="img/${esc(c.id)}.png" alt="${esc(c.name)}" loading="lazy" onerror="this.remove()">
-      </div>
+        ${itemIconHtml(c.id, c.name, CROP_ICONS[c.id] || GENERIC_ICON)}
         <h3>${esc(c.name)}</h3>
         <div>${seasonBadges(c.season)}</div>
         <div class="meta">${growText}</div>
@@ -124,10 +132,7 @@ function renderCollect() {
 
   grid.innerHTML = list.map((c) => `
     <div class="card" data-id="${esc(c.id)}">
-      <div class="item-icon">
-        <span class="icon-fallback">${COLLECT_ICONS[c.id] || GENERIC_ICON}</span>
-        <img class="icon-img" src="img/${esc(c.id)}.png" alt="${esc(c.name)}" loading="lazy" onerror="this.remove()">
-      </div>
+      ${itemIconHtml(c.id, c.name, COLLECT_ICONS[c.id] || GENERIC_ICON)}
       <h3>${esc(c.name)}</h3>
       <div>${seasonBadges(c.season)}</div>
       <div class="meta">📍 ${esc(c.location)}</div>
@@ -168,10 +173,7 @@ function renderFishing() {
 
   grid.innerHTML = list.map((f) => `
     <div class="card" data-id="${esc(f.id)}">
-      <div class="item-icon">
-        <span class="icon-fallback">${typeof FISH_ICON !== "undefined" ? FISH_ICON : GENERIC_ICON}</span>
-        <img class="icon-img" src="img/${esc(f.id)}.png" alt="${esc(f.name)}" loading="lazy" onerror="this.remove()">
-      </div>
+      ${itemIconHtml(f.id, f.name, typeof FISH_ICON !== "undefined" ? FISH_ICON : GENERIC_ICON)}
       <h3>${esc(f.name)}</h3>
       <div><span class="badge brown">${esc(f.location)}</span> ${seasonBadges(f.season)}</div>
       <div class="meta">⏰ ${esc(f.time)} · ☀️ ${esc(f.weather)}</div>
