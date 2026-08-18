@@ -186,8 +186,6 @@ const MINERALS = [
   { id: "limestone",       name: "石灰石",     type: "矿物", level: "全层",            sell: 15,   use: "制作" },
   { id: "basalt",          name: "玄武岩",     type: "矿物", level: "全层（稀有）",    sell: 175,  use: "制作" },
   { id: "dolomite",        name: "白云石",     type: "矿物", level: "全层（稀有）",    sell: 300,  use: "售卖" },
-  { id: "gypsum",          name: "石膏",       type: "矿物", level: "全层",            sell: 90,   use: "制作" },
-  { id: "salt",            name: "盐",         type: "矿物", level: "全层",            sell: 100,  use: "制作" },
   { id: "thunder-egg",     name: "雷电蛋",     type: "矿物", level: "全层（稀有）",    sell: 100,  use: "售卖" },
   { id: "tigers-eye",      name: "虎眼石",     type: "矿物", level: "全层（稀有）",    sell: 275,  use: "售卖" },
   { id: "star-shard",      name: "星碎",       type: "矿物", level: "全层（稀有）",    sell: 500,  use: "高价值售卖" },
@@ -212,7 +210,6 @@ const MONSTERS = [
   { id: "lava-crab",     name: "熔岩蟹",   hp: 130, damage: 15, location: "矿井 80-119 层", drops: ["蟹壳"],         type: "甲壳" },
   { id: "cave-grub",     name: "洞穴蛴螬", hp: 25,  damage: 6,  location: "矿井 1-39 层",  drops: ["虫肉"],         type: "虫类" },
   { id: "dust-sprite",   name: "灰尘精灵", hp: 50,  damage: 5,  location: "矿井 40-79 层", drops: ["煤炭"],         type: "暗影" },
-  { id: "stone-bat",     name: "石蝙蝠",   hp: 36,  damage: 7,  location: "矿井 40-79 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
   { id: "frost-bat",     name: "霜冻蝙蝠", hp: 80,  damage: 11, location: "矿井 40-79 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
   { id: "lava-bat",      name: "熔岩蝙蝠", hp: 90,  damage: 17, location: "矿井 80-119 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
   { id: "shadow-shaman", name: "暗影萨满", hp: 80,  damage: 13, location: "矿井 80-119 层", drops: ["虚空精华"],    type: "暗影" },
@@ -232,7 +229,6 @@ const MONSTERS = [
   { id: "tiger-slime",  name: "虎纹史莱姆", hp: 500, damage: 12, location: "姜岛",       drops: ["史莱姆黏液"],   type: "史莱姆" },
   { id: "iridium-bat",  name: "铱蝙蝠",     hp: 300, damage: 24, location: "姜岛矿洞",   drops: ["铱矿石"],      type: "飞行" },
   { id: "iridium-crab", name: "铱蟹",       hp: 300, damage: 20, location: "姜岛矿洞",   drops: ["蟹壳"],         type: "甲壳" },
-  { id: "zombie",       name: "僵尸",       hp: 250, damage: 28, location: "姜岛矿洞",   drops: ["骨头"],         type: "不死" },
   { id: "magma-sparker",name: "岩浆火花虫", hp: 380, damage: 20, location: "姜岛火山",   drops: ["火水晶"],      type: "虫类" },
 ];
 
