@@ -125,19 +125,29 @@ $items = @{
 $imgDir = Join-Path $PSScriptRoot "img"
 New-Item -ItemType Directory -Force -Path $imgDir | Out-Null
 
-$titles = ($items.GetEnumerator() | ForEach-Object { "File:" + $_.Value }) -join "|"
-$api = "https://stardewvalleywiki.com/mediawiki/api.php?action=query&titles=$titles&prop=imageinfo&iiprop=url&format=json&formatversion=2"
-
-Write-Host "正在从星露谷 Wiki 获取图片地址..." -ForegroundColor Cyan
+# 分批查询（MediaWiki 的 titles 参数单次最多 50 个）
+Write-Host "正在从星露谷 Wiki 获取图片地址（分批查询）..." -ForegroundColor Cyan
 $byTitle = @{}
-try {
-    $json = Invoke-RestMethod -Uri $api -TimeoutSec 60 -Headers @{ "User-Agent" = "StardewGuideFanSite/1.0" }
-    foreach ($page in $json.query.pages) {
-        # MediaWiki 会把标题中的下划线规范化为空格，统一转为下划线再匹配
-        if ($page.imageinfo -and $page.imageinfo.Count -gt 0) { $byTitle[($page.title -replace " ", "_")] = $page.imageinfo[0].url }
+$entries = @($items.GetEnumerator())
+for ($i = 0; $i -lt $entries.Count; $i += 50) {
+    $end = [Math]::Min($i + 49, $entries.Count - 1)
+    $batch = $entries[$i..$end]
+    $titles = ($batch | ForEach-Object { "File:" + $_.Value }) -join "|"
+    $api = "https://stardewvalleywiki.com/mediawiki/api.php?action=query&titles=$titles&prop=imageinfo&iiprop=url&format=json&formatversion=2"
+    try {
+        $json = Invoke-RestMethod -Uri $api -TimeoutSec 60 -Headers @{ "User-Agent" = "StardewGuideFanSite/1.0" }
+        if ($json.query.pages) {
+            foreach ($page in $json.query.pages) {
+                # MediaWiki 会把标题中的下划线规范化为空格，统一转为下划线再匹配
+                if ($page.imageinfo -and $page.imageinfo.Count -gt 0) { $byTitle[($page.title -replace " ", "_")] = $page.imageinfo[0].url }
+            }
+        }
+    } catch {
+        Write-Host "✗ 第 $($i / 50 + 1) 批查询失败：$($_.Exception.Message)" -ForegroundColor Red
     }
-} catch {
-    Write-Host "✗ Wiki 请求失败：$($_.Exception.Message)" -ForegroundColor Red
+}
+if ($byTitle.Count -eq 0) {
+    Write-Host "✗ 未能获取任何图片地址（Wiki 请求全部失败）" -ForegroundColor Red
     Write-Host "（站点会使用备用图标，不影响上线）" -ForegroundColor Yellow
     exit 1
 }
