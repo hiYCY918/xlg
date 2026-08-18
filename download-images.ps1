@@ -278,11 +278,58 @@ if ($byTitle.Count -eq 0) {
     exit 1
 }
 
+# 英文名搜索兜底（文件名有变体/重定向时自动查找正确文件）
+$searchTerms = @{
+  "zombie"         = "Zombie"
+  "star-shard"     = "Star Shard"
+  "red-slime"      = "Red Slime"
+  "tigers-eye"     = "Tiger's Eye"
+  "gypsum"         = "Gypsum"
+  "salt"           = "Salt"
+  "blue-slime"     = "Blue Slime"
+  "gold-slime"     = "Gold Slime"
+  "cave-grub"      = "Cave Grub"
+  "stone-bat"      = "Stone Bat"
+  "iridium-slime"  = "Iridium Slime"
+}
+
+function Get-FileUrl([string]$file) {
+    # 兜底1：单文件查询 + 跟随重定向
+    $api = "https://stardewvalleywiki.com/mediawiki/api.php?action=query&titles=File:" + [uri]::EscapeDataString($file) + "&prop=imageinfo&iiprop=url&format=json&formatversion=2&redirects=1"
+    try {
+        $j = Invoke-RestMethod -Uri $api -TimeoutSec 30 -Headers @{ "User-Agent" = "StardewGuideFanSite/1.0" }
+        if ($j.query.pages -and $j.query.pages.Count -gt 0 -and $j.query.pages[0].imageinfo) {
+            return $j.query.pages[0].imageinfo[0].url
+        }
+    } catch { }
+    return $null
+}
+
+function Find-WikiFile([string]$id) {
+    # 兜底2：按英文名在文件命名空间搜索
+    $term = $searchTerms[$id]
+    if (-not $term) { return $null }
+    $searchApi = "https://stardewvalleywiki.com/mediawiki/api.php?action=query&list=search&srnamespace=6&srsearch=" + [uri]::EscapeDataString($term) + "&srlimit=8&format=json&formatversion=2"
+    try {
+        $sj = Invoke-RestMethod -Uri $searchApi -TimeoutSec 30 -Headers @{ "User-Agent" = "StardewGuideFanSite/1.0" }
+        if (-not $sj.query.search -or $sj.query.search.Count -eq 0) { return $null }
+        # 优先级：完全同名 → 名称开头 → 第一个结果
+        $hit = $null
+        foreach ($r in $sj.query.search) { if ($r.title -eq ($term + ".png")) { $hit = $r.title; break } }
+        if (-not $hit) { foreach ($r in $sj.query.search) { if ($r.title -like ($term + "*")) { $hit = $r.title; break } } }
+        if (-not $hit) { $hit = $sj.query.search[0].title }
+        return Get-FileUrl ($hit -replace "^File:", "")
+    } catch { }
+    return $null
+}
+
 $ok = 0; $skip = 0; $fail = @()
 foreach ($e in $items.GetEnumerator()) {
     $out = Join-Path $imgDir ($e.Key + ".png")
     if ((Test-Path $out) -and ((Get-Item $out).Length -gt 0)) { $skip++; continue }
     $url = $byTitle["File:" + $e.Value]
+    if (-not $url) { $url = Get-FileUrl $e.Value }
+    if (-not $url) { $url = Find-WikiFile $e.Key }
     if (-not $url) { $fail += $e.Key; continue }
     try {
         Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing -TimeoutSec 30
