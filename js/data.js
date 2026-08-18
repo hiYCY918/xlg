@@ -28,6 +28,19 @@ const CROPS = [
   { id: "yam",        name: "山药",     season: ["秋"],       growth: 10, regrow: 0, seed: 60,  sell: 160, note: "秋季节日食材" },
   { id: "amaranth",   name: "苋菜",     season: ["秋"],       growth: 7,  regrow: 0, seed: 70,  sell: 150, note: "高价单收作物" },
   { id: "artichoke",  name: "洋蓟",     season: ["秋"],       growth: 8,  regrow: 0, seed: 30,  sell: 160, note: "第二年解锁" },
+  { id: "tulip",        name: "郁金香",     season: ["春"],       growth: 6,  regrow: 0, seed: 20,  sell: 30,   note: "春季花卉" },
+  { id: "blue-jazz",    name: "蓝爵花",     season: ["春"],       growth: 7,  regrow: 0, seed: 30,  sell: 50,   note: "春季花卉、蜂蜜原料" },
+  { id: "coffee-bean",  name: "咖啡豆",     season: ["春","夏"],  growth: 10, regrow: 2, seed: 2500, sell: 15,  note: "旅行商贩购买，多次收获，可磨咖啡" },
+  { id: "rhubarb",      name: "大黄",       season: ["春"],       growth: 13, regrow: 0, seed: 100, sell: 220, note: "高价春季作物" },
+  { id: "hops",         name: "啤酒花",     season: ["夏"],       growth: 11, regrow: 1, seed: 60,  sell: 25,  note: "啤酒原料，每天收获" },
+  { id: "starfruit",    name: "杨桃",       season: ["夏"],       growth: 13, regrow: 0, seed: 400, sell: 750, note: "最高价作物之一" },
+  { id: "red-cabbage",  name: "红甘蓝",     season: ["夏"],       growth: 9,  regrow: 0, seed: 100, sell: 260, note: "第二年解锁" },
+  { id: "poppy",        name: "罂粟",       season: ["夏"],       growth: 7,  regrow: 0, seed: 100, sell: 140, note: "夏季花卉、罂粟籽油原料" },
+  { id: "summer-squash", name: "夏季南瓜",  season: ["夏"],       growth: 6,  regrow: 3, seed: 120, sell: 45,  note: "多次收获" },
+  { id: "grape-crop",   name: "葡萄（作物）", season: ["夏"],     growth: 10, regrow: 3, seed: 80,  sell: 80,  note: "藤架作物，多次收获" },
+  { id: "beet",         name: "甜菜",       season: ["秋"],       growth: 6,  regrow: 0, seed: 20,  sell: 100, note: "糖的来源" },
+  { id: "bok-choy",     name: "小白菜",     season: ["秋"],       growth: 4,  regrow: 0, seed: 50,  sell: 80,  note: "成熟极快" },
+  { id: "ancient-fruit", name: "上古水果",  season: ["春","夏","秋"], growth: 28, regrow: 7, seed: 550, sell: 550, note: "跨三季，每 7 天收获，顶级收益" },
 ];
 
 /* ---------- 收集物（野外采集） ---------- */
@@ -51,6 +64,13 @@ const COLLECTIBLES = [
   { id: "snow-yam",         name: "雪番薯",   season: ["冬"],       location: "全图挖掘", sell: 100, use: "冬季采集包" },
   { id: "crocus",           name: "番红花",   season: ["冬"],       location: "全图",     sell: 60,  use: "冬季采集包" },
   { id: "holly",            name: "冬青",     season: ["冬"],       location: "全图",     sell: 80,  use: "装饰、送礼（慎送）" },
+  { id: "red-mushroom",  name: "红蘑菇",   season: ["秋"],       location: "全图/矿井", sell: 75,  use: "秋季采集、料理（慎食）" },
+  { id: "coral",         name: "珊瑚",     season: ["夏"],       location: "海滩",     sell: 80,  use: "夏季采集、染料" },
+  { id: "sea-urchin",    name: "海胆",     season: ["夏"],       location: "海滩",     sell: 160, use: "夏季采集" },
+  { id: "rainbow-shell", name: "彩虹贝壳", season: ["夏"],       location: "海滩",     sell: 300, use: "高价值采集、送礼" },
+  { id: "nautilus-shell",name: "鹦鹉螺",   season: ["冬"],       location: "海滩",     sell: 120, use: "冬季采集" },
+  { id: "coconut",       name: "椰子",     season: ["春","夏","秋","冬"], location: "沙漠", sell: 100, use: "沙漠采集、送礼（海莉）" },
+  { id: "cactus-fruit",  name: "仙人掌果", season: ["春","夏","秋","冬"], location: "沙漠", sell: 75,  use: "沙漠采集、送礼（山姆）" },
 ];
 
 /* ---------- 钓鱼 ----------
@@ -201,6 +221,21 @@ const NPCS = [
   { id: "pierre",    name: "皮埃尔",     birthday: "春 26", loves: ["金枪鱼", "油炸鱿鱼"],         location: "杂货店",   marriageable: false, desc: "杂货店老板，出售种子与商品。" },
   { id: "willy",     name: "威利",       birthday: "夏 24", loves: ["鲶鱼", "南瓜", "钻石"],       location: "鱼店",     marriageable: false, desc: "老渔夫，出售钓竿与鱼饵。" },
   { id: "lewis",     name: "刘易斯",     birthday: "春 7",  loves: ["辣椒", "椰子", "秋季蔬菜"],   location: "镇长宅",   marriageable: false, desc: "星露谷的镇长。" },
+  { id: "jodi",         name: "乔迪",         birthday: "秋 11", loves: ["巧克力蛋糕", "钻石", "脆皮鲈鱼"], location: "乔迪家",     marriageable: false, desc: "山姆与文森特的母亲，温柔的家庭主妇。" },
+  { id: "pam",          name: "潘姆",         birthday: "春 18", loves: ["啤酒", "帕尔马奶酪茄子"],       location: "拖车",       marriageable: false, desc: "往返于小镇与城市的巴士司机，喜爱啤酒。" },
+  { id: "gus",          name: "格斯",         birthday: "夏 8",  loves: ["钻石", "橙子", "热带咖喱"],     location: "星之果实酒吧", marriageable: false, desc: "酒吧老板，厨艺了得的暖心大叔。" },
+  { id: "caroline",     name: "卡罗琳",       birthday: "冬 7",  loves: ["夏季紫丁香", "鱼卷", "绿茶"],    location: "皮埃尔家",   marriageable: false, desc: "皮埃尔的妻子，喜爱花草与园艺。" },
+  { id: "demetrius",    name: "德米特里厄斯", birthday: "夏 19", loves: ["草莓", "大米布丁", "炖豆"],     location: "罗宾家",     marriageable: false, desc: "研究当地生态的科学家，罗宾的丈夫。" },
+  { id: "george",       name: "乔治",         birthday: "秋 24", loves: ["韭葱", "辣鳗鱼"],              location: "亚历克斯家", marriageable: false, desc: "亚历克斯的祖父，性格固执但重感情。" },
+  { id: "evelyn",       name: "艾芙琳",       birthday: "冬 20", loves: ["巧克力蛋糕", "郁金香", "甜菜"],  location: "亚历克斯家", marriageable: false, desc: "亚历克斯的祖母，喜欢园艺与烘焙。" },
+  { id: "vincent",      name: "文森特",       birthday: "春 10", loves: ["葡萄", "石榴"],                location: "乔迪家",     marriageable: false, desc: "乔迪的小儿子，山姆的弟弟，淘气可爱。" },
+  { id: "jas",          name: "贾斯",         birthday: "夏 4",  loves: ["粉红蛋糕", "仙子玫瑰"],         location: "玛妮牧场",   marriageable: false, desc: "玛妮的侄女，文森特的好朋友。" },
+  { id: "kent",         name: "肯特",         birthday: "春 4",  loves: ["蕨菜炖饭", "烤榛子"],           location: "乔迪家",     marriageable: false, desc: "乔迪的丈夫，退伍军人，春季返回小镇。" },
+  { id: "sandy",        name: "桑迪",         birthday: "秋 15", loves: ["番红花", "仙人掌果"],           location: "沙漠商店",   marriageable: false, desc: "沙漠绿洲商店的老板娘，温柔友善。" },
+  { id: "rasmodius",    name: "拉斯莫迪斯",   birthday: "（无记录）", loves: ["虚空精华", "太阳精华", "紫蘑菇"], location: "法师塔", marriageable: false, desc: "神秘的法师，研究元素魔法与星象。" },
+  { id: "marlon",       name: "马龙",         birthday: "（无记录）", loves: ["幸运午餐"],                location: "冒险者公会", marriageable: false, desc: "冒险者公会的会长，负责发放冒险委托。" },
+  { id: "gunther",      name: "冈瑟",         birthday: "（无记录）", loves: ["绿宝石", "古代玩偶"],      location: "博物馆",     marriageable: false, desc: "博物馆馆长，收集古物与矿物。" },
+  { id: "krobus",       name: "克萝布丝",     birthday: "冬 1",  loves: ["虚空蛋", "虚空鲑鱼", "钻石"],    location: "下水道",     marriageable: false, desc: "居住在下水道的怪物商人，出售稀有物品。" },
 ];
 
 /* ---------- 节日 ---------- */
