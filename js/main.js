@@ -81,7 +81,7 @@ const state = {
   crops: "全部", collect: "全部",
   fishingLoc: "全部", fishingSeason: "全部",
   mining: "全部", combat: "全部",
-  npc: "全部", npcKw: "",
+  npc: "全部",
   quests: "全部", events: "全部",
 };
 
@@ -289,14 +289,6 @@ function renderNpc() {
   body.innerHTML = "";
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
-
-  const search = document.createElement("input");
-  search.type = "text";
-  search.placeholder = "🔍 搜索 NPC 名称 / 生日 / 礼物…";
-  search.value = state.npcKw;
-  search.addEventListener("input", (e) => { state.npcKw = e.target.value; renderNpc(); });
-  toolbar.appendChild(search);
-
   toolbar.appendChild(chipBar(
     [{ value: "全部", label: "全部" }, { value: "可婚", label: "可结婚" }, { value: "不可婚", label: "不可结婚" }],
     state.npc,
@@ -306,12 +298,9 @@ function renderNpc() {
 
   const grid = document.createElement("div");
   grid.className = "grid";
-  const kw = state.npcKw.trim().toLowerCase();
-  const list = NPCS.filter((n) => {
-    const okType = state.npc === "全部" || (state.npc === "可婚" ? n.marriageable : !n.marriageable);
-    const hay = (n.name + n.birthday + n.loves.join(" ") + n.location).toLowerCase();
-    return okType && (!kw || hay.includes(kw));
-  });
+  const list = NPCS.filter((n) =>
+    state.npc === "全部" || (state.npc === "可婚" ? n.marriageable : !n.marriageable)
+  );
   setCount("npcCount", NPCS.length);
 
   grid.innerHTML = list.map((n, i) => {
