@@ -163,7 +163,7 @@ function renderFishing() {
   grid.innerHTML = list.map((f) => `
     <div class="card" data-id="${esc(f.id)}">
       <div class="item-icon">
-        <span class="icon-fallback">${FISH_ICON}</span>
+        <span class="icon-fallback">${typeof FISH_ICON !== "undefined" ? FISH_ICON : GENERIC_ICON}</span>
         <img class="icon-img" src="img/${esc(f.id)}.png" alt="${esc(f.name)}" loading="lazy" onerror="this.remove()">
       </div>
       <h3>${esc(f.name)}</h3>
