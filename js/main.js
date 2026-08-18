@@ -46,6 +46,12 @@ function emptyState(text) {
   return `<div class="empty-state"><div class="icon">🌱</div><p>${esc(text)}</p></div>`;
 }
 
+/* 安全更新计数（元素缺失时静默跳过，避免拖垮整个页面） */
+function setCount(id, val) {
+  const el = $("#" + id);
+  if (el) el.textContent = val;
+}
+
 /* ============================================================
  * 各模块渲染
  * ============================================================ */
@@ -73,7 +79,7 @@ function renderCrops() {
   const grid = document.createElement("div");
   grid.className = "grid";
   const list = CROPS.filter((c) => state.crops === "全部" || c.season.includes(state.crops));
-  $("#cropsCount").textContent = CROPS.length;
+  setCount("cropsCount", CROPS.length);
 
   grid.innerHTML = list.map((c) => {
     const growText = c.regrow > 0
@@ -114,7 +120,7 @@ function renderCollect() {
   const grid = document.createElement("div");
   grid.className = "grid";
   const list = COLLECTIBLES.filter((c) => state.collect === "全部" || c.season.includes(state.collect));
-  $("#collectCount").textContent = COLLECTIBLES.length;
+  setCount("collectCount", COLLECTIBLES.length);
 
   grid.innerHTML = list.map((c) => `
     <div class="card" data-id="${esc(c.id)}">
@@ -158,7 +164,7 @@ function renderFishing() {
     const okSea = state.fishingSeason === "全部" || f.season.includes(state.fishingSeason);
     return okLoc && okSea;
   });
-  $("#fishCount").textContent = FISH.length;
+  setCount("fishingCount", FISH.length);
 
   grid.innerHTML = list.map((f) => `
     <div class="card" data-id="${esc(f.id)}">
@@ -192,7 +198,7 @@ function renderMining() {
   const grid = document.createElement("div");
   grid.className = "grid";
   const list = MINERALS.filter((m) => state.mining === "全部" || m.type === state.mining);
-  $("#miningCount").textContent = MINERALS.length;
+  setCount("miningCount", MINERALS.length);
 
   grid.innerHTML = list.map((m) => `
     <div class="card" data-id="${esc(m.id)}">
@@ -220,7 +226,7 @@ function renderCombat() {
   const grid = document.createElement("div");
   grid.className = "grid";
   const list = MONSTERS.filter((m) => state.combat === "全部" || m.location.includes(state.combat));
-  $("#combatCount").textContent = MONSTERS.length;
+  setCount("combatCount", MONSTERS.length);
 
   grid.innerHTML = list.map((m) => `
     <div class="card" data-id="${esc(m.id)}">
@@ -250,7 +256,7 @@ function renderQuests() {
   const wrap = document.createElement("div");
   wrap.className = "list";
   const list = QUESTS.filter((q) => state.quests === "全部" || q.type === state.quests);
-  $("#questsCount").textContent = QUESTS.length;
+  setCount("questsCount", QUESTS.length);
 
   wrap.innerHTML = list.map((q) => `
     <div class="list-item" data-id="${esc(q.id)}">
@@ -293,7 +299,7 @@ function renderNpc() {
     const hay = (n.name + n.birthday + n.loves.join(" ") + n.location).toLowerCase();
     return okType && (!kw || hay.includes(kw));
   });
-  $("#npcCount").textContent = NPCS.length;
+  setCount("npcCount", NPCS.length);
 
   grid.innerHTML = list.map((n, i) => {
     const idx = NPCS.indexOf(n);
@@ -354,7 +360,7 @@ const SEASON_ORDER = { 春: 0, 夏: 1, 秋: 2, 冬: 3 };
 function renderFestivals() {
   const body = $("#body-festivals");
   const sorted = [...FESTIVALS].sort((a, b) => (SEASON_ORDER[a.season] - SEASON_ORDER[b.season]) || (a.day - b.day));
-  $("#festivalCount").textContent = FESTIVALS.length;
+  setCount("festivalsCount", FESTIVALS.length);
   const wrap = document.createElement("div");
   wrap.className = "list";
   wrap.innerHTML = sorted.map((f) => `
@@ -383,7 +389,7 @@ function renderEvents() {
   const wrap = document.createElement("div");
   wrap.className = "list";
   const list = EVENTS.filter((e) => state.events === "全部" || e.type === state.events);
-  $("#eventsCount").textContent = EVENTS.length;
+  setCount("eventsCount", EVENTS.length);
   wrap.innerHTML = list.map((e) => `
     <div class="list-item" data-id="${esc(e.id)}">
       <h3>✨ ${esc(e.name)} <span class="badge ${e.type === "随机事件" ? "gold" : "green"}">${esc(e.type)}</span></h3>
