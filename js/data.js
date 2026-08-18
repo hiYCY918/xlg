@@ -37,7 +37,7 @@ const CROPS = [
   { id: "red-cabbage",  name: "红甘蓝",     season: ["夏"],       growth: 9,  regrow: 0, seed: 100, sell: 260, note: "第二年解锁" },
   { id: "poppy",        name: "罂粟",       season: ["夏"],       growth: 7,  regrow: 0, seed: 100, sell: 140, note: "夏季花卉、罂粟籽油原料" },
   { id: "summer-squash", name: "夏季南瓜",  season: ["夏"],       growth: 6,  regrow: 3, seed: 120, sell: 45,  note: "多次收获" },
-  { id: "grape-crop",   name: "葡萄（作物）", season: ["夏"],     growth: 10, regrow: 3, seed: 80,  sell: 80,  note: "藤架作物，多次收获" },
+  { id: "grape-crop",   name: "葡萄",     season: ["夏"],     growth: 10, regrow: 3, seed: 80,  sell: 80,  note: "藤架作物，多次收获" },
   { id: "beet",         name: "甜菜",       season: ["秋"],       growth: 6,  regrow: 0, seed: 20,  sell: 100, note: "糖的来源" },
   { id: "bok-choy",     name: "小白菜",     season: ["秋"],       growth: 4,  regrow: 0, seed: 50,  sell: 80,  note: "成熟极快" },
   { id: "ancient-fruit", name: "上古水果",  season: ["春","夏","秋"], growth: 28, regrow: 7, seed: 550, sell: 550, note: "跨三季，每 7 天收获，顶级收益" },
