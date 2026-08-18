@@ -50,13 +50,26 @@ if ($ghUser) {
     }
 }
 
-# ---------- 4. 下载真实物品贴图（已存在则跳过，失败不阻塞） ----------
+# ---------- 4. 渲染冒烟测试（失败则中止部署，防止带 bug 上线） ----------
+if (Get-Command node -ErrorAction SilentlyContinue) {
+    $smoke = Join-Path $PSScriptRoot "test\smoke.js"
+    if (Test-Path $smoke) {
+        Write-Host "正在运行渲染冒烟测试..." -ForegroundColor Yellow
+        node $smoke
+        if ($LASTEXITCODE -ne 0) { Fail "冒烟测试未通过，已中止部署。请先修复（可运行 node test\smoke.js 查看详情）。" }
+        Write-Host "✓ 冒烟测试通过" -ForegroundColor Green
+    }
+} else {
+    Write-Host "（未检测到 node，跳过冒烟测试）" -ForegroundColor Yellow
+}
+
+# ---------- 5. 下载真实物品贴图（已存在则跳过，失败不阻塞） ----------
 if (Test-Path (Join-Path $PSScriptRoot "download-images.ps1")) {
     Write-Host "正在准备真实物品贴图（img/ 文件夹）..." -ForegroundColor Yellow
     & (Join-Path $PSScriptRoot "download-images.ps1")
 }
 
-# ---------- 5. 提交未保存的改动 ----------
+# ---------- 6. 提交未保存的改动 ----------
 git add -A
 $dirty = git status --porcelain
 if ($dirty) {
@@ -64,7 +77,7 @@ if ($dirty) {
     Write-Host "✓ 已提交本地改动" -ForegroundColor Green
 }
 
-# ---------- 6. 创建并推送仓库 ----------
+# ---------- 7. 创建并推送仓库 ----------
 git branch -M main
 git remote remove origin 2>$null
 Write-Host "正在创建仓库 $Owner/$Repo 并推送..." -ForegroundColor Yellow

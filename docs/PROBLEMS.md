@@ -1,0 +1,86 @@
+# 开发问题记录与规避清单
+
+> 本文档汇总本项目开发过程中遇到过的所有问题、根因与解决方案，
+> 并沉淀为后续开发的强制性规避规则。**每次改动前先看「规避规则」。**
+
+---
+
+## 一、问题汇总
+
+### 1. 脚本与部署
+
+| # | 问题现象 | 根因 | 解决方案 |
+|---|---------|------|---------|
+| 1 | 双击 `deploy.bat` 窗口一闪就关 | `$ErrorActionPreference = "Stop"` 下，原生命令（`gh auth status`）向 stderr 输出即触发致命错误，脚本在开头就退出；且 `.bat` 末尾无 `pause` 兜底 | 错误策略改 `Continue`，用 `$LASTEXITCODE` 判断；`.bat` 末尾加 `pause`；`Fail()` 显式退出 |
+| 2 | `git push` 报 `couldn't create signal pipe, Win32 error 5` | 受限环境限制 Git for Windows 的 MSYS 运行库创建信号管道（非项目问题） | 在正常终端执行 push；SSH 密钥已验证有效 |
+| 3 | 提交作者是占位身份 `game-guide@local` | 本地无 git 身份配置 | 部署脚本用 `gh api user` 取真实账号，自动 `git commit --amend --reset-author` |
+| 4 | `.ps1` 中文乱码 / 解析报错 | 文件为 UTF-8 无 BOM，Windows PowerShell 5.1 按 ANSI 读取导致乱码和花括号误判 | 所有 `.ps1` 保存为 **UTF-8 带 BOM**；**每次编辑后必须重加 BOM 并校验** |
+
+### 2. Wiki 图片下载
+
+| # | 问题现象 | 根因 | 解决方案 |
+|---|---------|------|---------|
+| 5 | 多词名称的 12 个物品贴图全部下载失败 | MediaWiki API 响应会把标题中的下划线规范化为空格，脚本用下划线 key 匹配失败 | 响应标题统一 `-replace " ", "_"` 后再匹配 |
+| 6 | 加入鱼类后 68 张贴图全部未下载 | MediaWiki `titles` 参数**单次上限 50 个**，106 个标题的一次请求被拒绝 | 分批查询（每批 50 个） |
+
+### 3. GitHub 部署
+
+| # | 问题现象 | 根因 | 解决方案 |
+|---|---------|------|---------|
+| 7 | 经典 Pages 构建连续 3 次 `Page build failed` | GitHub 服务端故障（构建服务异常） | 切换到 **GitHub Actions 部署**（`.github/workflows/pages.yml`），更可靠且有日志 |
+| 8 | Actions 运行失败在 "Set up job" | codeload.github.com 对插件下载返回 **HTTP 429**（GitHub 限流） | 基础设施错误**重试触发**即可，勿改代码 |
+| 9 | 线上一直跑旧版本（图片 404） | 构建失败时 GitHub 继续服务最后一个成功构建 | 部署后必须**验证线上实际文件与渲染**，不只信构建状态 |
+
+### 4. 前端渲染（最严重）
+
+| # | 问题现象 | 根因 | 解决方案 |
+|---|---------|------|---------|
+| 10 | 页面只有顶部导航，内容区全空 | `buildSections` 生成 `fishingCount`/`festivalsCount`，而渲染代码查询 `fishCount`/`festivalCount` → 返回 null → `TypeError` → 初始化中断，**所有模块都不渲染**（此 bug 自首版存在，导致线上从未真正显示内容） | 修正 id 一致；计数更新改用 `setCount()` 空值安全函数；新增 `test/smoke.js` 冒烟测试自动拦截 |
+| 11 | 部署后浏览器仍显示旧内容/空白 | 无版本参数，浏览器缓存新旧 JS 混用（旧 `icons.js` + 新 `main.js` 会抛错） | `index.html` 静态资源加 `?v=N` 版本参数，每次发布 +1；关键全局引用加 `typeof` 守卫 |
+
+### 5. 工具与命令
+
+| # | 问题现象 | 根因 | 解决方案 |
+|---|---------|------|---------|
+| 12 | `node -e` 内联脚本正则被破坏（`Missing type name`） | PowerShell 对引号/正则转义导致 | 复杂脚本**写入临时 `.js` 文件执行** |
+| 13 | `gh api --jq` 表达式报错（`no/0` 等） | jq 表达式含中文/特殊字符被 PowerShell 破坏 | 简单 jq 或改用 `ConvertFrom-Json` 在 PowerShell 内解析 |
+
+---
+
+## 二、规避规则（后续开发必须遵守）
+
+| 编号 | 规则 |
+|------|------|
+| R1 | **模板 id 与查询 id 必须一致**：写完渲染函数后，grep 核对 `${m.id}Count` 与所有 `#xxxCount` 引用 |
+| R2 | **DOM 查询一律空值安全**：可能为 null 的元素用 `if (el)` 或 `setCount()` 模式，绝不裸调 `.textContent` |
+| R3 | **每次发布 bump 版本号**：`index.html` 的 `?v=N` 必须 +1，否则浏览器缓存会出幺蛾子 |
+| R4 | **发布前必须跑冒烟测试**：`node test/smoke.js`（已集成进 `deploy.bat`，失败自动中止部署） |
+| R5 | **改过任何 `.ps1` 后必须重加 UTF-8 BOM** 并用解析器校验语法 |
+| R6 | **批量外部 API 调用前查平台限制**（如 MediaWiki `titles` ≤ 50/次），超限必须分批 |
+| R7 | **对接外部 API 先确认返回格式的规范化行为**（大小写、空格/下划线、转义） |
+| R8 | **部署后验证线上**：核对线上文件与本地一致、资源 200、渲染无报错（用 `test/verify-online.js` 思路，或 Node fetch 抽查） |
+| R9 | **GitHub 基础设施错误先重试**（429 / 构建失败），不要急着重构代码 |
+| R10 | **复杂脚本写文件执行**，避免内联命令被 shell 转义破坏；jq 表达式保持纯 ASCII |
+| R11 | **数据字段先定义后使用**：给数据加新字段（如 `locCat`）时，确保所有渲染/筛选逻辑同步更新，并跑数据完整性校验（id 唯一、必填字段齐全） |
+
+---
+
+## 三、发布检查清单（每次 deploy 前）
+
+1. ✅ `node --check` 三个 JS 文件（data.js / icons.js / main.js）
+2. ✅ `node test/smoke.js` —— 模拟 DOM 跑初始化，断言 9 个模块计数与数据一致
+3. ✅ 数据完整性：id 无重复、必填字段齐全、图片文件与数据 id 一一对应
+4. ✅ `index.html` 版本号 `?v=N` 已 +1
+5. ✅ 双击 `deploy.bat`（自动：冒烟测试 → 下载缺失贴图 → 提交推送 → Actions 部署）
+6. ✅ 线上核对：`gh api .../actions/runs` 最新 run 为 success；Node fetch 抽查首页/图片/JS
+
+---
+
+## 四、关键修复记录（时间线）
+
+- `2026-08-17` 部署脚本闪退 → 错误策略 + BOM + pause
+- `2026-08-17` 多词图片下载失败 → 标题归一化匹配
+- `2026-08-17` GitHub 构建故障 → 切 Actions 部署
+- `2026-08-18` 鱼类贴图未下载 → API 分批（50/批）
+- `2026-08-18` **页面内容区全空（fishCount id 不匹配）** → 修正 id + `setCount()` + 冒烟测试
+- `2026-08-18` 浏览器缓存混用 → `?v=N` 版本参数 + typeof 守卫

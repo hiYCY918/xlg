@@ -13,10 +13,33 @@ game-guide/
 │   └── style.css     暖色田园主题样式
 ├── js/
 │   ├── data.js       全部攻略数据（可自由增删改）
+│   ├── icons.js      自绘 SVG 备用图标
 │   └── main.js       交互逻辑
+├── img/              真实游戏贴图（下载脚本自动填充）
+├── test/
+│   └── smoke.js      渲染冒烟测试（node test/smoke.js）
+├── docs/
+│   └── PROBLEMS.md   开发问题记录与规避清单（必读）
+├── deploy.bat        一键部署入口（双击）
+├── download-images.bat  仅下载贴图（双击）
+├── .github/workflows/pages.yml   GitHub Actions 自动部署
 ├── .nojekyll         禁用 GitHub Pages 的 Jekyll 处理
 └── README.md
 ```
+
+## 开发流程（重要）
+
+**改数据/代码 → 本地自检 → 双击 deploy.bat 上线**：
+
+```bash
+node --check js/data.js js/icons.js js/main.js   # 1. 语法检查
+node test/smoke.js                               # 2. 渲染冒烟测试（必须通过）
+# 3. 把 index.html 里的 ?v=N 版本号 +1（防浏览器缓存）
+# 4. 双击 deploy.bat（自动：冒烟测试 → 下载贴图 → 提交推送 → Actions 部署）
+```
+
+> ⚠️ `deploy.bat` 会在推送前自动运行冒烟测试，**失败会中止部署**。
+> 所有历史问题和规避规则见 **`docs/PROBLEMS.md`**，改动前务必查看。
 
 ## 技术栈
 
