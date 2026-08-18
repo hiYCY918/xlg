@@ -278,15 +278,13 @@ if ($byTitle.Count -eq 0) {
     exit 1
 }
 
-# 英文名搜索兜底（文件名有变体/重定向时自动查找正确文件）
-$searchTerms = @{
+# 英文名页面兜底（直接查条目页配图，最可靠）+ 文件搜索兜底
+$pageNames = @{
   "zombie"         = "Zombie"
   "star-shard"     = "Star Shard"
-  "red-slime"      = "Red Slime"
   "tigers-eye"     = "Tiger's Eye"
   "gypsum"         = "Gypsum"
   "salt"           = "Salt"
-  "blue-slime"     = "Blue Slime"
   "gold-slime"     = "Gold Slime"
   "cave-grub"      = "Cave Grub"
   "stone-bat"      = "Stone Bat"
@@ -305,20 +303,34 @@ function Get-FileUrl([string]$file) {
     return $null
 }
 
+function Get-PageImage([string]$page) {
+    # 兜底2：查询条目页的主图（pageimages），对物品/怪物最可靠
+    $api = "https://stardewvalleywiki.com/mediawiki/api.php?action=query&titles=" + [uri]::EscapeDataString($page) + "&prop=pageimages&piprop=original&format=json&formatversion=2"
+    try {
+        $j = Invoke-RestMethod -Uri $api -TimeoutSec 30 -Headers @{ "User-Agent" = "StardewGuideFanSite/1.0" }
+        if ($j.query.pages -and $j.query.pages.Count -gt 0 -and $j.query.pages[0].original) {
+            return $j.query.pages[0].original.source
+        }
+    } catch { }
+    return $null
+}
+
 function Find-WikiFile([string]$id) {
-    # 兜底2：按英文名在文件命名空间搜索
-    $term = $searchTerms[$id]
+    # 兜底3：按英文名在文件命名空间搜索（修复 File: 前缀匹配）
+    $term = $pageNames[$id]
     if (-not $term) { return $null }
     $searchApi = "https://stardewvalleywiki.com/mediawiki/api.php?action=query&list=search&srnamespace=6&srsearch=" + [uri]::EscapeDataString($term) + "&srlimit=8&format=json&formatversion=2"
     try {
         $sj = Invoke-RestMethod -Uri $searchApi -TimeoutSec 30 -Headers @{ "User-Agent" = "StardewGuideFanSite/1.0" }
         if (-not $sj.query.search -or $sj.query.search.Count -eq 0) { return $null }
-        # 优先级：完全同名 → 名称开头 → 第一个结果
+        # 优先：完全同名 .png → 名称开头 .png → 任意 .png → 第一个结果
         $hit = $null
-        foreach ($r in $sj.query.search) { if ($r.title -eq ($term + ".png")) { $hit = $r.title; break } }
-        if (-not $hit) { foreach ($r in $sj.query.search) { if ($r.title -like ($term + "*")) { $hit = $r.title; break } } }
-        if (-not $hit) { $hit = $sj.query.search[0].title }
-        return Get-FileUrl ($hit -replace "^File:", "")
+        foreach ($r in $sj.query.search) { $t = $r.title -replace "^File:", ""; if ($t -eq ($term + ".png")) { $hit = $t; break } }
+        if (-not $hit) { foreach ($r in $sj.query.search) { $t = $r.title -replace "^File:", ""; if ($t -like ($term + "*") -and $t -like "*.png") { $hit = $t; break } } }
+        if (-not $hit) { foreach ($r in $sj.query.search) { $t = $r.title -replace "^File:", ""; if ($t -like "*.png") { $hit = $t; break } } }
+        if (-not $hit -and $sj.query.search.Count -gt 0) { $hit = $sj.query.search[0].title -replace "^File:", "" }
+        if (-not $hit) { return $null }
+        return Get-FileUrl $hit
     } catch { }
     return $null
 }
@@ -329,6 +341,7 @@ foreach ($e in $items.GetEnumerator()) {
     if ((Test-Path $out) -and ((Get-Item $out).Length -gt 0)) { $skip++; continue }
     $url = $byTitle["File:" + $e.Value]
     if (-not $url) { $url = Get-FileUrl $e.Value }
+    if (-not $url -and $pageNames[$e.Key]) { $url = Get-PageImage $pageNames[$e.Key] }
     if (-not $url) { $url = Find-WikiFile $e.Key }
     if (-not $url) { $fail += $e.Key; continue }
     try {
