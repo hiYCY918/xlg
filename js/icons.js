@@ -21,6 +21,23 @@ const FISH_ICON = ICON(
   '<path d="M28 26c2-2 6-2 8 0" stroke="#5a8fb0" stroke-width="2" fill="none" stroke-linecap="round"/>'
 );
 
+/* 通用矿物/矿石兜底图标 */
+const MINERAL_ICON = ICON(
+  '<path d="M16 44l6-22 12 4 10-6 6 24z" fill="#8b8f9a"/>' +
+  '<path d="M16 44l6-22 6 4-10 18z" fill="#a7abb5"/>' +
+  '<path d="M34 22l6 4M40 18l4 4" stroke="#f4c542" stroke-width="3" stroke-linecap="round"/>' +
+  '<circle cx="42" cy="14" r="2" fill="#f4c542"/>'
+);
+
+/* 通用怪物兜底图标 */
+const MONSTER_ICON = ICON(
+  '<path d="M14 44V26c0-10 8-16 18-16s18 6 18 16v18z" fill="#7b5aa6"/>' +
+  '<circle cx="24" cy="30" r="4" fill="#f4ecd8"/>' +
+  '<circle cx="40" cy="30" r="4" fill="#f4ecd8"/>' +
+  '<path d="M28 40l4 4 4-4" stroke="#f4ecd8" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+  '<path d="M17 22l-4-7M47 22l4-7" stroke="#7b5aa6" stroke-width="3" stroke-linecap="round"/>'
+);
+
 /* ---------- 农作物 ---------- */
 const CROP_ICONS = {
   parsnip: ICON(

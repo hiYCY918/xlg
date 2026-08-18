@@ -215,7 +215,8 @@ function renderMining() {
 
   grid.innerHTML = list.map((m) => `
     <div class="card" data-id="${esc(m.id)}">
-      <h3>⛏️ ${esc(m.name)}</h3>
+      ${itemIconHtml(m.id, m.name, MINERAL_ICON)}
+      <h3>${esc(m.name)}</h3>
       <div><span class="badge brown">${esc(m.type)}</span></div>
       <div class="meta">📍 ${esc(m.level)}</div>
       <div class="foot">售价 <span class="gold-text">${m.sell}</span><br><span class="muted">${esc(m.use)}</span></div>
@@ -243,7 +244,8 @@ function renderCombat() {
 
   grid.innerHTML = list.map((m) => `
     <div class="card" data-id="${esc(m.id)}">
-      <h3>⚔️ ${esc(m.name)}</h3>
+      ${itemIconHtml(m.id, m.name, MONSTER_ICON)}
+      <h3>${esc(m.name)}</h3>
       <div><span class="badge red">${esc(m.type)}</span></div>
       <div class="meta">❤️ 生命 ${m.hp} · ⚡ 伤害 ${m.damage}</div>
       <div class="meta">📍 ${esc(m.location)}</div>
