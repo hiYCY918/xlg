@@ -50,26 +50,38 @@ if ($ghUser) {
     }
 }
 
-# ---------- 4. 渲染冒烟测试（失败则中止部署，防止带 bug 上线） ----------
-if (Get-Command node -ErrorAction SilentlyContinue) {
-    $smoke = Join-Path $PSScriptRoot "test\smoke.js"
-    if (Test-Path $smoke) {
-        Write-Host "正在运行渲染冒烟测试..." -ForegroundColor Yellow
-        node $smoke
-        if ($LASTEXITCODE -ne 0) { Fail "冒烟测试未通过，已中止部署。请先修复（可运行 node test\smoke.js 查看详情）。" }
-        Write-Host "✓ 冒烟测试通过" -ForegroundColor Green
+# ---------- 4. 自动升级版本号（防浏览器缓存，勿手动记） ----------
+$idxPath = Join-Path $PSScriptRoot "index.html"
+if (Test-Path $idxPath) {
+    $idx = Get-Content -Raw -Encoding UTF8 $idxPath
+    if ($idx -match 'v=(\d+)') {
+        $newV = [int]$Matches[1] + 1
+        $idx = $idx -replace ('v=' + $Matches[1]), ('v=' + $newV)
+        [System.IO.File]::WriteAllText($idxPath, $idx, (New-Object System.Text.UTF8Encoding($true)))
+        Write-Host "✓ 版本号自动升级 v=$newV" -ForegroundColor Green
     }
-} else {
-    Write-Host "（未检测到 node，跳过冒烟测试）" -ForegroundColor Yellow
 }
 
-# ---------- 5. 下载真实物品贴图（已存在则跳过，失败不阻塞） ----------
+# ---------- 5. 全量自检（失败则中止部署，防止带 bug 上线） ----------
+if (Get-Command node -ErrorAction SilentlyContinue) {
+    $check = Join-Path $PSScriptRoot "test\check.js"
+    if (Test-Path $check) {
+        Write-Host "正在运行全量自检（语法+数据+渲染冒烟）..." -ForegroundColor Yellow
+        node $check
+        if ($LASTEXITCODE -ne 0) { Fail "自检未通过，已中止部署。请先修复（可运行 node test\check.js 查看详情）。" }
+        Write-Host "✓ 自检通过" -ForegroundColor Green
+    }
+} else {
+    Write-Host "（未检测到 node，跳过自检）" -ForegroundColor Yellow
+}
+
+# ---------- 6. 下载真实物品贴图（已存在则跳过，失败不阻塞） ----------
 if (Test-Path (Join-Path $PSScriptRoot "download-images.ps1")) {
     Write-Host "正在准备真实物品贴图（img/ 文件夹）..." -ForegroundColor Yellow
     & (Join-Path $PSScriptRoot "download-images.ps1")
 }
 
-# ---------- 6. 提交未保存的改动 ----------
+# ---------- 7. 提交未保存的改动 ----------
 git add -A
 $dirty = git status --porcelain
 if ($dirty) {
@@ -77,7 +89,7 @@ if ($dirty) {
     Write-Host "✓ 已提交本地改动" -ForegroundColor Green
 }
 
-# ---------- 7. 创建并推送仓库 ----------
+# ---------- 8. 创建并推送仓库 ----------
 git branch -M main
 git remote remove origin 2>$null
 Write-Host "正在创建仓库 $Owner/$Repo 并推送..." -ForegroundColor Yellow

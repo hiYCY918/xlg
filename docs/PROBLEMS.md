@@ -76,15 +76,40 @@
 | R14 | **持续失败先怀疑数据**：某条目反复下载失败，第一反应查"它是否真的存在于游戏/Wiki"，而不是反复改文件名映射 |
 | R15 | **能用 Node fetch 直连外部源就自己做**：本项目沙箱里 Node fetch（undici/OpenSSL）可访问星露谷 Wiki（curl/Invoke-WebRequest 被 schannel 限制），下载与验证优先用 Node 脚本，减少用户往返 |
 
+## 二·补充、解决方案与规避总纲（三层防线）
+
+### ① 自动化工具层（机器把关，无需记忆）
+
+| 工具 | 作用 | 拦截的问题 |
+|------|------|-----------|
+| `node test/check.js` | 一键全量自检：JS 语法 + 数据完整性（id 唯一/必填/图片覆盖报告）+ DOM 渲染冒烟 | #12 初始化崩溃、id 不匹配、数据残缺 |
+| `node test/verify-wiki.js` | 把 data.js 全部条目映射英文名，批量核对 Wiki 存在性 | #14 编造条目、#15/16 错名（Tigerseye/Star Shards 类） |
+| `deploy.bat`（内置） | **自动 bump 版本号** + 运行 check.js，失败**中止部署** | #13 缓存混用、上线带 bug |
+
+### ② 流程层（每次发布固定动作）
+
+```
+改数据/代码 → node test/check.js → （新增数据时）node test/verify-wiki.js
+→ 双击 deploy.bat（自动：bump 版本 → 自检 → 下载贴图 → 推送 → Actions 部署）
+→ 线上核对（gh api runs / Node fetch 抽查）
+```
+
+### ③ 经验规则层
+
+见下表 R1~R15，核心三条：
+- **R12 新增数据先验证存在性**（用 verify-wiki.js / Wiki 搜索，杜绝编造）
+- **R13 文件名不手工猜**（用 `pageimages` API 按英文条目名取真实 URL）
+- **R15 能用 Node fetch 直连外部源就自己做**（本项目沙箱中 Node fetch 可通 Wiki，curl/Invoke-WebRequest 被 schannel 限制）
+
 ---
 
 ## 三、发布检查清单（每次 deploy 前）
 
-1. ✅ `node --check` 三个 JS 文件（data.js / icons.js / main.js）
-2. ✅ `node test/smoke.js` —— 模拟 DOM 跑初始化，断言 9 个模块计数与数据一致
-3. ✅ 数据完整性：id 无重复、必填字段齐全、图片文件与数据 id 一一对应
-4. ✅ `index.html` 版本号 `?v=N` 已 +1
-5. ✅ 双击 `deploy.bat`（自动：冒烟测试 → 下载缺失贴图 → 提交推送 → Actions 部署）
+1. ✅ `node test/check.js` —— 一键全量自检（语法 + 数据完整性 + 渲染冒烟），deploy.bat 已自动运行
+2. ✅ （新增数据时）`node test/verify-wiki.js` —— Wiki 存在性核对，杜绝编造/错名
+3. ✅ 图片覆盖报告：check.js 会列出缺失图片（兜底图标属设计内，可接受）
+4. ✅ 版本号 `?v=N`：deploy.bat **自动 +1**，无需手动
+5. ✅ 双击 `deploy.bat`（自动：bump 版本 → 自检 → 下载贴图 → 提交推送 → Actions 部署）
 6. ✅ 线上核对：`gh api .../actions/runs` 最新 run 为 success；Node fetch 抽查首页/图片/JS
 
 ---

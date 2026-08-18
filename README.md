@@ -29,16 +29,15 @@ game-guide/
 
 ## 开发流程（重要）
 
-**改数据/代码 → 本地自检 → 双击 deploy.bat 上线**：
+**改数据/代码 → 自检 → 双击 deploy.bat 上线**：
 
 ```bash
-node --check js/data.js js/icons.js js/main.js   # 1. 语法检查
-node test/smoke.js                               # 2. 渲染冒烟测试（必须通过）
-# 3. 把 index.html 里的 ?v=N 版本号 +1（防浏览器缓存）
-# 4. 双击 deploy.bat（自动：冒烟测试 → 下载贴图 → 提交推送 → Actions 部署）
+node test/check.js             # 1. 一键全量自检（语法+数据完整性+渲染冒烟，必须通过）
+node test/verify-wiki.js       # 2. 新增数据时：Wiki 存在性核对（防编造/错名）
+# 3. 双击 deploy.bat（自动：版本号+1 → 自检 → 下载贴图 → 提交推送 → Actions 部署）
 ```
 
-> ⚠️ `deploy.bat` 会在推送前自动运行冒烟测试，**失败会中止部署**。
+> ⚠️ `deploy.bat` 会在推送前自动运行全量自检（`test/check.js`），**失败会中止部署**；版本号也会**自动 +1**，无需手动。
 > 所有历史问题和规避规则见 **`docs/PROBLEMS.md`**，改动前务必查看。
 
 ## 技术栈
