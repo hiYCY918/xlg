@@ -63,6 +63,17 @@ function itemIconHtml(id, name, svgFallback) {
       </span>`;
 }
 
+/* NPC 头像：真实立绘与 emoji 兜底二选一 */
+function npcIconHtml(id, name, emoji) {
+  return `
+    <span class="item-icon npc-icon">
+      <span class="icon-fallback npc-fallback">${emoji}</span>
+      <img class="icon-img" src="img/npc-${esc(id)}.png" alt="${esc(name)}" loading="lazy"
+           onload="this.previousElementSibling.remove()"
+           onerror="this.remove()">
+    </span>`;
+}
+
 /* ============================================================
  * 各模块渲染
  * ============================================================ */
@@ -307,7 +318,7 @@ function renderNpc() {
     const idx = NPCS.indexOf(n);
     return `
       <div class="card clickable npc-card" data-id="${esc(n.id)}" role="button" tabindex="0">
-        <div class="avatar">${npcAvatar(idx)}</div>
+        ${npcIconHtml(n.id, n.name, npcAvatar(idx))}
         <h3>${esc(n.name)}</h3>
         <p class="loc">📍 ${esc(n.location)}</p>
         <div class="meta">🎂 ${esc(n.birthday)} · ${n.marriageable ? '<span class="badge green">可结婚</span>' : '<span class="badge brown">不可结婚</span>'}</div>
@@ -330,7 +341,7 @@ function openNpcModal(id) {
   const modal = $("#modal");
   $("#modalContent").innerHTML = `
     <div class="modal-head">
-      <div class="avatar">${npcAvatar(idx)}</div>
+      ${npcIconHtml(n.id, n.name, npcAvatar(idx))}
       <div>
         <h3>${esc(n.name)}</h3>
         <p class="role">📍 ${esc(n.location)} · ${n.marriageable ? "可结婚" : "不可结婚"}</p>

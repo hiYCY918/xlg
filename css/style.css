@@ -276,6 +276,11 @@ html, body {
   box-sizing: border-box;
 }
 
+/* NPC 头像 */
+.npc-icon { width: 62px; height: 62px; }
+.npc-fallback { font-size: 28px; line-height: 1; }
+.modal-head .item-icon { margin: 0; flex: 0 0 auto; }
+
 /* 高亮（全局搜索跳转） */
 .card.is-highlight {
   outline: 3px solid var(--gold);
