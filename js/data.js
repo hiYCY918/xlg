@@ -246,7 +246,7 @@ const MONSTERS = [
   { id: "mummy",        name: "木乃伊",   hp: 260, damage: 30, location: "沙漠矿洞",     drops: ["布料"],        type: "不死" },
   /* ---- 矿井补充 ---- */
   { id: "lava-crab",     name: "熔岩蟹",   hp: 130, damage: 15, location: "矿井 80-119 层", drops: ["蟹壳"],         type: "甲壳" },
-  { id: "cave-grub",     name: "蛆", hp: 25,  damage: 6,  location: "矿井 1-39 层",  drops: ["虫肉"],         type: "虫类" },
+  { id: "grub",          name: "蛆", hp: 20,  damage: 4,  location: "矿井 15-29 层",  drops: ["虫肉", "古代种子", "白色藻类", "稻芽"], type: "虫类" },
   { id: "dust-sprite",   name: "灰尘精灵", hp: 50,  damage: 5,  location: "矿井 40-79 层", drops: ["煤炭"],         type: "暗影" },
   { id: "frost-bat",     name: "霜冻蝙蝠", hp: 80,  damage: 11, location: "矿井 40-79 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
   { id: "lava-bat",      name: "熔岩蝙蝠", hp: 90,  damage: 17, location: "矿井 80-119 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
@@ -254,8 +254,8 @@ const MONSTERS = [
   { id: "red-slime",     name: "红史莱姆", hp: 200, damage: 8,  location: "矿井 120 层+",  drops: ["史莱姆黏液"],   type: "史莱姆" },
   { id: "copper-slime",  name: "铜史莱姆", hp: 300, damage: 8,  location: "矿井（矿脉）",  drops: ["铜矿石"],      type: "史莱姆" },
   { id: "iron-slime",    name: "铁史莱姆", hp: 400, damage: 8,  location: "矿井（矿脉）",  drops: ["铁矿石"],      type: "史莱姆" },
-  { id: "gold-slime",    name: "金史莱姆", hp: 500, damage: 8,  location: "矿井（矿脉）",  drops: ["黄金矿石"],   type: "史莱姆" },
-  { id: "iridium-slime", name: "铱史莱姆", hp: 600, damage: 10, location: "矿井/沙漠矿洞（稀有）", drops: ["铱矿石"], type: "史莱姆" },
+  /* 金史莱姆：0.1% 概率替换任意史莱姆，继承本体全部属性，额外必掉金币 */
+  { id: "gold-slime",    name: "金史莱姆", hp: 0,   damage: 0,  location: "所有矿井与秘密森林（0.1% 变异）", drops: ["金币（250 起）", "史莱姆黏液"], type: "史莱姆" },
   /* ---- 沙漠矿洞补充 ---- */
   { id: "metal-head",    name: "金属大头",   hp: 100, damage: 20, location: "沙漠矿洞",     drops: ["铜矿石","铁矿石","黄金矿石"], type: "机械" },
   { id: "magma-sprite",  name: "熔岩精灵", hp: 90,  damage: 12, location: "沙漠矿洞",     drops: ["火水晶"],      type: "精灵" },

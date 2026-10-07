@@ -29,6 +29,11 @@ function stars(n) {
   return '<span class="stars">' + "★".repeat(s) + "☆".repeat(5 - s) + "</span>";
 }
 
+/* 部分怪物（如金史莱姆）的属性随它所替换的本体而变，数据中以 0 表示 */
+function monsterStat(v) {
+  return v > 0 ? String(v) : "随本体";
+}
+
 /* ============================================================
  * 农作物经济模型
  * ------------------------------------------------------------
@@ -394,7 +399,7 @@ function renderCombat() {
       ${itemIconHtml(m.id, m.name, MONSTER_ICON)}
       <h3>${esc(m.name)}</h3>
       <div><span class="badge red">${esc(m.type)}</span></div>
-      <div class="meta">❤️ 生命 ${m.hp} · ⚡ 伤害 ${m.damage}</div>
+      <div class="meta">❤️ 生命 ${monsterStat(m.hp)} · ⚡ 伤害 ${monsterStat(m.damage)}</div>
       <div class="meta">📍 ${esc(m.location)}</div>
       <div class="foot">掉落：<span class="chip-list">${m.drops.map((d) => `<span class="chip">${esc(d)}</span>`).join("")}</span></div>
     </div>`).join("") || emptyState("没有符合条件的怪物");
@@ -791,8 +796,8 @@ const DETAIL_RENDERERS = {
       esc(m.type) + " · " + esc(m.location)
     ) +
       detailSection("属性", kvGrid([
-        ["生命值", String(m.hp)],
-        ["伤害", String(m.damage)],
+        ["生命值", monsterStat(m.hp)],
+        ["伤害", monsterStat(m.damage)],
         ["类型", m.type],
         ["出没地点", m.location],
       ])) +

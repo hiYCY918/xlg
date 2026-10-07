@@ -1,0 +1,16 @@
+# 临时 / 预览文件
+# 约定：预览页与调试脚本一律用 _ 前缀命名，check.js 会断言根目录无此类残留
+_*
+*.tmp
+*.bak
+*.orig
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志
+*.log

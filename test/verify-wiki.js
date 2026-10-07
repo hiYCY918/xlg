@@ -1,10 +1,18 @@
 /* ============================================================
  * Wiki 存在性审计工具（需要网络，用 Node fetch 直连星露谷 Wiki）
  * 用法：node test/verify-wiki.js
- * 作用：把 data.js 所有条目映射为英文条目名，批量核对 Wiki 页面存在性，
- *       防止凭记忆编造/错名（R12/R13 的自动化）
- * 说明：某些怪物（蓝/红/铜/铁/金/铱史莱姆、洞穴蛴螬等）游戏内真实存在
- *       但 Wiki 无独立页面，属已知情况，输出会列出供人工判断
+ *
+ * 双轮核对：
+ *   第一轮 中文名 → 中文 Wiki（zh.stardewvalleywiki.com）
+ *          —— 全量覆盖 313 条，无需映射表，实测命中率 ~90%
+ *   第二轮 英文名 → 英文 Wiki（stardewvalleywiki.com）
+ *          —— 仅覆盖 EN 表内的条目，用于交叉验证英文页名
+ *   两轮都未命中的条目单列，供人工判断是「真缺失」还是「wiki 无独立页」
+ *
+ * 背景（见 docs/PROBLEMS.md #30）：
+ *   早期只做英文轮，且 QUESTS/EVENTS 完全未纳入 —— 实际只有 231/313 条
+ *   （73.8%）被核对过，82 条从未验证。中文轮把覆盖率提到 89.5%，
+ *   且新增数据时无需再手工维护映射表。
  * ============================================================ */
 "use strict";
 
@@ -12,10 +20,14 @@ const fs = require("fs");
 const path = require("path");
 const root = path.join(__dirname, "..");
 
-const q = (url) =>
-  fetch(url, { signal: AbortSignal.timeout(30000), headers: { "User-Agent": "Mozilla/5.0" } }).then((r) => r.json());
+const EN_API = "https://stardewvalleywiki.com/mediawiki/api.php";
+const ZH_API = "https://zh.stardewvalleywiki.com/mediawiki/api.php";
 
-/* id -> 英文条目名（新增数据时必须同步补充此表！） */
+const q = (url) =>
+  fetch(url, { signal: AbortSignal.timeout(30000), headers: { "User-Agent": "StardewGuide/1.0" } }).then((r) => r.json());
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* id -> 英文条目名（第二轮交叉验证用；未覆盖的条目由中文轮兜底） */
 const EN = {
   crops: {
     parsnip: "Parsnip", potato: "Potato", greenbean: "Green Bean", cauliflower: "Cauliflower",
@@ -91,50 +103,88 @@ const EN = {
   },
 };
 
-const MODULE_KEY = {
-  crops: "CROPS", collect: "COLLECTIBLES", fish: "FISH", npc: "NPCS",
-  minerals: "MINERALS", monsters: "MONSTERS", festivals: "FESTIVALS",
-};
-const MODULE_LABEL = { crops: "农作物", collect: "收集物", fish: "钓鱼", npc: "NPC", minerals: "采矿", monsters: "战斗", festivals: "节日" };
+const MODULES = [
+  ["crops", "CROPS", "农作物"],
+  ["collect", "COLLECTIBLES", "收集物"],
+  ["fish", "FISH", "钓鱼"],
+  ["minerals", "MINERALS", "采矿"],
+  ["monsters", "MONSTERS", "战斗"],
+  ["npc", "NPCS", "NPC"],
+  ["festivals", "FESTIVALS", "节日"],
+];
+
+/* 已知 wiki 无独立页、但内容真实存在（挂在汇总页下），不计入异常 */
+const KNOWN_HUB_ONLY = /史莱姆|蝙蝠|^星碎$/;
+
+/* 批量按标题核对页面是否存在 */
+async function checkTitles(api, titles) {
+  const found = new Set();
+  for (let i = 0; i < titles.length; i += 50) {
+    const batch = titles.slice(i, i + 50);
+    try {
+      const j = await q(api + "?action=query&titles=" + encodeURIComponent(batch.join("|")) +
+        "&prop=info&redirects=1&format=json&formatversion=2");
+      (j.query.pages || []).forEach((p) => { if (!p.missing) found.add(p.title); });
+      (j.query.redirects || []).forEach((r) => found.add(r.from));
+      (j.query.normalized || []).forEach((n) => { if (found.has(n.to)) found.add(n.from); });
+    } catch (e) {
+      console.log("  ✗ 批次查询失败：" + e.message);
+    }
+    await sleep(150);
+  }
+  return found;
+}
 
 (async () => {
   const src = fs.readFileSync(path.join(root, "js/data.js"), "utf8");
-  const data = new Function(src + "; return {CROPS,COLLECTIBLES,FISH,NPCS,MINERALS,MONSTERS,FESTIVALS};")();
-  const checks = [];
-  for (const [mod, key] of Object.entries(MODULE_KEY)) {
-    for (const item of data[key]) {
-      const en = EN[mod][item.id];
-      if (!en) { console.log("⚠️ 缺少英文映射（请补充 test/verify-wiki.js 的 EN 表）:", mod, item.id, item.name); continue; }
-      checks.push({ module: mod, id: item.id, cn: item.name, en });
-    }
-  }
-  console.log("待核对:", checks.length, "项（Wiki 存在性）\n");
+  const data = new Function(
+    src + "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS};"
+  )();
 
-  const missingByModule = {};
-  for (let i = 0; i < checks.length; i += 50) {
-    const batch = checks.slice(i, i + 50);
-    const j = await q(
-      "https://stardewvalleywiki.com/mediawiki/api.php?action=query&titles=" +
-        encodeURIComponent(batch.map((c) => c.en).join("|")) +
-        "&prop=info&format=json&formatversion=2&redirects=1"
-    );
-    const pages = j.query.pages || [];
-    const redirects = new Map((j.query.redirects || []).map((r) => [r.from.toLowerCase(), r.to]));
-    for (const c of batch) {
-      const found =
-        pages.some((p) => !p.missing && p.title.toLowerCase() === c.en.toLowerCase()) ||
-        redirects.has(c.en.toLowerCase());
-      if (!found) (missingByModule[c.module] ||= []).push(c.cn + "(" + c.en + ")");
-    }
+  /* 全部条目（含 QUESTS/EVENTS —— 此前完全未纳入审计） */
+  const all = [];
+  for (const [mod, key, label] of MODULES) {
+    data[key].forEach((x) => all.push({ mod, label, id: x.id, name: x.name }));
   }
+  data.QUESTS.forEach((x) => all.push({ mod: "quests", label: "任务", id: x.id, name: x.name }));
+  data.EVENTS.forEach((x) => all.push({ mod: "events", label: "事件", id: x.id, name: x.name }));
 
-  let total = 0;
-  for (const [mod, list] of Object.entries(missingByModule)) {
-    console.log("❌ " + MODULE_LABEL[mod] + " 疑似缺失 (" + list.length + "):");
-    console.log("   " + list.join("、"));
-    total += list.length;
+  console.log("待核对：" + all.length + " 条\n");
+
+  /* ---------- 第一轮：中文名 → 中文 Wiki（全量） ---------- */
+  console.log("=== 第一轮：中文名 → 中文 Wiki（全量 " + all.length + " 条）===");
+  const zhFound = await checkTitles(ZH_API, all.map((x) => x.name));
+  const zhMiss = all.filter((x) => !zhFound.has(x.name));
+  console.log("命中 " + (all.length - zhMiss.length) + " / " + all.length +
+    "（覆盖率 " + (((all.length - zhMiss.length) / all.length) * 100).toFixed(1) + "%）");
+
+  /* ---------- 第二轮：英文名 → 英文 Wiki（仅 EN 表覆盖的条目） ---------- */
+  const withEn = [];
+  for (const [mod, , label] of MODULES) {
+    const key = MODULES.find((m) => m[0] === mod)[1];
+    data[key].forEach((x) => { if (EN[mod] && EN[mod][x.id]) withEn.push({ mod, label, id: x.id, name: x.name, en: EN[mod][x.id] }); });
   }
-  if (total === 0) console.log("✅ 全部条目在 Wiki 上存在");
-  console.log("\n合计疑似缺失:", total);
-  console.log("提示：史莱姆变体/洞穴蛴螬等无独立页面的怪物属已知情况（收录于 Slimes/Cave Insects 汇总页）");
+  console.log("\n=== 第二轮：英文名 → 英文 Wiki（" + withEn.length + " 条有映射，交叉验证）===");
+  const enFound = await checkTitles(EN_API, withEn.map((x) => x.en));
+  const enMiss = withEn.filter((x) => !enFound.has(x.en));
+  console.log("命中 " + (withEn.length - enMiss.length) + " / " + withEn.length);
+  const noEn = all.length - withEn.length;
+  console.log("（另有 " + noEn + " 条无英文映射，仅由第一轮覆盖 —— 这正是旧版审计的盲区）");
+
+  /* ---------- 汇总 ---------- */
+  const bothMiss = zhMiss.filter((x) => {
+    const e = withEn.find((w) => w.id === x.id && w.mod === x.mod);
+    return e && enMiss.some((m) => m.id === x.id && m.mod === x.mod);
+  });
+  const onlyZhMiss = zhMiss.filter((x) => !bothMiss.includes(x));
+  const suspicious = onlyZhMiss.filter((x) => !KNOWN_HUB_ONLY.test(x.name));
+
+  console.log("\n=== 需要人工确认的条目 ===");
+  console.log("两轮均未命中（最可疑）：" + bothMiss.length +
+    (bothMiss.length ? "\n  " + bothMiss.map((x) => x.label + "/" + x.name + "(" + x.id + ")").join("、") : ""));
+  console.log("\n仅中文轮未命中、且非已知汇总页条目（" + suspicious.length + "）：");
+  const byLabel = {};
+  suspicious.forEach((x) => (byLabel[x.label] ||= []).push(x.name));
+  for (const [l, list] of Object.entries(byLabel)) console.log("  " + l + "：" + list.join("、"));
+  console.log("\n提示：史莱姆/蝙蝠变体、任务、心事件在中文 Wiki 无独立页（挂在「史莱姆」「任务」「随机事件」汇总页下），属已知情况。");
 })();

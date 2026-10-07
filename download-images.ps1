@@ -223,6 +223,7 @@ $items = @{
   "petrified-slime" = "Petrified_Slime.png"
   # ---------- 战斗补全（矿井/沙漠/姜岛） ----------
   "lava-crab"     = "Lava_Crab.png"
+  "grub"          = "Grub.png"
   "dust-sprite"   = "Dust_Sprite.png"
   "frost-bat"     = "Frost_Bat.png"
   "lava-bat"      = "Lava_Bat.png"
@@ -271,18 +272,14 @@ if ($byTitle.Count -eq 0) {
     exit 1
 }
 
-# 英文名页面兜底（直接查条目页配图，最可靠）+ 文件搜索兜底
-$pageNames = @{
-  "zombie"         = "Zombie"
-  "star-shard"     = "Star Shard"
-  "tigers-eye"     = "Tiger's Eye"
-  "gypsum"         = "Gypsum"
-  "salt"           = "Salt"
-  "gold-slime"     = "Gold Slime"
-  "cave-grub"      = "Cave Grub"
-  "stone-bat"      = "Stone Bat"
-  "iridium-slime"  = "Iridium Slime"
-}
+# 英文名页面兜底（查条目页配图）。
+# 仅当某条目的 Wiki 文件名与「条目名.png」惯例不符、且 pageimages 也无法直接定位时才需要在此登记，
+# 键为 data.js 的 id，值为 Wiki 上的英文条目名（依 R13：不要手工猜文件名）。
+# 2026-10-07 清理：原表 9 条全部失效——zombie/gypsum/salt/stone-bat 属已删除的编造条目（#14），
+#   cave-grub 已正名为 grub，iridium-slime 经查证实为编造条目（#34），
+#   gold-slime 在 Wiki 上无条目页也无图片（走 SVG 兜底），
+#   star-shard/tigers-eye 的英文页名本就写错（正确为 Star Shards / Tigerseye），且已在 $items 中登记。
+$pageNames = @{}
 
 function Get-FileUrl([string]$file) {
     # 兜底1：单文件查询 + 跟随重定向

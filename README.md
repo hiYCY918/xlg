@@ -31,7 +31,8 @@ game-guide/
 ├── test/
 │   ├── check.js      一键全量自检（语法+数据+渲染+收益+交互委托）
 │   ├── smoke.js      渲染冒烟测试（node test/smoke.js）
-│   └── verify-wiki.js Wiki 存在性核对（新增数据时运行）
+│   ├── verify-wiki.js 存在性核对 · 双轮（防编造/错名）
+│   └── audit-completeness.js  完备性审计（防遗漏）
 ├── docs/
 │   └── PROBLEMS.md   开发问题记录与规避清单（必读）
 ├── deploy.bat        一键部署入口（双击）
@@ -50,8 +51,12 @@ node test/check.js             # 1. 一键全量自检（5 节 40+ 断言，必�
                                #    ① JS 语法 ② 数据完整性 ③ 渲染冒烟
                                #    ④ 收益算法基准值与 9 模块详情渲染（全 313 条）
                                #    ⑤ 点击→弹窗、交叉跳转的合成事件验证
-node test/verify-wiki.js       # 2. 新增数据时：Wiki 存在性核对（防编造/错名）
-# 3. 双击 deploy.bat（自动：版本号+1 → 自检 → 下载贴图 → 提交推送 → Actions 部署）
+node test/verify-wiki.js       # 2. 新增数据时：存在性核对（双轮，防编造/错名）
+                               #    ① 中文名直查中文 Wiki（全量 313 条）
+                               #    ② 英文名交叉验证（英文页名规范）
+node test/audit-completeness.js # 3. 成批补内容后：完备性审计（防遗漏）
+                               #    对照中文 Wiki 分类全集做双向差集
+# 4. 双击 deploy.bat（自动：版本号+1 → 自检 → 下载贴图 → 提交推送 → Actions 部署）
 ```
 
 > ⚠️ `deploy.bat` 会在推送前自动运行全量自检（`test/check.js`），**失败会中止部署**；版本号也会**自动 +1**，无需手动。
