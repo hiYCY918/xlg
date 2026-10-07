@@ -88,7 +88,8 @@ const src =
   fs.readFileSync(path.join(root, "js/data.js"), "utf8") + "\n" +
   fs.readFileSync(path.join(root, "js/icons.js"), "utf8") + "\n" +
   fs.readFileSync(path.join(root, "js/main.js"), "utf8") + "\n" +
-  "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS};";
+  "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS," +
+  "cropProfit,cropHarvests,cropGrowthDays,DETAIL_RENDERERS,CROP_SEASON_FILTERS,FISH_LOCS};";
 
 let data;
 try {
@@ -159,6 +160,148 @@ console.log("\n=== 3. 渲染冒烟 ===");
   const modIds = ["crops", "collect", "fishing", "mining", "combat", "quests", "npc", "festivals", "events"];
   for (const m of modIds) log(registry.has("#module-" + m), "模块 section #module-" + m + " 已创建");
   log(!registry.get("#module-crops").hidden, "默认模块（crops）已显示");
+
+  /* ---------- 4. 收益计算与详情弹窗 ---------- */
+  console.log("\n=== 4. 收益计算与详情弹窗 ===");
+
+  const near = (a, b, tol) => Math.abs(a - b) <= (tol === undefined ? 0.05 : tol);
+  const cropOf = (id) => data.CROPS.find((c) => c.id === id);
+  const pct = (p) => (typeof p === "number" && Number.isFinite(p) ? p.toFixed(2) : String(p));
+
+  /* 基准值：蔓越莓与防风草是社区公认的收益标杆，算式若被改坏会立刻暴露 */
+  const cran = cropOf("cranberry");
+  log(cran && near(data.cropProfit(cran), 5.0),
+    "蔓越莓每日净收益 = " + (cran ? pct(data.cropProfit(cran)) : "?") + "（基准 5.00）");
+  const pars = cropOf("parsnip");
+  log(pars && near(data.cropProfit(pars), 3.75),
+    "防风草每日净收益 = " + (pars ? pct(data.cropProfit(pars)) : "?") + "（基准 3.75）");
+  log(cran && data.cropHarvests(cran) === 5,
+    "蔓越莓 28 天可收 5 次（实际 " + (cran ? data.cropHarvests(cran) : "?") + "）");
+
+  /* 数据中存在 "6-8" 这类区间字符串（水稻近水提前成熟），必须容错而非算出 NaN */
+  const rice = cropOf("rice");
+  log(rice && Number.isFinite(data.cropProfit(rice)),
+    "区间成熟天数不产生 NaN（rice growth=" + (rice ? JSON.stringify(rice.growth) : "?") +
+    " → " + (rice ? pct(data.cropProfit(rice)) : "?") + " 金/天）");
+
+  const badProfit = data.CROPS.filter((c) => !Number.isFinite(data.cropProfit(c))).map((c) => c.id);
+  log(badProfit.length === 0,
+    "全部 " + data.CROPS.length + " 种作物收益可计算" + (badProfit.length ? ": NaN " + badProfit.join(",") : ""));
+
+  /* 筛选入口覆盖：数据里出现过的季节/水域，必须有对应的筛选按钮，否则内容无法触达 */
+  const cropSeasons = [...new Set(data.CROPS.flatMap((c) => c.season))];
+  const noSeasonChip = cropSeasons.filter((s) => !data.CROP_SEASON_FILTERS.includes(s));
+  log(noSeasonChip.length === 0,
+    "作物季节筛选覆盖全部季节（" + cropSeasons.join("/") + "）" +
+    (noSeasonChip.length ? "：缺 " + noSeasonChip.join(",") : ""));
+
+  const fishLocs = [...new Set(data.FISH.map((f) => f.locCat))];
+  const noLocChip = fishLocs.filter((l) => !data.FISH_LOCS.includes(l));
+  log(noLocChip.length === 0,
+    "钓鱼水域筛选覆盖全部水域（" + fishLocs.length + " 类）" +
+    (noLocChip.length ? "：缺 " + noLocChip.join(",") : ""));
+
+  /* 详情弹窗：9 个模块都要能生成内容，且对不存在的 id 安全返回 null */
+  const modIds9 = ["crops", "collect", "fishing", "mining", "combat", "quests", "npc", "festivals", "events"];
+  const missingRenderer = modIds9.filter((m) => typeof data.DETAIL_RENDERERS[m] !== "function");
+  log(missingRenderer.length === 0,
+    "9 个模块均有详情渲染器" + (missingRenderer.length ? ": 缺失 " + missingRenderer.join(",") : ""));
+
+  const arrays = {
+    crops: data.CROPS, collect: data.COLLECTIBLES, fishing: data.FISH, mining: data.MINERALS,
+    combat: data.MONSTERS, quests: data.QUESTS, npc: data.NPCS, festivals: data.FESTIVALS, events: data.EVENTS,
+  };
+  const detailFails = [];
+  for (const m of modIds9) {
+    const first = (arrays[m] || [])[0];
+    let html = null;
+    try { html = first ? data.DETAIL_RENDERERS[m](first.id) : null; } catch (e) { html = null; }
+    if (!html || String(html).length < 40) detailFails.push(m);
+  }
+  log(detailFails.length === 0,
+    "9 个模块详情弹窗均可生成内容" + (detailFails.length ? ": " + detailFails.join(",") : ""));
+
+  /* 全量渲染器逐条跑一遍，任何一条抛错都说明有数据没被渲染逻辑接住 */
+  const renderErrors = [];
+  for (const m of modIds9) {
+    for (const item of (arrays[m] || [])) {
+      try {
+        const html = data.DETAIL_RENDERERS[m](item.id);
+        if (!html || String(html).length < 40) renderErrors.push(m + "/" + item.id);
+      } catch (e) { renderErrors.push(m + "/" + item.id); }
+    }
+  }
+  log(renderErrors.length === 0,
+    "全部 " + Object.values(arrays).reduce((n, a) => n + a.length, 0) + " 条详情渲染无异常" +
+    (renderErrors.length ? ": " + renderErrors.slice(0, 8).join(",") : ""));
+
+  const notNullSafe = [];
+  for (const m of modIds9) {
+    try { if (data.DETAIL_RENDERERS[m]("__not_exist__") !== null) notNullSafe.push(m); }
+    catch (e) { notNullSafe.push(m); }
+  }
+  log(notNullSafe.length === 0, "不存在的 id 安全返回 null" + (notNullSafe.length ? ": " + notNullSafe.join(",") : ""));
+
+  /* 「当前显示 N 条」元素必须齐备，否则筛选后用户看不到结果数量变化 */
+  const shownMissing = modIds9.filter((m) => !registry.has("#shown-" + m));
+  log(shownMissing.length === 0,
+    "9 个模块均有「当前显示」计数元素" + (shownMissing.length ? ": " + shownMissing.join(",") : ""));
+
+  /* ---------- 5. 点击 → 详情弹窗 的事件委托 ---------- */
+  console.log("\n=== 5. 交互委托（点击卡片打开详情） ===");
+
+  const pageEl = registry.get("#page");
+  const modalContentEl = registry.get("#modalContent");
+  const handlers = (pageEl && pageEl.listeners && pageEl.listeners.click) || [];
+  log(handlers.length > 0, "已注册卡片点击委托处理器");
+
+  /* 构造最小的合成事件：目标卡片挂在某个模块 section 上 */
+  const makeClick = (moduleId, itemId) => {
+    const sec = { dataset: { module: moduleId }, hidden: true };
+    const card = {
+      dataset: { id: itemId },
+      classList: { contains: () => true },
+      closest: (sel) => (sel === "[data-id]" ? card : (sel === ".module" ? sec : null)),
+    };
+    return { target: { closest: (sel) => (sel === "[data-id]" ? card : null) } };
+  };
+
+  if (handlers.length) {
+    const fish = data.FISH.find((f) => f.id === "legend") || data.FISH[0];
+    handlers[0](makeClick("fishing", fish.id));
+    const html = modalContentEl ? String(modalContentEl.innerHTML) : "";
+    log(registry.get("#modal").hidden === false, "点击鱼类卡片后弹窗打开");
+    log(html.includes(fish.name), "弹窗内容包含条目名「" + fish.name + "」");
+    log(html.includes("modal-section"), "弹窗含结构化分区");
+
+    /* 点击空白处（无 data-id）不应误开弹窗 */
+    registry.get("#modal").hidden = true;
+    handlers[0]({ target: { closest: () => null } });
+    log(registry.get("#modal").hidden === true, "点击非卡片区域不触发弹窗");
+
+    /* 未知模块 id 必须安全忽略 */
+    handlers[0](makeClick("not-a-module", fish.id));
+    log(registry.get("#modal").hidden === true, "未知模块 id 不触发弹窗");
+  }
+
+  /* 弹窗内交叉跳转（怪物掉落物 → 对应条目） */
+  const crossHandlers = (modalContentEl && modalContentEl.listeners && modalContentEl.listeners.click) || [];
+  log(crossHandlers.length > 0, "已注册弹窗内交叉跳转处理器");
+  if (crossHandlers.length) {
+    const monster = data.MONSTERS.find((m) => m.drops.some((d) => data.MINERALS.concat(data.COLLECTIBLES).some((x) => x.name === d)));
+    if (monster) {
+      const drop = monster.drops.find((d) => data.MINERALS.concat(data.COLLECTIBLES).some((x) => x.name === d));
+      const target = data.MINERALS.find((x) => x.name === drop) || data.COLLECTIBLES.find((x) => x.name === drop);
+      const mod = data.MINERALS.some((x) => x.name === drop) ? "mining" : "collect";
+      registry.get("#modalContent").innerHTML = data.DETAIL_RENDERERS.combat(monster.id);
+      log(String(registry.get("#modalContent").innerHTML).includes("data-goto-id"),
+        "怪物掉落物生成了交叉跳转链接（如 " + monster.name + " → " + drop + "）");
+      const link = { dataset: { gotoModule: mod, gotoId: target.id } };
+      crossHandlers[0]({ target: { closest: (sel) => (sel === "[data-goto-id]" ? link : null) } });
+      log(String(registry.get("#modalContent").innerHTML).includes(target.name),
+        "点击掉落物后弹窗切换到「" + target.name + "」");
+    }
+  }
 
   console.log(failures ? `\n结果：失败 ${failures} 项` : "\n结果：全部通过 ✓");
   process.exit(failures ? 1 : 0);
