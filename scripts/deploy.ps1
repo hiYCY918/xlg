@@ -1,6 +1,7 @@
 ﻿# ============================================================
 # 星露谷物语攻略站 · 一键部署到 GitHub Pages
-# 用法：双击 deploy.bat（推荐），或在本目录执行  powershell -File deploy.ps1
+# 用法：双击 scripts\deploy.bat（推荐），或在本目录执行  powershell -File deploy.ps1
+# 位置：本脚本在 scripts/ 子目录，项目根目录为其上一级
 # ============================================================
 $ErrorActionPreference = "Continue"
 
@@ -8,7 +9,8 @@ $Repo    = "xlg"       # 仓库名（可改）
 $Owner   = "hiYCY918"  # GitHub 用户名（可改）
 $SiteUrl = "https://$Owner.github.io/$Repo/"
 
-Set-Location -LiteralPath $PSScriptRoot
+$Root = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $Root
 
 function Fail([string]$msg) {
     Write-Host ""
@@ -51,7 +53,7 @@ if ($ghUser) {
 }
 
 # ---------- 4. 自动升级版本号（防浏览器缓存，勿手动记） ----------
-$idxPath = Join-Path $PSScriptRoot "index.html"
+$idxPath = Join-Path $Root "index.html"
 if (Test-Path $idxPath) {
     $idx = Get-Content -Raw -Encoding UTF8 $idxPath
     if ($idx -match 'v=(\d+)') {
@@ -64,7 +66,7 @@ if (Test-Path $idxPath) {
 
 # ---------- 5. 全量自检（失败则中止部署，防止带 bug 上线） ----------
 if (Get-Command node -ErrorAction SilentlyContinue) {
-    $check = Join-Path $PSScriptRoot "test\check.js"
+    $check = Join-Path $Root "test\check.js"
     if (Test-Path $check) {
         Write-Host "正在运行全量自检（语法+数据+渲染冒烟）..." -ForegroundColor Yellow
         node $check
@@ -76,6 +78,7 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
 }
 
 # ---------- 6. 下载真实物品贴图（已存在则跳过，失败不阻塞） ----------
+# 该脚本与本脚本同在 scripts/ 目录，故用 $PSScriptRoot 定位
 if (Test-Path (Join-Path $PSScriptRoot "download-images.ps1")) {
     Write-Host "正在准备真实物品贴图（img/ 文件夹）..." -ForegroundColor Yellow
     & (Join-Path $PSScriptRoot "download-images.ps1")

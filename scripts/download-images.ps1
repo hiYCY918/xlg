@@ -1,10 +1,12 @@
 ﻿# ============================================================
 # 下载星露谷真实物品贴图（来自官方 Wiki）到本地 img/ 文件夹
 # 需要网络；已下载过的文件会自动跳过，可重复运行
+# 位置：本脚本在 scripts/ 子目录，项目根目录为其上一级
 # ============================================================
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $ErrorActionPreference = "Continue"
-Set-Location -LiteralPath $PSScriptRoot
+$Root = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $Root
 
 # 物品 id -> Wiki 文件名
 $items = @{
@@ -300,7 +302,7 @@ $items = @{
   "bug-dangerous"           = "Bug_Dangerous.png"
 }
 
-$imgDir = Join-Path $PSScriptRoot "img"
+$imgDir = Join-Path $Root "img"
 New-Item -ItemType Directory -Force -Path $imgDir | Out-Null
 
 # 分批查询（MediaWiki 的 titles 参数单次最多 50 个）

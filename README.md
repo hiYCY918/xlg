@@ -27,16 +27,16 @@ game-guide/
 │   ├── data.js       全部攻略数据（可自由增删改）
 │   ├── icons.js      自绘 SVG 备用图标
 │   └── main.js       交互逻辑
-├── img/              真实游戏贴图（下载脚本自动填充）
-├── test/
-│   ├── check.js      一键全量自检（语法+数据+渲染+收益+交互委托）
-│   ├── smoke.js      渲染冒烟测试（node test/smoke.js）
-│   ├── verify-wiki.js 存在性核对 · 双轮（防编造/错名）
-│   └── audit-completeness.js  完备性审计（防遗漏）
+├── img/              真实游戏贴图 331 张（下载脚本自动填充）
+├── test/             测试与审计工具（离线 1 个 + 联网 3 个）
+│   ├── check.js      一键全量自检（语法+数据+渲染+收益+交互委托）· 离线
+│   ├── verify-wiki.js 存在性核对 · 双轮（防编造/错名）· 联网
+│   └── audit-completeness.js  完备性审计（防遗漏）· 联网
 ├── docs/
 │   └── PROBLEMS.md   开发问题记录与规避清单（必读）
-├── deploy.bat        一键部署入口（双击）
-├── download-images.bat  仅下载贴图（双击）
+├── scripts/          运维脚本（与站点内容分离）
+│   ├── deploy.bat / deploy.ps1              一键部署
+│   └── download-images.bat / download-images.ps1   仅下载贴图
 ├── .github/workflows/pages.yml   GitHub Actions 自动部署
 ├── .nojekyll         禁用 GitHub Pages 的 Jekyll 处理
 └── README.md
@@ -44,19 +44,20 @@ game-guide/
 
 ## 开发流程（重要）
 
-**改数据/代码 → 自检 → 双击 deploy.bat 上线**：
+**改数据/代码 → 自检 → 双击 `scripts\deploy.bat` 上线**：
 
 ```bash
-node test/check.js             # 1. 一键全量自检（5 节 40+ 断言，必须通过）
+node test/check.js             # 1. 一键全量自检（6 节 56 断言，必须通过）
                                #    ① JS 语法 ② 数据完整性 ③ 渲染冒烟
-                               #    ④ 收益算法基准值与 9 模块详情渲染（全 313 条）
+                               #    ④ 收益算法基准值与 9 模块详情渲染（全 366 条）
                                #    ⑤ 点击→弹窗、交叉跳转的合成事件验证
+                               #    ⑥ 模块图标贴图齐备 + 无临时文件残留
 node test/verify-wiki.js       # 2. 新增数据时：存在性核对（双轮，防编造/错名）
-                               #    ① 中文名直查中文 Wiki（全量 313 条）
+                               #    ① 中文名直查中文 Wiki（全量 366 条）
                                #    ② 英文名交叉验证（英文页名规范）
 node test/audit-completeness.js # 3. 成批补内容后：完备性审计（防遗漏）
                                #    对照中文 Wiki 分类全集做双向差集
-# 4. 双击 deploy.bat（自动：版本号+1 → 自检 → 下载贴图 → 提交推送 → Actions 部署）
+# 4. 双击 scripts\deploy.bat（自动：版本号+1 → 自检 → 下载贴图 → 提交推送 → Actions 部署）
 ```
 
 > ⚠️ `deploy.bat` 会在推送前自动运行全量自检（`test/check.js`），**失败会中止部署**；版本号也会**自动 +1**，无需手动。
