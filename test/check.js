@@ -89,7 +89,7 @@ const src =
   fs.readFileSync(path.join(root, "js/icons.js"), "utf8") + "\n" +
   fs.readFileSync(path.join(root, "js/main.js"), "utf8") + "\n" +
   "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS," +
-  "cropProfit,cropHarvests,cropGrowthDays,DETAIL_RENDERERS,CROP_SEASON_FILTERS,FISH_LOCS};";
+  "cropProfit,cropHarvests,cropGrowthDays,DETAIL_RENDERERS,CROP_SEASON_FILTERS,FISH_LOCS,MODULES};";
 
 let data;
 try {
@@ -302,6 +302,42 @@ console.log("\n=== 3. 渲染冒烟 ===");
         "点击掉落物后弹窗切换到「" + target.name + "」");
     }
   }
+
+  /* ---------- 6. 视觉资源 ---------- */
+  console.log("\n=== 6. 视觉资源（模块图标贴图） ===");
+
+  /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
+  const modIconFails = [];
+  for (const m of data.MODULES) {
+    if (!m.sprite || !m.icon || !m.label) { modIconFails.push(m.id + "(字段缺失)"); continue; }
+    if (!fs.existsSync(path.join(root, "img", m.sprite + ".png"))) {
+      modIconFails.push(m.id + " → img/" + m.sprite + ".png 不存在");
+    }
+  }
+  log(modIconFails.length === 0,
+    data.MODULES.length + " 个模块图标贴图齐备" + (modIconFails.length ? ": " + modIconFails.join("; ") : ""));
+
+  /* 贴图格式报告（不判失败）：GIF 冒名 .png 时浏览器靠内容嗅探仍能渲染 */
+  const notPng = [];
+  const imgDir = path.join(root, "img");
+  if (fs.existsSync(imgDir)) {
+    for (const f of fs.readdirSync(imgDir).filter((x) => x.toLowerCase().endsWith(".png"))) {
+      const fd = fs.openSync(path.join(imgDir, f), "r");
+      const sig = Buffer.alloc(4);
+      fs.readSync(fd, sig, 0, 4, 0);
+      fs.closeSync(fd);
+      if (sig.toString("hex") !== "89504e47") {
+        const kind = sig.toString("ascii", 0, 4).replace(/[^\x20-\x7e]/g, "?");
+        notPng.push(f + "(" + kind + ")");
+      }
+    }
+  }
+  console.log("ℹ 贴图格式：非 PNG 者 " + notPng.length + " 个" + (notPng.length ? "：" + notPng.join(", ") : ""));
+
+  /* 临时文件防漏：deploy.bat 会 git add -A，根目录下遗留的 _ 开头文件会被误提交 */
+  const strayTmp = fs.readdirSync(root).filter((f) => f.startsWith("_"));
+  log(strayTmp.length === 0,
+    "仓库根目录无临时文件残留" + (strayTmp.length ? ": " + strayTmp.join(", ") : ""));
 
   console.log(failures ? `\n结果：失败 ${failures} 项` : "\n结果：全部通过 ✓");
   process.exit(failures ? 1 : 0);

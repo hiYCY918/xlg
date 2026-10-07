@@ -157,10 +157,18 @@ function npcIconHtml(id, name, emoji) {
     </span>`;
 }
 
+/* 模块图标：真实游戏贴图 + emoji 兜底（贴图加载成功即移除 emoji，失败则保留） */
+function moduleIconHtml(m) {
+  return `<span class="mod-icon">` +
+    `<span class="mod-icon-fallback">${m.icon}</span>` +
+    `<img src="img/${esc(m.sprite)}.png" alt="" decoding="async" ` +
+    `onload="this.previousElementSibling.remove()" onerror="this.remove()">` +
+    `</span>`;
+}
+
 /* ============================================================
  * 各模块渲染
- * ============================================================ */
-const state = {
+ * ============================================================ */const state = {
   crops: "全部", cropSort: "default",
   collect: "全部",
   fishingLoc: "全部", fishingSeason: "全部",
@@ -228,6 +236,7 @@ function renderCrops() {
 
   grid.innerHTML = list.map((c) => {
     const harvests = cropHarvests(c);
+    const profit = cropProfit(c);
     const growText = c.regrow > 0
       ? `成熟 ${cropGrowthText(c)} · 每 ${c.regrow} 天再收`
       : `成熟 ${cropGrowthText(c)}`;
@@ -240,11 +249,11 @@ function renderCrops() {
         <div class="meta">种子 <span class="gold-text">${c.seed}</span> · 售价 <span class="gold-text">${c.sell}</span></div>
         <div class="foot">
           <div class="profit-row">
-            <span class="profit-num">${fmt1(cropProfit(c))}</span>
+            <span class="profit-num${profit < 0 ? " is-negative" : ""}">${fmt1(profit)}</span>
             <span class="profit-unit">金 / 天</span>
             <span class="profit-tag">${harvests > 1 ? `28 天 ×${harvests} 收` : "单次收获"}</span>
           </div>
-          <div class="muted">${esc(c.note)}</div>
+          <div class="muted">${profit < 0 ? "⚠️ 种子价高于售价，靠收获物回本：" : ""}${esc(c.note)}</div>
         </div>
       </div>`;
   }).join("") || emptyState("该季节暂无作物数据");
@@ -510,16 +519,18 @@ function renderEvents() {
 /* ============================================================
  * 模块配置、导航与页面构建
  * ============================================================ */
+/* 模块图标使用真实游戏贴图（img/<sprite>.png），emoji 仅作贴图缺失时的兜底。
+ * 挑选原则：小尺寸下轮廓清晰、在深木色导航栏上够醒目、贴合模块语义。 */
 const MODULES = [
-  { id: "crops",      icon: "🌾", label: "农作物", sub: "各季节作物成熟时间、价格与收益", render: renderCrops },
-  { id: "collect",    icon: "🍄", label: "收集物", sub: "野外采集物品的季节与地点",       render: renderCollect },
-  { id: "fishing",    icon: "🎣", label: "钓鱼",   sub: "鱼类出现的水域、季节与时间",     render: renderFishing },
-  { id: "mining",     icon: "⛏️", label: "采矿",   sub: "矿石与宝石的分布层级",           render: renderMining },
-  { id: "combat",     icon: "⚔️", label: "战斗",   sub: "怪物属性、出没地点与掉落",       render: renderCombat },
-  { id: "quests",     icon: "📜", label: "任务",   sub: "主线与委托任务的目标与奖励",     render: renderQuests },
-  { id: "npc",        icon: "👤", label: "NPC",    sub: "村民生日、最爱礼物与住址",       render: renderNpc },
-  { id: "festivals",  icon: "🎉", label: "节日",   sub: "全年节日的日期、地点与玩法",     render: renderFestivals },
-  { id: "events",     icon: "✨", label: "事件",   sub: "随机事件与心事件的触发条件",     render: renderEvents },
+  { id: "crops",     sprite: "parsnip",         icon: "🌾", label: "农作物", sub: "各季节作物成熟时间、价格与收益", render: renderCrops },
+  { id: "collect",   sprite: "common-mushroom", icon: "🍄", label: "收集物", sub: "野外采集物品的季节与地点",       render: renderCollect },
+  { id: "fishing",   sprite: "legend",          icon: "🎣", label: "钓鱼",   sub: "鱼类出现的水域、季节与时间",     render: renderFishing },
+  { id: "mining",    sprite: "diamond",         icon: "⛏️", label: "采矿",   sub: "矿石与宝石的分布层级",           render: renderMining },
+  { id: "combat",    sprite: "green-slime",     icon: "⚔️", label: "战斗",   sub: "怪物属性、出没地点与掉落",       render: renderCombat },
+  { id: "quests",    sprite: "star-shard",      icon: "📜", label: "任务",   sub: "主线与委托任务的目标与奖励",     render: renderQuests },
+  { id: "npc",       sprite: "npc-abigail",     icon: "👤", label: "NPC",    sub: "村民生日、最爱礼物与住址",       render: renderNpc },
+  { id: "festivals", sprite: "pumpkin",         icon: "🎉", label: "节日",   sub: "全年节日的日期、地点与玩法",     render: renderFestivals },
+  { id: "events",    sprite: "fairy-rose",      icon: "✨", label: "事件",   sub: "随机事件与心事件的触发条件",     render: renderEvents },
 ];
 
 function buildNav() {
@@ -528,7 +539,7 @@ function buildNav() {
     const b = document.createElement("button");
     b.className = "nav-item";
     b.dataset.module = m.id;
-    b.innerHTML = `<span class="ico">${m.icon}</span>${m.label}`;
+    b.innerHTML = moduleIconHtml(m) + `<span class="nav-label">${esc(m.label)}</span>`;
     b.addEventListener("click", () => switchModule(m.id));
     nav.appendChild(b);
   });
@@ -544,7 +555,7 @@ function buildSections() {
     sec.hidden = true;
     sec.innerHTML = `
       <div class="module-head">
-        <h2>${m.icon} ${m.label}</h2>
+        <h2>${moduleIconHtml(m)}<span class="h2-label">${esc(m.label)}</span></h2>
         <p class="sub">${m.sub} · 共 <span id="${m.id}Count">0</span> 条<span class="shown-count" id="shown-${m.id}"></span></p>
       </div>
       <div class="module-body" id="body-${m.id}"></div>`;
@@ -657,6 +668,11 @@ function focusItem(moduleId, id) {
  * ============================================================ */
 function raw(html) { return { __raw: html }; }
 
+/* 金额展示：负数统一标红警示（如向日葵种子价高于售价） */
+function money(n) {
+  return n < 0 ? raw(`<b class="neg-text">${n} 金</b>`) : n + " 金";
+}
+
 /* 物品名 → 条目索引，用于掉落物交叉跳转 */
 const NAME_INDEX = (() => {
   const map = new Map();
@@ -708,12 +724,12 @@ const DETAIL_RENDERERS = {
       detailSection("经济数据", kvGrid([
         ["种子价", c.seed + " 金"],
         ["售价", c.sell + " 金"],
-        ["单收净利", (c.sell - c.seed) + " 金"],
-        ["每日净收益", raw(`<b class="gold-text">${fmt1(cropProfit(c))}</b> 金/天`)],
+        ["单收净利", money(c.sell - c.seed)],
+        ["每日净收益", raw(`<b class="${cropProfit(c) < 0 ? "neg-text" : "gold-text"}">${fmt1(cropProfit(c))}</b> 金/天`)],
         ["成熟天数", cropGrowthText(c)],
         ["再收间隔", c.regrow > 0 ? c.regrow + " 天" : "—"],
         ["28 天可收", h + " 次"],
-        ["季节总收益", (h * c.sell - c.seed) + " 金"],
+        ["季节总收益", money(h * c.sell - c.seed)],
       ])) +
       detailSection("备注", `<p>${esc(c.note)}</p>`) +
       detailSection("算法说明", `<p class="muted">每日净收益 =（28 天季节内总收获额 − 种子价）÷ 末次收获日（第 ${last} 天）。多季作物按单季 28 天估算。</p>`);
