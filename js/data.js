@@ -87,6 +87,14 @@ const COLLECTIBLES = [
   { id: "morel",        name: "羊肚菌",     season: ["春"],       location: "秘密森林", sell: 150, use: "春季采集、料理" },
   { id: "salmonberry",  name: "美洲大树莓", season: ["春"],       location: "灌木丛",   sell: 5,   use: "春季采集、料理" },
   { id: "cactus-fruit",  name: "仙人掌果子", season: ["春","夏","秋","冬"], location: "沙漠", sell: 75,  use: "沙漠采集、送礼（山姆）" },
+  /* ---- 补全（依中文 Wiki 信息框逐条核对，2026-10-07） ---- */
+  { id: "cave-carrot",     name: "山洞萝卜", season: ["春","夏","秋","冬"], location: "矿井 · 垃圾桶",         sell: 25,  use: "食用 +12、矿井应急口粮" },
+  { id: "purple-mushroom", name: "紫蘑菇",   season: ["春","夏","秋","冬"], location: "矿井深层 · 蘑菇洞",      sell: 250, use: "食用 +50、高价值采集" },
+  { id: "truffle",         name: "松露",     season: ["春","夏","秋"],      location: "猪（放牧时拱出）",       sell: 625, use: "高价食材，可制松露油" },
+  { id: "ginger",          name: "姜",       season: ["春","夏","秋","冬"], location: "姜岛",                  sell: 60,  use: "食用 +10、料理" },
+  { id: "seaweed",         name: "海草",     season: ["春","夏","秋","冬"], location: "沙滩（钓竿亦可获得）",    sell: 20,  use: "食用 +5、料理与鱼塘" },
+  { id: "magma-cap",       name: "熔岩菇",   season: ["春","夏","秋","冬"], location: "火山地牢",              sell: 400, use: "食用 +70、高价值采集" },
+  { id: "dinosaur-egg",    name: "恐龙蛋",   season: ["春","夏","秋","冬"], location: "恐龙 · 远古斑点 · 钓鱼宝箱", sell: 350, use: "可孵化恐龙，或制蛋黄酱" },
 ];
 
 /* ---------- 钓鱼 ----------
@@ -207,7 +215,7 @@ const MINERALS = [
   { id: "dolomite",        name: "白云石",     type: "矿物", level: "全层（稀有）",    sell: 300,  use: "售卖" },
   { id: "thunder-egg",     name: "雷公蛋",     type: "矿物", level: "全层（稀有）",    sell: 100,  use: "售卖" },
   { id: "tigers-eye",      name: "虎眼石",     type: "矿物", level: "全层（稀有）",    sell: 275,  use: "售卖" },
-  { id: "star-shard",      name: "星碎",       type: "矿物", level: "全层（稀有）",    sell: 500,  use: "高价值售卖" },
+  { id: "star-shard",      name: "陶瓷碎片",   type: "矿物", level: "岩浆晶球 · 万象晶球", sell: 500, use: "高价值售卖、博物馆捐赠" },
   { id: "celestine",     name: "天青石",   type: "矿物", level: "晶球矿物",   sell: 125, use: "售卖" },
   { id: "malachite",     name: "孔雀石",   type: "矿物", level: "晶球矿物",   sell: 100, use: "售卖" },
   { id: "ghost-crystal", name: "幽灵水晶", type: "矿物", level: "晶球矿物",   sell: 200, use: "售卖" },
@@ -228,6 +236,36 @@ const MINERALS = [
   { id: "bone-fragment", name: "骨头碎片", type: "资源", level: "杀怪/挖掘", sell: 12,  use: "制作、兑换" },
   { id: "refined-quartz",name: "精炼石英", type: "资源", level: "熔炉精炼",   sell: 50,  use: "制作玻璃等" },
   { id: "petrified-slime", name: "石化史莱姆", type: "矿物", level: "全层（稀有）",    sell: 120,  use: "售卖" },
+  /* ---- 补全：晶球（依中文 Wiki，2026-10-07） ---- */
+  { id: "frozen-geode",    name: "冰封晶球", type: "晶球", level: "矿井 41-79 层 · 冬季农场 · 钓鱼宝箱", sell: 100, use: "交铁匠敲开，产出冰系矿物" },
+  { id: "magma-geode",     name: "岩浆晶球", type: "晶球", level: "矿井 81-119 层 · 骷髅洞穴木箱",       sell: 150, use: "交铁匠敲开，产出岩浆系矿物" },
+  { id: "omni-geode",      name: "万象晶球", type: "晶球", level: "矿井 21 层后 · 骷髅洞穴 · 火山地牢",  sell: 0,   use: "可开出任意矿物，亦用于沙漠商人兑换" },
+  /* ---- 补全：金属锭与放射性矿物 ---- */
+  { id: "copper-bar",      name: "铜锭",     type: "矿锭", level: "熔炉：铜矿石×5 + 煤炭×1",   sell: 60,   use: "打造与建造的基础材料" },
+  { id: "iron-bar",        name: "铁锭",     type: "矿锭", level: "熔炉：铁矿石×5 + 煤炭×1",   sell: 120,  use: "打造与建造的进阶材料" },
+  { id: "gold-bar",        name: "金锭",     type: "矿锭", level: "熔炉：黄金矿石×5 + 煤炭×1", sell: 250,  use: "高级打造材料" },
+  { id: "iridium-bar",     name: "铱锭",     type: "矿锭", level: "熔炉：铱矿石×5 + 煤炭×1",   sell: 1000, use: "顶级打造材料" },
+  { id: "radioactive-ore", name: "放射性矿石", type: "矿石", level: "矿井 · 骷髅洞穴（危险模式）", sell: 300,  use: "冶炼放射性矿锭" },
+  { id: "radioactive-bar", name: "放射性矿锭", type: "矿锭", level: "熔炉：放射性矿石×5 + 煤炭×1", sell: 3000, use: "顶级打造材料" },
+  /* ---- 补全：其他资源 ---- */
+  { id: "wood",            name: "木材",     type: "资源", level: "砍树 · 木匠商店 · 碎木机",   sell: 2,   use: "建造与打造最基础的材料" },
+  { id: "cinder-shard",    name: "火山晶石", type: "资源", level: "姜岛火山地牢 · 黄貂鱼鱼塘",   sell: 50,  use: "姜岛相关打造与设备" },
+  { id: "battery-pack",    name: "电池组",   type: "资源", level: "避雷针 · 太阳能板",           sell: 500, use: "打造与设备供能" },
+  /* ---- 补全：晶洞矿物（共 15 种，另一种见上方「陶瓷碎片」） ---- */
+  { id: "nekoite",       name: "新硅钙石", type: "矿物", level: "晶球 · 万象晶球",                 sell: 80,  use: "售卖、博物馆捐赠" },
+  { id: "helvite",       name: "日光榴石", type: "矿物", level: "岩浆晶球 · 万象晶球",             sell: 450, use: "售卖、博物馆捐赠" },
+  { id: "geminite",      name: "杰明石",   type: "矿物", level: "冰封晶球 · 万象晶球",             sell: 150, use: "售卖、博物馆捐赠" },
+  { id: "lemon-stone",   name: "柠檬石",   type: "矿物", level: "岩浆晶球 · 万象晶球",             sell: 200, use: "售卖、博物馆捐赠" },
+  { id: "neptunite",     name: "柱星叶石", type: "矿物", level: "岩浆晶球 · 万象晶球 · 黑色史莱姆",  sell: 400, use: "售卖、博物馆捐赠" },
+  { id: "ocean-stone",   name: "海洋石",   type: "矿物", level: "冰封晶球 · 万象晶球",             sell: 220, use: "售卖、博物馆捐赠" },
+  { id: "esperite",      name: "硅钙石",   type: "矿物", level: "冰封晶球 · 万象晶球",             sell: 100, use: "售卖、博物馆捐赠" },
+  { id: "fairy-stone",   name: "精灵石",   type: "矿物", level: "冰封晶球 · 万象晶球",             sell: 250, use: "售卖、博物馆捐赠" },
+  { id: "jamborite",     name: "绿水镍矿", type: "矿物", level: "晶球 · 万象晶球",                 sell: 150, use: "售卖、博物馆捐赠" },
+  { id: "alamite",       name: "透闪石",   type: "矿物", level: "晶球 · 万象晶球",                 sell: 150, use: "售卖、博物馆捐赠" },
+  { id: "lunarite",      name: "酸性月岩", type: "矿物", level: "冰封晶球 · 万象晶球",             sell: 200, use: "售卖、博物馆捐赠" },
+  { id: "jagoite",       name: "铁铅矿",   type: "矿物", level: "晶球 · 万象晶球",                 sell: 115, use: "售卖、博物馆捐赠" },
+  { id: "aerinite",      name: "青泥石",   type: "矿物", level: "冰封晶球 · 万象晶球",             sell: 125, use: "售卖、博物馆捐赠" },
+  { id: "bixite",        name: "黑方石",   type: "矿物", level: "岩浆晶球 · 万象晶球 · 黑色史莱姆",  sell: 300, use: "售卖、博物馆捐赠" },
 ];
 
 /* ---------- 战斗 ---------- */
@@ -278,7 +316,23 @@ const MONSTERS = [
   { id: "skeleton-mage",  name: "骷髅法师",   hp: 355, damage: 20, location: "姜岛矿洞",     drops: ["骨头"],            type: "不死" },
   { id: "iridium-golem",  name: "铱石魔",     hp: 430, damage: 15, location: "姜岛火山",     drops: ["铱矿石"],          type: "傀儡" },
   { id: "false-magma-cap",name: "假熔岩菇",   hp: 290, damage: 15, location: "姜岛火山",     drops: ["岩浆晶球"],        type: "真菌" },
-  { id: "magma-sparker",name: "熔岩潜伏怪", hp: 380, damage: 20, location: "姜岛火山",   drops: ["火水晶"],      type: "虫类" },
+  /* 正名：Magma Sparker 的官方中文名是「熔岩火球」，原条目误用了 Lava Lurk 的译名 */
+  { id: "lava-lurk",     name: "熔岩潜伏怪", hp: 220, damage: 15, location: "火山地牢",     drops: ["骨头碎片", "龙牙"],  type: "虫类" },
+  { id: "magma-sparker", name: "熔岩火球",   hp: 310, damage: 15, location: "火山地牢 6-9 层", drops: ["火山晶石"],        type: "精灵" },
+  /* ---- 补全：矿井/骷髅洞穴/危险的矿井（依中文 Wiki 信息框，2026-10-07） ---- */
+  { id: "bug",             name: "臭虫",       hp: 1,   damage: 8,  location: "矿井 1-29 层",       drops: ["虫肉", "白色藻类", "古代种子"], type: "虫类" },
+  { id: "armored-bug",     name: "甲虫",       hp: 1,   damage: 8,  location: "骷髅洞穴",           drops: ["虫肉", "白色藻类", "古代种子"], type: "虫类" },
+  { id: "haunted-skull",   name: "幽灵头骨",   hp: 160, damage: 15, location: "采石场矿井 · 矿井地牢层", drops: ["地晶", "海蓝宝石戒指", "暗黑剑"], type: "不死" },
+  { id: "carbon-ghost",    name: "石碳幽灵",   hp: 190, damage: 25, location: "骷髅洞穴（木乃伊层）",  drops: ["万象晶球", "精炼石英"],        type: "不死" },
+  { id: "pepper-rex",      name: "霸王喷火龙", hp: 300, damage: 15, location: "骷髅洞穴史前层",      drops: ["恐龙蛋", "史前胫骨", "史前肋骨"], type: "恐龙" },
+  { id: "hot-head",        name: "熔岩大头",   hp: 215, damage: 18, location: "火山地牢",           drops: ["太阳精华", "煤炭", "铜矿石"],   type: "机械" },
+  { id: "shadow-sniper",   name: "暗影狙击手", hp: 300, damage: 18, location: "危险的矿井 81-119 层", drops: ["虚空精华", "金锭", "铁锭"],    type: "暗影" },
+  { id: "stick-bug",       name: "竹节虫",     hp: 700, damage: 20, location: "危险的矿井 41-79 层",  drops: ["齐氏宝石", "姜"],             type: "虫类" },
+  { id: "putrid-ghost",    name: "腐臭幽灵",   hp: 500, damage: 25, location: "危险的矿井 51-79 层",  drops: ["万象晶球"],                   type: "不死" },
+  /* ---- 补全：危险变体（挑战之神庙激活后出现；伤害取区间上限） ---- */
+  { id: "haunted-skull-dangerous", name: "幽灵头骨（危险）", hp: 310, damage: 26, location: "危险的矿井 71-79 层与地牢层", drops: ["海蓝宝石戒指", "巨型炸弹", "炸弹"], type: "危险变体" },
+  { id: "armored-bug-dangerous",   name: "甲虫（危险）",     hp: 250, damage: 27, location: "危险的骷髅洞穴",             drops: ["虫肉", "白色藻类"],               type: "危险变体" },
+  { id: "bug-dangerous",           name: "臭虫（危险）",     hp: 250, damage: 16, location: "危险的矿井 1-39 层",          drops: ["虫肉", "白色藻类"],               type: "危险变体" },
 ];
 
 /* ---------- 任务 ---------- */
@@ -338,6 +392,15 @@ const NPCS = [
   { id: "leo",     name: "雷欧",   birthday: "夏 26", loves: ["鸵鸟蛋"], location: "姜岛", marriageable: false, desc: "居住在姜岛雨林的小男孩。" },
   { id: "qi",      name: "齐先生", birthday: "（无记录）", loves: ["不可送礼"], location: "赌场/齐氏核桃屋", marriageable: false, desc: "神秘莫测的幕后商人，发布特殊挑战。" },
   { id: "krobus",       name: "科罗布斯",     birthday: "冬 1",  loves: ["虚空蛋", "虚空鲑鱼", "钻石"],    location: "下水道",     marriageable: false, desc: "居住在下水道的怪物商人，出售稀有物品。" },
+  /* ---- 补全：特殊 NPC（不可结婚、多数不可送礼；依中文 Wiki 信息框与正文，2026-10-07） ---- */
+  { id: "gil",             name: "吉尔",       birthday: "（无记录）", loves: ["不可送礼"], location: "深山 · 探险家公会",   marriageable: false, desc: "住在探险家公会里的居民。完成壁炉旁的消灭怪物目标后，可在他那里领取戒指、帽子等奖励。" },
+  { id: "governor",        name: "州长",       birthday: "（无记录）", loves: ["不可送礼"], location: "各节日会场",         marriageable: false, desc: "鹈鹕镇所属地区的地方行政长官，每年参加夏威夷宴会并品尝当地食物。" },
+  { id: "old-mariner",     name: "老水手",     birthday: "（无记录）", loves: ["不可送礼"], location: "沙滩潮汐池北",       marriageable: false, desc: "出现在沙滩东侧的角色，出售求婚道具美人鱼吊坠。需先修复潮汐池独木桥，且限雨天 6:00-19:00，冬季不出现。" },
+  { id: "professor-snail", name: "蜗牛教授",   birthday: "（无记录）", loves: ["不可送礼"], location: "姜岛 · 岛屿办事处",  marriageable: false, desc: "生活在姜岛并经营岛屿办事处。初次相遇时他被巨石堵在岩洞中，需用炸弹炸开。" },
+  { id: "birdie",          name: "贝啼",       birthday: "（无记录）", loves: ["不可送礼"], location: "姜岛西部小屋",       marriageable: false, desc: "住在姜岛最西边的年长女性，丈夫航海遇难后独自住在西部小屋。" },
+  { id: "fizz",            name: "菲兹",       birthday: "（无记录）", loves: ["不可送礼"], location: "姜岛挖掘场蘑菇洞",   marriageable: false, desc: "乔家「特别服务部门」的员工，出售可提升完美进度的完美豁免书。" },
+  { id: "bouncer",         name: "门卫",       birthday: "（无记录）", loves: ["不可送礼"], location: "沙漠 · 绿洲",        marriageable: false, desc: "在绿洲内房间后方守卫赌场入口。完成齐先生的任务并出示会员卡后便会消失。" },
+  { id: "henchman",        name: "仆从",       birthday: "（无记录）", loves: ["虚空蛋黄酱"], location: "巫婆沼泽",          marriageable: false, desc: "看守巫婆沼泽中女巫小屋的仆从，无法绕过。" },
 ];
 
 /* ---------- 节日 ---------- */

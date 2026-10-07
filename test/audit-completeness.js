@@ -51,6 +51,17 @@ const UNIVERSE = [
 const HUB_PAGES = new Set(["鱼", "怪物", "矿石", "晶球", "采集", "矿物", "节日", "NPC",
   "古物", "资源", "种子", "工具", "建筑", "树木", "果树", "动物", "武器", "工匠物品", "打造"].map(norm));
 
+/* 有意不收录：经核对后判定不属于对应模块范围。明确记录，避免每次审计重复排查。 */
+const EXCLUDED = new Map(Object.entries({
+  "西蓝花种子": "是种子而非作物本身（应归入「种子」系统，本站暂无该模块）",
+  "杂草": "农场杂物、不可出售，不是采集物",
+  "草": "需用草籽种植，属作物类",
+  "树液": "砍树的副产品，不是野外采集物",
+  "史莱姆（怪物）": "Wiki 的消歧义页，不是独立怪物",
+  "孩子": "泛指分类，不是具体 NPC",
+  "居民": "泛指分类，不是具体 NPC",
+}));
+
 /* 整块系统盘点：本站是否有对应模块 */
 const SYSTEMS = [
   ["烹饪", "料理 / 烹饪配方"],
@@ -84,15 +95,18 @@ const SYSTEMS = [
     for (const c of subCats) { (await catMembers(c, "page")).forEach((t) => bag.add(t)); await sleep(110); }
 
     const missing = [];
+    const excluded = [];
     for (const t of bag) {
       if (HUB_PAGES.has(norm(t))) continue;
+      if (EXCLUDED.has(t)) { excluded.push(t); continue; }
       if (ALL_NAMES.has(norm(t))) continue;
       missing.push(t);
     }
-    results.push({ label, mine: data[key].length, wiki: bag.size, missing });
+    results.push({ label, mine: data[key].length, wiki: bag.size, missing, excluded });
     console.log(
       label.padEnd(8) + String(data[key].length).padStart(4) + String(bag.size).padStart(7) +
-      String(missing.length).padStart(6) + (missing.length === 0 ? "   ✓ 完整" : "")
+      String(missing.length).padStart(6) +
+      (missing.length === 0 ? "   ✓ 完整" + (excluded.length ? "（另有意排除 " + excluded.length + " 项）" : "") : "")
     );
   }
 
@@ -104,7 +118,17 @@ const SYSTEMS = [
     console.log("\n【" + r.label + "】缺 " + r.missing.length + " 项");
     console.log("  " + r.missing.join("、"));
   }
-  console.log("\n逐模块缺口合计：" + totalGap + " 项");
+  console.log("\n逐模块缺口合计：" + totalGap + " 项" +
+    (totalGap === 0 ? "（全部模块已对齐 Wiki 全集）" : ""));
+
+  const exclTotal = results.reduce((n, r) => n + (r.excluded ? r.excluded.length : 0), 0);
+  if (exclTotal) {
+    console.log("\n=== 有意排除（已核对，不属于对应模块范围） ===");
+    for (const r of results) {
+      if (!r.excluded || !r.excluded.length) continue;
+      r.excluded.forEach((t) => console.log("  " + r.label + " · " + t + " —— " + EXCLUDED.get(t)));
+    }
+  }
 
   console.log("\n=== 整块未覆盖的游戏系统 ===");
   let sysTotal = 0;
