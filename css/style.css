@@ -234,8 +234,9 @@ html, body {
   flex: 0 0 auto;
   line-height: 1;
 }
-.mod-icon img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.mod-icon-fallback { font-size: 1.05em; line-height: 1; }
+/* 模块图标同样「贴图在上、emoji 垫底」：加载失败时 img 自移除，露出 emoji */
+.mod-icon img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; display: block; }
+.mod-icon-fallback { position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; justify-content: center; font-size: 1.05em; line-height: 1; }
 
 /* ===== 工具栏（筛选/搜索） ===== */
 .toolbar { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
@@ -325,16 +326,27 @@ html, body {
     inset -2px -2px 0 var(--slot-lo),
     0 0 0 2px var(--frame);
 }
-.icon-fallback { display: flex; align-items: center; justify-content: center; }
-.icon-fallback svg { width: 40px; height: 40px; display: block; }
+/* 贴图与兜底的层叠关系（关键）：
+ * 贴图在前、兜底在后，用 z-index 把兜底压到贴图下层。
+ * 这样贴图加载成功就自然可见，失败时 img 自己 remove() 露出兜底——
+ * 不再依赖 onload（缓存命中时可能不触发，会导致兜底永远盖住贴图）。 */
 .icon-img {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: contain;
   image-rendering: pixelated;   /* NPC 立绘 128px → 64px 为整数 2 倍缩放 */
 }
+.icon-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-fallback svg { width: 40px; height: 40px; display: block; }
 
 /* NPC 头像 */
 .npc-icon { width: 64px; height: 64px; }
@@ -591,6 +603,14 @@ html, body {
 .bundle-need-row.is-done .bundle-need-name { color: var(--muted); text-decoration: line-through; }
 .bundle-need-name { font-size: 13px; color: var(--wood); }
 .or-text { color: var(--muted); font-size: 12px; }
+/* 调料/食用增益 chip：与物品 chip 区分开，用暖金色 */
+.chip-buff {
+  background: linear-gradient(180deg, #fff4dd, #f8e6c0);
+  border-color: var(--gold);
+  color: #8a6516;
+  font-weight: 600;
+}
+.buff-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
 .bundle-quality {
   font-size: 11px;
   color: #b07f15;

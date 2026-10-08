@@ -151,34 +151,35 @@ function sortSelect(options, active, onChange, focusKey) {
   return sel;
 }
 
-/* 物品图标：真实贴图与备用 SVG 二选一（贴图加载成功移除 SVG，失败保留 SVG） */
+/* 物品图标：真实贴图 + 备用 SVG。
+ * 结构上是「贴图在前、兜底垫在后」，靠 CSS 把兜底绝对定位压在贴图下层：
+ * 贴图加载成功就自然盖住兜底，失败则 remove() 自己、露出兜底。
+ * 注意**不能**靠「加载成功再 remove 兜底」——那条路径依赖 onload，
+ * 缓存命中时可能不触发，兜底就会一直盖住贴图（本项目曾因此全站只显示兜底图标）。 */
 function itemIconHtml(id, name, svgFallback) {
   return `
       <span class="item-icon">
-        <span class="icon-fallback">${svgFallback}</span>
         <img class="icon-img" src="img/${esc(id)}.png" alt="${esc(name)}" loading="lazy" decoding="async"
-             onload="this.previousElementSibling.remove()"
              onerror="this.remove()">
+        <span class="icon-fallback">${svgFallback}</span>
       </span>`;
 }
 
-/* NPC 头像：真实立绘与 emoji 兜底二选一 */
+/* NPC 头像：真实立绘 + emoji 兜底（同样以「立绘在上、兜底在下」保证两者只显示其一） */
 function npcIconHtml(id, name, emoji) {
   return `
     <span class="item-icon npc-icon">
-      <span class="icon-fallback npc-fallback">${emoji}</span>
       <img class="icon-img" src="img/npc-${esc(id)}.png" alt="${esc(name)}" loading="lazy" decoding="async"
-           onload="this.previousElementSibling.remove()"
            onerror="this.remove()">
+      <span class="icon-fallback npc-fallback">${emoji}</span>
     </span>`;
 }
 
-/* 模块图标：真实游戏贴图 + emoji 兜底（贴图加载成功即移除 emoji，失败则保留） */
+/* 模块图标：真实游戏贴图 + emoji 兜底 */
 function moduleIconHtml(m) {
   return `<span class="mod-icon">` +
+    `<img src="img/${esc(m.sprite)}.png" alt="" decoding="async" onerror="this.remove()">` +
     `<span class="mod-icon-fallback">${m.icon}</span>` +
-    `<img src="img/${esc(m.sprite)}.png" alt="" decoding="async" ` +
-    `onload="this.previousElementSibling.remove()" onerror="this.remove()">` +
     `</span>`;
 }
 
@@ -192,6 +193,7 @@ function moduleIconHtml(m) {
   npc: "全部",
   quests: "全部", events: "全部",
   bundles: "全部",
+  cooking: "全部", cookSort: "default",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -681,6 +683,63 @@ function renderBundles() {
   body.appendChild(grid);
 }
 
+/* ---- 料理（烹饪） ---- */
+const COOK_SORTS = [
+  { value: "default", label: "默认顺序" },
+  { value: "sell", label: "售价 ↓" },
+  { value: "energy", label: "回复体力 ↓" },
+  { value: "ingredients", label: "原料数 ↑" },
+];
+function sortCooking(list, mode) {
+  const arr = list.slice();
+  const by = {
+    sell: (a, b) => b.sell - a.sell,
+    energy: (a, b) => b.edibility - a.edibility,
+    ingredients: (a, b) => (a.ingredients || []).length - (b.ingredients || []).length,
+  }[mode];
+  return by ? arr.sort(by) : arr;
+}
+function renderCooking() {
+  const body = $("#body-cooking");
+  body.innerHTML = "";
+  const list = sortCooking(
+    COOKING.filter((c) => state.cooking === "全部" || (state.cooking === "有增益" ? (c.buffs || []).length > 0 : !(c.buffs || []).length)),
+    state.cookSort
+  );
+  const total = updateModuleCount(SECTION.cooking);
+  setShown("cooking", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(
+    [{ value: "全部", label: "全部" }, { value: "有增益", label: "有增益" }, { value: "无增益", label: "无增益" }],
+    state.cooking,
+    (v) => { state.cooking = v; renderCooking(); }
+  ));
+  toolbar.appendChild(controlRow(
+    sortSelect(COOK_SORTS, state.cookSort, (v) => {
+      state.cookSort = v;
+      pendingFocus = "cookSort";
+      renderCooking();
+    }, "cookSort"),
+    hintNode(state.cookSort === "sell" ? "按基础售价排序（不含品质加成）" : "")
+  ));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((c) => `
+    <div ${cardAttrs(c.id)}>
+      ${itemIconHtml(c.id, c.name, GENERIC_ICON)}
+      <h3>${esc(c.name)}</h3>
+      <div class="meta">售价 <span class="gold-text">${c.sell}</span> · 回复体力 ${c.edibility}</div>
+      ${buffChips(c.buffs)}
+      <div class="meta">🧺 ${(c.ingredients || []).map((i) => esc(i.name) + (i.qty > 1 ? "×" + i.qty : "")).join("、")}</div>
+      <div class="foot"><span class="muted">${c.source ? "菜谱：" + esc(c.source) : "菜谱获取方式见详情"}</span></div>
+    </div>`).join("") || emptyState("没有符合条件的料理");
+  body.appendChild(grid);
+}
+
 /* ---- 事件 ---- */
 function renderEvents() {
   const body = $("#body-events");
@@ -745,6 +804,7 @@ const REGISTRY = [
       detailSection("备注", `<p>${esc(c.note)}</p>`) +
       giftUsesSection(c.name) +
       bundleUsesSection(c.name) +
+      cookedBySection(c.name) +
       detailSection("算法说明", `<p class="muted">每日净收益 =（28 天季节内总收获额 − 种子价）÷ 末次收获日（第 ${cropLastDay(c)} 天）。多季作物按单季 28 天估算。</p>`),
   },
   {
@@ -764,7 +824,8 @@ const REGISTRY = [
       ])) +
       detailSection("用途", `<p>${esc(c.use)}</p>`) +
       giftUsesSection(c.name) +
-      bundleUsesSection(c.name),
+      bundleUsesSection(c.name) +
+      cookedBySection(c.name),
   },
   {
     id: "fishing", stateKey: ["fishingLoc", "fishingSeason"], spriteFor: "", sprite: "legend", icon: "🎣", label: "钓鱼",
@@ -786,7 +847,8 @@ const REGISTRY = [
       detailSection("经济", kvGrid([["售价", f.sell + " 金"]])) +
       detailSection("用途", `<p>${esc(f.use)}</p>`) +
       giftUsesSection(f.name) +
-      bundleUsesSection(f.name),
+      bundleUsesSection(f.name) +
+      cookedBySection(f.name),
   },
   {
     id: "mining", stateKey: ["mining"], spriteFor: "", sprite: "diamond", icon: "⛏️", label: "采矿",
@@ -800,7 +862,8 @@ const REGISTRY = [
       ])) +
       detailSection("用途", `<p>${esc(m.use)}</p>`) +
       giftUsesSection(m.name) +
-      bundleUsesSection(m.name),
+      bundleUsesSection(m.name) +
+      cookedBySection(m.name),
   },
   {
     id: "combat", stateKey: ["combat"], spriteFor: "", sprite: "green-slime", icon: "⚔️", label: "战斗",
@@ -819,6 +882,7 @@ const REGISTRY = [
       ])) +
       giftUsesSection(m.name) +
       bundleUsesSection(m.name) +
+      cookedBySection(m.name) +
       detailSection("掉落物", `<div class="chip-list">${m.drops.map(linkChip).join("")}</div>` +
         (m.drops.some((d) => NAME_INDEX.has(d)) ? `<p class="muted">带下划线的掉落物可点击跳转。</p>` : "")),
   },
@@ -910,12 +974,36 @@ const REGISTRY = [
         (room && room.sub ? detailSection("完成该房间", `<p>${esc(room.sub)}</p>`) : "");
     },
   },
+  {
+    id: "cooking", stateKey: ["cooking", "cookSort"], spriteFor: "", sprite: "cookout-kit", icon: "🍳", label: "料理",
+    sub: "菜肴的原料、回复体力和食用增益", data: "COOKING", render: renderCooking,
+    resetFilter: (s) => { s.cooking = "全部"; s.cookSort = "default"; },
+    indexExtra: (c) => [c.source].concat(c.buffs || []).concat((c.ingredients || []).map((i) => i.name)),
+    detail: (c) => {
+      const ing = (c.ingredients || []).map(ingredientChip).join(" ");
+      return detailHead(itemIconHtml(c.id, c.name, GENERIC_ICON), c.name,
+        (c.buffs && c.buffs.length ? "食用有增益" : "食用无增益") + (c.duration ? " · 持续 " + esc(c.duration) : "")) +
+        detailSection("数值", kvGrid([
+          ["售价", c.sell + " 金"],
+          ["回复体力", String(c.edibility)],
+          ["增益", (c.buffs && c.buffs.length) ? c.buffs.join(" / ") : "—"],
+          ["持续时间", c.duration || "—"],
+        ])) +
+        detailSection("所需原料", `<div class="chip-list">${ing || "<span class='muted'>—</span>"}</div>` +
+          ((c.ingredients || []).some((i) => NAME_INDEX.has(i.name)) ? `<p class="muted">带下划线的原料可点击查看。</p>` : "")) +
+        (c.source ? detailSection("菜谱获取", `<p>${esc(c.source)}</p>`) : "") +
+        detailSection("用途", `<p>${esc("可用于送礼、完成收集包或直接食用回复体力。")}</p>`) +
+        giftUsesSection(c.name) +
+        bundleUsesSection(c.name) +
+        cookedBySection(c.name);
+    },
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
-  BUNDLES, BUNDLE_ROOMS,
+  BUNDLES, BUNDLE_ROOMS, COOKING,
 };
 
 /* 注册表自洽化：解析 data 引用、补全缺省字段、按 id 建表 */
@@ -1018,6 +1106,34 @@ function giftUsesSection(name) {
   return detailSection("送礼对象", `<div class="chip-list">` +
     list.map((n) => `<span class="chip chip-link" data-goto-module="npc" data-goto-id="${esc(n.id)}" role="button" tabindex="0" title="查看${esc(n.name)}">💝 ${esc(n.name)}</span>`).join("") +
     `</div>`);
+}
+
+/* 料理反向索引：原料名 → 用得到它的菜肴（详情页「用于料理」一节用） */
+const COOKED_BY = (() => {
+  const map = new Map();
+  COOKING.forEach((c) => (c.ingredients || []).forEach((i) => {
+    if (!map.has(i.name)) map.set(i.name, []);
+    if (!map.get(i.name).some((x) => x.id === c.id)) map.get(i.name).push(c);
+  }));
+  return map;
+})();
+function cookedBySection(name) {
+  const list = COOKED_BY.get(name);
+  if (!list || !list.length) return "";
+  return detailSection("用于料理", `<div class="chip-list">` +
+    list.map((c) => `<span class="chip chip-link" data-goto-module="cooking" data-goto-id="${esc(c.id)}" role="button" tabindex="0" title="查看${esc(c.name)}">🍳 ${esc(c.name)}</span>`).join("") +
+    `</div>`);
+}
+/* 料理的原料 chip 与增益 chip：原料能对上站内条目的可跳转（如「南瓜」→ 农作物） */
+function ingredientChip(ing) {
+  const hit = NAME_INDEX.get(ing.name);
+  const label = esc(ing.name) + (ing.qty > 1 ? ` ×${ing.qty}` : "");
+  if (!hit) return `<span class="chip">${label}</span>`;
+  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(ing.name)}">${label}</span>`;
+}
+function buffChips(buffs) {
+  if (!buffs || !buffs.length) return "";
+  return `<div class="buff-list">` + buffs.map((b) => `<span class="chip chip-buff">${esc(b)}</span>`).join("") + `</div>`;
 }
 
 function buildNav() {
@@ -1263,17 +1379,13 @@ function money(n) {
 }
 
 /* 物品名 → 条目索引，用于掉落物交叉跳转 */
+/* 物品名 → 条目索引：由注册表驱动，新增模块自动进入（此前是逐个模块手写，
+ * 加「料理」时就被漏掉，导致菜肴无法作为礼物/原料被跳转——正是 P0 要消灭的漏配模式）。 */
 const NAME_INDEX = (() => {
   const map = new Map();
-  const add = (module, arr) => arr.forEach((x) => {
-    if (!map.has(x.name)) map.set(x.name, { module, id: x.id });
-  });
-  add("crops", CROPS);
-  add("collect", COLLECTIBLES);
-  add("fishing", FISH);
-  add("mining", MINERALS);
-  add("combat", MONSTERS);
-  add("npc", NPCS);
+  REGISTRY.forEach((sec) => sec.data.forEach((x) => {
+    if (!map.has(x.name)) map.set(x.name, { module: sec.id, id: x.id });
+  }));
   return map;
 })();
 
