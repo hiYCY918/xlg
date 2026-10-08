@@ -194,6 +194,7 @@ function moduleIconHtml(m) {
   quests: "全部", events: "全部",
   bundles: "全部",
   cooking: "全部", cookSort: "default",
+  crafting: "全部", craftSort: "default",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -741,6 +742,73 @@ function renderCooking() {
 }
 
 /* ---- 事件 ---- */
+/* ---- 打造（制造配方） ---- */
+const CRAFT_SORTS = [
+  { value: "default", label: "默认顺序" },
+  { value: "sell", label: "售价 ↓" },
+  { value: "materials", label: "材料数 ↑" },
+];
+function sortCrafting(list, mode) {
+  const arr = list.slice();
+  const by = {
+    sell: (a, b) => (b.sell || 0) - (a.sell || 0),
+    materials: (a, b) => (a.ingredients || []).length - (b.ingredients || []).length,
+  }[mode];
+  return by ? arr.sort(by) : arr;
+}
+/* 每次打造的产出数量（大于 1 时在名称后标出，如「顶级肥料 ×5」） */
+function craftOut(r) {
+  return r.count > 1 ? ` ×${r.count}` : "";
+}
+/* 材料 chip：能对上站内条目的可跳转（如「木材」→ 采矿） */
+function craftMaterialChip(ing) {
+  const hit = NAME_INDEX.get(ing.name);
+  const label = esc(ing.name) + (ing.qty > 1 ? ` ×${ing.qty}` : "");
+  if (!hit) return `<span class="chip">${label}</span>`;
+  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(ing.name)}">${label}</span>`;
+}
+function renderCrafting() {
+  const body = $("#body-crafting");
+  body.innerHTML = "";
+  const list = sortCrafting(
+    CRAFTING.filter((c) => state.crafting === "全部" || c.cat === state.crafting),
+    state.craftSort
+  );
+  const total = updateModuleCount(SECTION.crafting);
+  setShown("crafting", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(
+    [{ value: "全部", label: "全部分类" }].concat(CRAFT_CATS.map((c) => ({ value: c, label: c }))),
+    state.crafting,
+    (v) => { state.crafting = v; renderCrafting(); }
+  ));
+  toolbar.appendChild(controlRow(
+    sortSelect(CRAFT_SORTS, state.craftSort, (v) => {
+      state.craftSort = v;
+      pendingFocus = "craftSort";
+      renderCrafting();
+    }, "craftSort"),
+    hintNode(state.craftSort === "sell" ? "按基础售价排序（围栏/地板等无售价者排在后面）" : "")
+  ));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((c) => `
+    <div ${cardAttrs(c.id)}>
+      ${itemIconHtml(c.id, c.name, GENERIC_ICON)}
+      <h3>${esc(c.name)}${craftOut(c)} <span class="badge brown">${esc(c.cat)}</span></h3>
+      ${(c.ingredients || []).length
+        ? `<div class="chip-list">${c.ingredients.map(craftMaterialChip).join("")}</div>`
+        : `<div class="meta">无材料</div>`}
+      <div class="foot">${c.sell ? `售价 <span class="gold-text">${c.sell}</span> · ` : ""}<span class="muted">配方：${esc(c.source || "—")}</span></div>
+    </div>`).join("") || emptyState("该分类暂无配方");
+  body.appendChild(grid);
+}
+
+/* ---- 事件 ---- */
 function renderEvents() {
   const body = $("#body-events");
   body.innerHTML = "";
@@ -805,6 +873,7 @@ const REGISTRY = [
       giftUsesSection(c.name) +
       bundleUsesSection(c.name) +
       cookedBySection(c.name) +
+      craftedBySection(c.name) +
       detailSection("算法说明", `<p class="muted">每日净收益 =（28 天季节内总收获额 − 种子价）÷ 末次收获日（第 ${cropLastDay(c)} 天）。多季作物按单季 28 天估算。</p>`),
   },
   {
@@ -848,7 +917,8 @@ const REGISTRY = [
       detailSection("用途", `<p>${esc(f.use)}</p>`) +
       giftUsesSection(f.name) +
       bundleUsesSection(f.name) +
-      cookedBySection(f.name),
+      cookedBySection(f.name) +
+      craftedBySection(f.name),
   },
   {
     id: "mining", stateKey: ["mining"], spriteFor: "", sprite: "diamond", icon: "⛏️", label: "采矿",
@@ -863,7 +933,8 @@ const REGISTRY = [
       detailSection("用途", `<p>${esc(m.use)}</p>`) +
       giftUsesSection(m.name) +
       bundleUsesSection(m.name) +
-      cookedBySection(m.name),
+      cookedBySection(m.name) +
+      craftedBySection(m.name),
   },
   {
     id: "combat", stateKey: ["combat"], spriteFor: "", sprite: "green-slime", icon: "⚔️", label: "战斗",
@@ -975,6 +1046,30 @@ const REGISTRY = [
     },
   },
   {
+    id: "crafting", stateKey: ["crafting", "craftSort"], spriteFor: "", sprite: "furnace", icon: "🔨", label: "打造",
+    sub: "制造配方的所需材料与获取方式", data: "CRAFTING", render: renderCrafting,
+    resetFilter: (s) => { s.crafting = "全部"; s.craftSort = "default"; },
+    indexExtra: (c) => [c.cat, c.source].concat((c.ingredients || []).map((i) => i.name)),
+    detail: (c) => {
+      const mats = (c.ingredients || []);
+      return detailHead(itemIconHtml(c.id, c.name, GENERIC_ICON), c.name,
+        esc(c.cat) + (c.count > 1 ? " · 每次打造产出 " + c.count + " 个" : "")) +
+        detailSection("数值", kvGrid([
+          ["分类", c.cat],
+          ["售价", (c.sell ? c.sell + " 金" : "—")],
+          ["每次产出", (c.count || 1) + " 个"],
+          ["材料种类", mats.length + " 种"],
+        ])) +
+        detailSection("所需材料", `<div class="chip-list">${mats.map(craftMaterialChip).join("") || "<span class='muted'>—</span>"}</div>` +
+          (mats.some((i) => NAME_INDEX.has(i.name)) ? `<p class="muted">带下划线的材料可点击查看。</p>` : "")) +
+        (c.source ? detailSection("配方获取", `<p>${esc(c.source)}</p>`) : "") +
+        detailSection("用途", `<p>${esc("打造完成后可用于农场经营、采矿或送礼。")}</p>`) +
+        giftUsesSection(c.name) +
+        bundleUsesSection(c.name) +
+        craftedBySection(c.name);
+    },
+  },
+  {
     id: "cooking", stateKey: ["cooking", "cookSort"], spriteFor: "", sprite: "cookout-kit", icon: "🍳", label: "料理",
     sub: "菜肴的原料、回复体力和食用增益", data: "COOKING", render: renderCooking,
     resetFilter: (s) => { s.cooking = "全部"; s.cookSort = "default"; },
@@ -1003,8 +1098,10 @@ const REGISTRY = [
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
-  BUNDLES, BUNDLE_ROOMS, COOKING,
+  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING,
 };
+/* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
+const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
 
 /* 注册表自洽化：解析 data 引用、补全缺省字段、按 id 建表 */
 REGISTRY.forEach((s) => {
@@ -1134,6 +1231,22 @@ function ingredientChip(ing) {
 function buffChips(buffs) {
   if (!buffs || !buffs.length) return "";
   return `<div class="buff-list">` + buffs.map((b) => `<span class="chip chip-buff">${esc(b)}</span>`).join("") + `</div>`;
+}
+/* 打造反向索引：材料名 → 用得到它的配方（详情页「用于打造」一节用） */
+const CRAFTED_BY = (() => {
+  const map = new Map();
+  CRAFTING.forEach((r) => (r.ingredients || []).forEach((i) => {
+    if (!map.has(i.name)) map.set(i.name, []);
+    if (!map.get(i.name).some((x) => x.id === r.id)) map.get(i.name).push(r);
+  }));
+  return map;
+})();
+function craftedBySection(name) {
+  const list = CRAFTED_BY.get(name);
+  if (!list || !list.length) return "";
+  return detailSection("用于打造", `<div class="chip-list">` +
+    list.map((r) => `<span class="chip chip-link" data-goto-module="crafting" data-goto-id="${esc(r.id)}" role="button" tabindex="0" title="查看${esc(r.name)}">🔨 ${esc(r.name)}</span>`).join("") +
+    `</div>`);
 }
 
 function buildNav() {

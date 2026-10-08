@@ -128,7 +128,8 @@ const src =
   "toggleBundleSlot,bundleProgress,bundleFilled,isBundleDone,bundleNeeded,bundleSlotCount," +
   "bundleItemNames,doneBundleCount,readBundleProgress,BUNDLE_PROGRESS_KEY," +
   "parseHash,hashFor,setRouteHash,currentModuleId,defaultModuleId,restoreRoute,gotoItem,LAST_MODULE_KEY," +
-  "GIFT_USES,GIFT_PLACEHOLDERS,giftChip,giftUsesSection,NAME_INDEX};";
+  "GIFT_USES,GIFT_PLACEHOLDERS,giftChip,giftUsesSection,NAME_INDEX," +
+  "CRAFTING,CRAFT_CATS,CRAFTED_BY,craftedBySection,sortCrafting};";
 
 let data;
 try {
@@ -409,18 +410,37 @@ console.log("\n=== 3. 渲染冒烟 ===");
    * 规则（对应 R31「可解释归零」）：每个需求物品要么能在站内找到条目/同源贴图，
    * 要么必须落在这张**已知缺口表**里并写明理由；出现表外的新悬空引用即失败。 */
   const BUNDLE_ITEM_GAPS = {
-    "枫糖浆": "待建：工匠制品", "橡树树脂": "待建：工匠制品", "松焦油": "待建：工匠制品",
-    "大壶牛奶": "待建：动物制品", "大鸡蛋": "待建：动物制品", "棕色大鸡蛋": "待建：动物制品",
-    "大瓶羊奶": "待建：动物制品", "动物毛": "待建：动物制品", "鸭蛋": "待建：动物制品",
-    "鸭毛": "待建：动物制品", "兔子的脚": "待建：动物制品",
-    "果酒": "待建：工匠制品", "果酱": "待建：工匠制品", "奶酪": "待建：动物制品",
-    "山羊奶酪": "待建：动物制品", "布料": "待建：工匠制品", "松露油": "待建：工匠制品",
-    "恐龙蛋黄酱": "待建：工匠制品", "鱼籽酱": "待建：工匠制品", "蜂蜜": "待建：工匠制品",
-    "苹果": "待建：果树", "杏子": "待建：果树", "橙子": "待建：果树",
-    "桃子": "待建：果树", "石榴": "待建：果树", "樱桃": "待建：果树",
-    "史莱姆泥": "待建：怪物掉落", "蝙蝠翅膀": "待建：怪物掉落",
-    "太阳精华": "待建：怪物掉落", "虚空精华": "待建：怪物掉落",
-    "干草": "待建：动物制品",
+    "兔子的脚": "待建：后续模块",
+    "动物毛": "待建：后续模块",
+    "史莱姆泥": "待建：后续模块",
+    "大壶牛奶": "待建：后续模块",
+    "大瓶羊奶": "待建：后续模块",
+    "大鸡蛋": "待建：后续模块",
+    "太阳精华": "待建：后续模块",
+    "奶酪": "待建：后续模块",
+    "山羊奶酪": "待建：后续模块",
+    "布料": "待建：后续模块",
+    "干草": "待建：后续模块",
+    "恐龙蛋黄酱": "待建：后续模块",
+    "杏子": "待建：后续模块",
+    "松焦油": "待建：后续模块",
+    "松露油": "待建：后续模块",
+    "果酒": "待建：后续模块",
+    "果酱": "待建：后续模块",
+    "枫糖浆": "待建：后续模块",
+    "桃子": "待建：后续模块",
+    "棕色大鸡蛋": "待建：后续模块",
+    "樱桃": "待建：后续模块",
+    "橙子": "待建：后续模块",
+    "橡树树脂": "待建：后续模块",
+    "石榴": "待建：后续模块",
+    "苹果": "待建：后续模块",
+    "虚空精华": "待建：后续模块",
+    "蜂蜜": "待建：后续模块",
+    "蝙蝠翅膀": "待建：后续模块",
+    "鱼籽酱": "待建：后续模块",
+    "鸭毛": "待建：后续模块",
+    "鸭蛋": "待建：后续模块",
   };
   const dangling = new Set();
   for (const b of B) for (const it of (b.items || [])) for (const n of data.bundleItemNames(it)) {
@@ -719,12 +739,11 @@ console.log("\n=== 3. 渲染冒烟 ===");
   /* 8.3 礼物落点的「已知缺口表」：全部必须来自尚未收录的模块，且表不能过期。
    * 收录「料理」模块后，其中的菜肴（沙拉/披萨/粉红蛋糕…）已可跳转，从表中移除。 */
   const GIFT_GAPS = [
-    "仙子玫瑰", "冷冻泪", "古代玩偶", "可乐", "咖啡", "啤酒", "墨鱼",
-    "夏季紫丁香", "太阳精华", "宝石", "山羊奶酪",
-    "松露油", "桃子", "橙子", "油炸鱿鱼", "泡菜",
-    "海洋料理", "炖豆", "电池", "石榴", "秋季蔬菜", "绿茶",
-    "罂粟", "羊奶酪", "羊毛", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华", "虚空蛋",
-    "虚空蛋黄酱", "辣鳗鱼", "鸵鸟蛋",
+    "仙子玫瑰", "冷冻泪", "古代玩偶", "可乐", "咖啡", "啤酒", "墨鱼", "夏季紫丁香",
+    "太阳精华", "宝石", "山羊奶酪", "松露油", "桃子", "橙子", "油炸鱿鱼", "泡菜",
+    "海洋料理", "炖豆", "电池", "石榴", "秋季蔬菜", "绿茶", "罂粟", "羊奶酪",
+    "羊毛", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华", "虚空蛋", "虚空蛋黄酱", "辣鳗鱼",
+    "鸵鸟蛋",
   ];
   const giftGapActual = [...giftNames].filter((g) => !data.NAME_INDEX.has(g));
   const giftUntracked = giftGapActual.filter((g) => GIFT_GAPS.indexOf(g) < 0);
@@ -785,8 +804,89 @@ console.log("\n=== 3. 渲染冒烟 ===");
   const bundleHits = idxAll.filter((e) => e.module === "bundles" && e.kw.includes("收集包"));
   log(bundleHits.length > 0, "搜索索引含收集包关键词（命中 " + bundleHits.length + " 条）");
 
-  /* ---------- 9. 视觉资源 ---------- */
-  console.log("\n=== 9. 视觉资源（模块图标贴图） ===");
+  /* ---------- 9. 打造（配方 ↔ 材料） ---------- */
+  console.log("\n=== 9. 打造（配方 ↔ 材料） ===");
+
+  const CR = data.MODULE_DATA.CRAFTING;
+  const craftIds = CR.map((r) => r.id);
+  const craftDup = [...new Set(craftIds.filter((v, i) => craftIds.indexOf(v) !== i))];
+  log(craftDup.length === 0, "打造 id 无重复（" + CR.length + " 条）" + (craftDup.length ? "：" + craftDup.join(",") : ""));
+
+  /* id 必须与既有模块全局唯一——否则深链接 #crafting/x 与 #mining/x 会撞车 */
+  const globalOwner = new Map();
+  for (const sec of data.REGISTRY) for (const it of sec.data) {
+    if (!globalOwner.has(it.id)) globalOwner.set(it.id, sec.id);
+  }
+  const crossDup = CR.filter((r) => globalOwner.get(r.id) !== "crafting").map((r) => r.id + "(属" + globalOwner.get(r.id) + ")");
+  log(crossDup.length === 0, "打造 id 与其它模块无冲突" + (crossDup.length ? "：" + crossDup.join(",") : ""));
+
+  const badCraft = [];
+  for (const r of CR) {
+    if (!r.name) badCraft.push(r.id + "(无名称)");
+    if (!r.cat) badCraft.push(r.id + "(无分类)");
+    if (!(r.ingredients || []).length) badCraft.push(r.id + "(无材料)");
+    if (!r.source) badCraft.push(r.id + "(无来源)");
+  }
+  log(badCraft.length === 0, "打造字段齐全（名称/分类/材料/来源）" + (badCraft.length ? "：" + badCraft.slice(0, 8).join(",") : ""));
+
+  /* 筛选入口覆盖：数据里出现过的分类必须有对应按钮（沿用 R17 的口径） */
+  const craftCats = [...new Set(CR.map((r) => r.cat))];
+  const missCat = craftCats.filter((c) => data.CRAFT_CATS.indexOf(c) < 0);
+  log(missCat.length === 0, "打造筛选覆盖全部 " + craftCats.length + " 个分类" + (missCat.length ? "：缺 " + missCat.join(",") : ""));
+
+  /* 材料落点：可跳转 + 已知缺口必须守恒 */
+  const CR_GAPS = [
+    "史莱姆泥", "夏季亮片种子", "太阳精华", "布料", "松果", "松焦油", "松露油", "枫树种子",
+    "枫糖浆", "树液", "橡子", "橡树树脂", "河凝胶", "油", "洞穴凝胶", "海凝胶",
+    "矮人小工具", "神秘糖浆", "蓝爵士种子", "虚空精华", "虞美人种子", "虫肉", "蜂蜜", "蝙蝠翅膀",
+    "郁金香球茎", "鱼", "鱼饵（物品）|鱼饵", "齐钻", "龙牙",
+  ];
+  const craftMats = new Set(CR.flatMap((r) => (r.ingredients || []).map((i) => i.name)));
+  const matHit = [...craftMats].filter((n) => data.NAME_INDEX.has(n));
+  const matGap = [...craftMats].filter((n) => !data.NAME_INDEX.has(n)).sort();
+  const matUntracked = matGap.filter((n) => CR_GAPS.indexOf(n) < 0);
+  log(matUntracked.length === 0,
+    "打造材料无表外缺口（" + matHit.length + " 可跳转 / " + matGap.length + " 在缺口表内）" +
+    (matUntracked.length ? "：新增 " + matUntracked.join(",") : ""));
+  const matStale = CR_GAPS.filter((n) => matGap.indexOf(n) < 0);
+  log(matStale.length === 0, "打造材料缺口表无过期项（" + CR_GAPS.length + " 项）" +
+    (matStale.length ? "：已可跳转却仍在表内 " + matStale.join(",") : ""));
+
+  /* 反向索引：每个材料都要能在「用于打造」里查到这张配方。
+   * 这条断言能抓到一类真 bug：把索引写成「配方 → 材料」而不是「材料 → 配方」，
+   * 渲染不报错、界面也照常显示，但反查区块永远是空的。 */
+  const cbNoReverse = [];
+  for (const r of CR) for (const i of (r.ingredients || [])) {
+    if (!(data.CRAFTED_BY.get(i.name) || []).some((x) => x.id === r.id)) cbNoReverse.push(r.id + "/" + i.name);
+  }
+  log(cbNoReverse.length === 0, "打造反向索引覆盖全部材料引用" + (cbNoReverse.length ? "：" + cbNoReverse.slice(0, 6).join(",") : ""));
+
+  /* 端到端：物品详情页必须真的渲染出「用于打造」 */
+  const craftedItem = (() => {
+    for (const sec of data.REGISTRY) {
+      if (sec.id === "crafting") continue;
+      for (const it of sec.data) if ((data.CRAFTED_BY.get(it.name) || []).length) return { sec, it };
+    }
+    return null;
+  })();
+  if (craftedItem) {
+    const html = String(data.DETAIL_RENDERERS[craftedItem.sec.id](craftedItem.it.id));
+    log(html.includes("用于打造") && html.includes('data-goto-module="crafting"'),
+      "物品详情含「用于打造」反查区块（" + craftedItem.sec.id + "/" + craftedItem.it.id +
+      " → " + craftedItem.it.name + "）");
+  } else {
+    log(false, "找不到可验证「用于打造」区块的物品");
+  }
+
+  /* 打造详情：材料 chip 可点、来源与产出齐全 */
+  const cFirst = CR.find((r) => (r.ingredients || []).some((i) => data.NAME_INDEX.has(i.name))) || CR[0];
+  const cHtml = String(data.DETAIL_RENDERERS.crafting(cFirst.id));
+  log(cHtml.includes("所需材料") && cHtml.includes("配方获取"),
+    "打造详情含「所需材料」与「配方获取」分区（" + cFirst.name + "）");
+  log(cHtml.includes("data-goto-id"), "打造详情中的材料生成了跳转链接");
+
+  /* ---------- 10. 视觉资源 ---------- */
+  console.log("\n=== 10. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];
