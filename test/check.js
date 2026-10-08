@@ -134,7 +134,7 @@ const src =
   "ARTIFACTS,MUSEUM_NAMES,MUSEUM_REWARDS,isDonated,toggleDonate,museumDonatedCount,readMuseum," +
   "SEEDS,SEED_SEASON_FILTERS,SEEDED_BY,seededBySection,seedPriceText,seedGrowthText,sortSeeds," +
   "FRUIT_TREES,TREE_SEASONS,saplingChip,sortTrees," +
-  "TREES,TREE_FILTERS,seedChip};";
+  "TREES,TREE_FILTERS,seedChip,ensureNavVisible};";
 
 let data;
 try {
@@ -1180,8 +1180,60 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(trSeedHtml.includes("data-goto-module=\"seeds\""),
     "树木详情中的种子生成了跳转链接（" + (trWithSeed ? trWithSeed.name : "—") + "）");
 
-  /* ---------- 15. 视觉资源 ---------- */
-  console.log("\n=== 15. 视觉资源（模块图标贴图） ===");
+  /* ---------- 15. 侧栏导航（模块可达性） ---------- */
+  console.log("\n=== 15. 侧栏导航（模块可达性） ===");
+
+  /* 导航从横向标签栏改成左侧竖栏（第十八轮）：横排 17 个模块需要约 1700px，
+   * 只有 ≥1920 的屏幕能一眼看全。这里守住"每个模块都有一条导航入口"这件事——
+   * 漏掉一个模块在视觉上只是"少了一个图标"，很容易没人发现。
+   *
+   * ⚠️ 按 data-module 去重后再断言：check.js 会把整站源码**求值两次**
+   * （第 2 节一次、第 3 节引导一次），导航因此被建两遍。
+   * 断言的是"每个模块都有入口"这个不变量，而不是元素总数——
+   * 后者会随脚手架求值次数变化，是**口径错**而不是产品错。 */
+  const navEl = registry.get("#nav");
+  const allNavItems = allEls.filter((e) => e.className === "nav-item");
+  const navByMod = new Map();
+  allNavItems.forEach((e) => { if (!navByMod.has(e.dataset.module)) navByMod.set(e.dataset.module, e); });
+  const navItems = [...navByMod.values()];
+  const navBuilds = navEl ? Math.round(allNavItems.length / Math.max(1, data.MODULES.length)) : 1;
+
+  log(navItems.length === data.MODULES.length,
+    "每个模块都有侧栏入口（去重后 " + navItems.length + " / " + data.MODULES.length +
+    "，脚手架初始化 " + navBuilds + " 次）");
+
+  const navMissing = data.MODULES.filter((m) => !navItems.some((e) => e.dataset.module === m.id)).map((m) => m.id);
+  log(navMissing.length === 0, "侧栏入口覆盖全部模块 id" + (navMissing.length ? "：缺 " + navMissing.join(",") : ""));
+
+  /* title 在图标条模式（≤1120px，名称与计数被 CSS 隐藏）下是唯一的可读标签 */
+  const noTitle = navItems.filter((e) => !e.title || !e.title.trim()).map((e) => e.dataset.module);
+  log(noTitle.length === 0, "每个侧栏条目都带 title（图标条模式下唯一可读的标签）" +
+    (noTitle.length ? "：" + noTitle.join(",") : ""));
+
+  /* 条目数徽标：横排完全没有地方放的信息，竖排才排得下 */
+  const badCount = [];
+  for (const e of navItems) {
+    const sec = data.REGISTRY.find((s) => s.id === e.dataset.module);
+    const n = sec && data.MODULE_DATA[sec.dataRef] ? data.MODULE_DATA[sec.dataRef].length : 0;
+    const html = String(e.innerHTML);
+    if (html.indexOf('<span class="nav-count">' + n + "</span>") < 0) badCount.push(e.dataset.module + "(应为 " + n + ")");
+    if (html.indexOf('class="nav-label"') < 0) badCount.push(e.dataset.module + "(缺名称)");
+  }
+  log(badCount.length === 0, "侧栏条目含名称与正确的条目数徽标" + (badCount.length ? "：" + badCount.slice(0, 5).join(",") : ""));
+
+  /* 侧栏小标题：每次初始化恰好一个（多插会重复显示，漏插就没有分组标题） */
+  const navTitles = allEls.filter((e) => e.className === "nav-title");
+  log(navTitles.length === navBuilds,
+    "侧栏小标题数 = 初始化次数（" + navTitles.length + " / " + navBuilds + "）");
+
+  /* ensureNavVisible 必须**轴向感知**：宽屏竖栏滚 scrollTop、窄屏横排滚 scrollLeft。
+   * 只认一个方向的话，另一种布局下当前模块会落在可视区外却没人管。 */
+  const navVisSrc = String(data.ensureNavVisible);
+  log(navVisSrc.indexOf("scrollLeft") >= 0 && navVisSrc.indexOf("scrollTop") >= 0,
+    "ensureNavVisible 同时处理横向与纵向滚动（两种布局各自兜底）");
+
+  /* ---------- 16. 视觉资源 ---------- */
+  console.log("\n=== 16. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

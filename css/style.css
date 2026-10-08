@@ -35,6 +35,13 @@
   --slot-hi: rgba(255, 255, 255, 0.52);
   --slot-lo: rgba(104, 62, 28, 0.30);
   --font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* 布局尺寸：侧栏宽度与品牌栏高度。
+   * 侧栏吸顶要正好贴在品牌栏下沿，所以这两个值必须成对使用 */
+  --side-w: 224px;
+  --head-h: 62px;
+  /* 内容区上限：5 列需要内宽 ≥ 1256px（5×240 + 4×14），加左右各 20 内边距 → 1320。
+   * 定成 1320 而不是更大，是为了**封顶 5 列**——6 列时卡片会窄到 240px 以下，读着累。 */
+  --page-max: 1320px;
 }
 
 * { box-sizing: border-box; }
@@ -66,8 +73,10 @@ html, body {
 }
 .topbar { background: transparent; }
 .topbar-inner {
-  max-width: 1240px;
-  margin: 0 auto;
+  /* 品牌栏改成**通栏**：导航搬进侧栏后，品牌与侧栏左缘对齐，
+   * 比"相对整个视口居中"（会与内容区错开一截）看着整齐。 */
+  max-width: none;
+  margin: 0;
   padding: 12px 20px;
   display: flex;
   align-items: center;
@@ -152,55 +161,84 @@ html, body {
 .search-item .name { font-weight: 600; }
 .search-empty { padding: 14px 16px; color: var(--muted); font-size: 13px; }
 
-/* ===== 横向导航 ===== */
-.nav {
+/* ===== 左侧模块侧栏 =====
+ * 为什么从横向标签栏改成竖向侧栏：17 个模块横排需要约 1700px，
+ * **只有 ≥1920 的屏幕能一眼看全**，1600/1440/1366 都已经在横向滚动；
+ * 而计划里还有武器/建筑/工具/动物，按每个约 100px 算要 2100px——横排已经到顶了。
+ * 竖排的好处不只是"装得下"：内容区原来被 max-width:1240px 框住，
+ * 1920 屏上两侧各有 340px 纯空白，侧栏正好用这块空间，宽屏上卡片列数反而变多。
+ * 侧栏可**独立滚动**（模块多了只滚动自己那一列，不顶掉内容区）。 */
+.layout {
   display: flex;
   flex-direction: row;
-  /* 14 个模块在 1400px 下会折成两行（第 14 个「料理」独占第二行）。
-   * 改为单行不折行：装不下时横向滚动，而不是换行——换行会顶掉内容区高度，
-   * 且"哪个模块在第二行"完全取决于视口宽度，不稳定。 */
+  align-items: flex-start;
+}
+.nav {
+  display: flex;
+  /* 默认按竖向侧栏排版；<640px 时整行 flex 变纵向，它就自动变回横向滚动条 */
+  flex-direction: column;
   flex-wrap: nowrap;
   justify-content: flex-start;
-  gap: 4px;
-  padding: 10px 16px;
-  overflow-x: auto;
-  /* 横向滚动条做成细条木质配色，作为"还有模块在右边"的可视提示 */
+  align-items: stretch;
+  gap: 2px;
+  padding: 14px 12px 18px;
+  border-top: none;
+  border-right: 2px solid rgba(0, 0, 0, 0.22);
+  /* 木板纹理：横排时是竖向拼缝，竖排时改成横向拼缝（同一块木板转 90°） */
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.10) 0 2px, transparent 2px 46px),
+    linear-gradient(180deg, #7d5531, var(--wood-deep));
+  box-shadow: inset -3px 0 0 rgba(0, 0, 0, 0.22), inset 2px 0 0 rgba(255, 255, 255, 0.06);
+  /* 独立滚动：模块多了只滚这一列 */
+  overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.32) rgba(0, 0, 0, 0.16);
-  /* 木板纹理：竖向拼缝 + 上下内高光/压边 */
-  background:
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.10) 0 2px, transparent 2px 44px),
-    linear-gradient(180deg, #7d5531, var(--wood-deep));
-  border-top: 1px solid rgba(0,0,0,0.12);
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.07), inset 0 -3px 0 rgba(0, 0, 0, 0.28);
+  /* 吸顶在品牌栏之下，随页面滚动保持可见 */
+  position: sticky;
+  top: var(--head-h);
+  flex: 0 0 var(--side-w);
+  width: var(--side-w);
+  height: calc(100vh - var(--head-h));
 }
-/* 装得下时整组居中：首尾用 auto margin 均分剩余空间；一旦溢出，auto 会塌成 0，
- * 内容从起始边开始、可正常滚动。**不能**用 justify-content:center + overflow——
- * 溢出时居中会把左侧内容推到滚动区之外，那部分再也滚不到（经典裁切坑）。 */
-.nav-item:first-child { margin-left: auto; }
-.nav-item:last-child { margin-right: auto; }
+/* 横排时（窄屏）用首尾 auto margin 居中；竖排时不需要，故限定在纵向媒体查询里 */
 .nav-item {
   display: flex;
   align-items: center;
-  /* 图标与文字间距由 8px 收到 6px：14 个模块因此能在 1366px 单行装下
-   * （实测内容宽 1345px → 收紧后约 1304px，1366px 可用 1319px） */
-  gap: 6px;
-  /* 由 15px 收到 12px：同理，为单行装下 14 个模块让出宽度 */
-  padding: 7px 12px;
+  justify-content: flex-start;
+  gap: 10px;
+  /* 竖排有空间，内边距可以给足，点击热区更大 */
+  padding: 8px 10px;
   border: none;
   background: transparent;
   color: #f0e2c8;
   font-family: var(--font);
-  font-size: 15px;
-  border-radius: var(--radius);
+  font-size: 14.5px;
+  border-radius: 7px;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   white-space: nowrap;
   flex: 0 0 auto;
   transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
-.nav-item .mod-icon { width: 24px; height: 24px; }
+.nav-item .mod-icon { width: 26px; height: 26px; }
+/* 条目数徽标：横排时完全没有地方放，竖排才排得下 */
+.nav-item .nav-count {
+  margin-left: auto;
+  padding-left: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 235, 205, 0.5);
+  font-variant-numeric: tabular-nums;
+}
 .nav-item:hover { background: rgba(255,255,255,0.12); color: #fff; }
+/* 侧栏小标题 */
+.nav-title {
+  color: rgba(255, 235, 205, 0.55);
+  font-size: 11.5px; font-weight: 700; letter-spacing: 3px;
+  padding: 0 10px 8px;
+  user-select: none;
+}
 /* 选中态做成游戏里的「标签页」：内高光 + 底部压边 + 轻微上浮 */
 .nav-item.is-active {
   background: linear-gradient(180deg, #93c25a, var(--accent));
@@ -215,9 +253,12 @@ html, body {
 
 /* ===== 页面 / 模块 ===== */
 .page {
-  max-width: 1240px;
+  max-width: var(--page-max);
   margin: 24px auto;
   padding: 0 20px;
+  /* 侧栏是 flex 兄弟节点，内容区要能收缩（否则宽表格/长内容会把侧栏挤扁） */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .module { animation: fadeIn 0.22s ease; }
 .module[hidden] { display: none; }
@@ -778,13 +819,59 @@ html, body {
 }
 .modal-close:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-/* ===== 响应式 ===== */
+/* ===== 响应式 =====
+ * 侧栏的三档退化（同一份 DOM，只切 flex 方向与宽度，不维护两套结构）：
+ *   ≥1121  完整侧栏（贴图 + 名称 + 条目数）
+ *   ≤1120  图标条（只留贴图，名称与条目数隐藏，靠 title 提示）
+ *   ≤640   整行 flex 变纵向 → 导航自动变回顶部的横向滚动条
+ * 为什么图标条的断点取 1120 而不是 1024：1024 处**正好卡在临界点上**
+ * （可用内宽 745px，而 3 列卡片需要 748px，差 3px 掉成 2 列）。提到 1120 后，
+ * 1121 用完整侧栏与 1120 用图标条都稳定给 3 列，跨界不跳档。 */
+@media (max-width: 1120px) {
+  :root { --side-w: 64px; }
+  .nav { padding: 10px 8px 14px; align-items: center; }
+  .nav-title { display: none; }
+  /* 只留图标；名称与计数藏起来（title 属性仍然可读） */
+  .nav-label, .nav-item .nav-count { display: none; }
+  .nav-item { justify-content: center; padding: 9px 0; }
+  .nav-item .mod-icon { width: 28px; height: 28px; }
+}
+
+@media (max-width: 640px) {
+  /* 导航回到顶部横排：flex 变纵向，nav 排在 .page 之前 */
+  .layout { flex-direction: column; align-items: stretch; }
+  .nav {
+    position: static;
+    width: auto;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 16px;
+    border-right: none;
+    border-top: 1px solid rgba(0,0,0,0.12);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.07), inset 0 -3px 0 rgba(0, 0, 0, 0.28);
+    background:
+      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.10) 0 2px, transparent 2px 44px),
+      linear-gradient(180deg, #7d5531, var(--wood-deep));
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  /* 横排时整组居中：首尾 auto margin 均分剩余空间，溢出时自动塌成 0。
+   * **不能**用 justify-content:center + overflow——溢出时左侧内容会滚不到（经典裁切坑）。 */
+  .nav-item:first-child { margin-left: auto; }
+  .nav-item:last-child { margin-right: auto; }
+  .nav-item { padding: 8px 14px; font-size: 14px; justify-content: flex-start; }
+  .nav-item .mod-icon { width: 24px; height: 24px; }
+  /* ⚠️ 必须把名称放回来：上面 ≤1120 的图标条规则把 .nav-label 藏了，
+   * 这里只切回横排是不够的——否则手机上是一条"只有图标"的导航（踩过一次） */
+  .nav-label { display: inline; }
+}
+
 @media (max-width: 860px) {
   .topbar-inner { flex-wrap: wrap; }
   .topbar-search { width: 100%; margin-left: 0; }
   .topbar-search input { max-width: none; }
-  /* 导航已改为全局单行 + 横向滚动（见 .nav），这里只调整触摸端的按钮尺寸 */
-  .nav-item { padding: 8px 14px; font-size: 14px; }
   .detail-kv { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
   .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
   .control-row { gap: 8px; }

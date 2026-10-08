@@ -1697,11 +1697,23 @@ function seedCropChip(s) {
 
 function buildNav() {
   const nav = $("#nav");
+  /* 侧栏小标题：窄屏的图标条模式里由 CSS 隐藏 */
+  const title = document.createElement("div");
+  title.className = "nav-title";
+  title.textContent = "模 块";
+  nav.appendChild(title);
+
   MODULES.forEach((m) => {
     const b = document.createElement("button");
     b.className = "nav-item";
     b.dataset.module = m.id;
-    b.innerHTML = moduleIconHtml(m) + `<span class="nav-label">${esc(m.label)}</span>`;
+    const sec = REGISTRY.find((s) => s.id === m.id);
+    const count = (sec && MODULE_DATA[sec.dataRef] ? MODULE_DATA[sec.dataRef].length : 0);
+    /* title 在图标条模式（≤1023px，名称与计数被 CSS 隐藏）下是唯一的可读标签 */
+    b.title = m.label + "（" + count + " 条）";
+    b.innerHTML = moduleIconHtml(m) +
+      `<span class="nav-label">${esc(m.label)}</span>` +
+      `<span class="nav-count">${count}</span>`;
     b.addEventListener("click", () => gotoItem(m.id, null));
     nav.appendChild(b);
   });
@@ -1820,21 +1832,30 @@ function restoreRoute() {
   return true;
 }
 
-/* 导航栏是单行 + 横向滚动（见 css/.nav 注释），因此激活项可能落在可视区之外
- * ——窄屏、或直接打开 #料理 这类深链接时。
- * 这里只改 nav.scrollLeft，**不碰页面滚动**：用 scrollIntoView 会连带滚动祖先容器，
- * 在落地深链接时会把页面本身顶走。 */
+/* 导航在宽屏是**左侧竖栏**（可纵向滚动）、窄屏变回**顶部横排**（可横向滚动），
+ * 所以这里要**看轴向**：哪个方向真的溢出了，就调那个方向的滚动量。
+ * 判定用 scrollWidth/Height 与 client 尺寸比较，而不是读媒体查询——
+ * 布局由 CSS 决定，JS 只负责"让当前项可见"，不重复一套断点（两处断点必然走偏）。 */
 function ensureNavVisible(btn) {
   const nav = $("#nav");
   if (!nav || !btn) return;
-  /* test/check.js 的 DOM 模拟没有布局引擎，getBoundingClientRect 不存在（R2：一律判存不裸调） */
+  /* test/check.js 的 DOM 模拟没有布局引擎，这些 API 不存在（R2：一律判存不裸调） */
   if (typeof nav.getBoundingClientRect !== "function") return;
   if (typeof btn.getBoundingClientRect !== "function") return;
   const nr = nav.getBoundingClientRect();
   const br = btn.getBoundingClientRect();
   if (!nr || !br || typeof nr.left !== "number") return;
-  if (br.left < nr.left) nav.scrollLeft -= (nr.left - br.left) + 8;
-  else if (br.right > nr.right) nav.scrollLeft += (br.right - nr.right) + 8;
+
+  /* 横向：装在窄屏顶部的那条 */
+  if (typeof nav.scrollWidth === "number" && nav.scrollWidth > nav.clientWidth + 1) {
+    if (br.left < nr.left) nav.scrollLeft -= (nr.left - br.left) + 8;
+    else if (br.right > nr.right) nav.scrollLeft += (br.right - nr.right) + 8;
+  }
+  /* 纵向：装在宽屏左侧的那一列 */
+  if (typeof nav.scrollHeight === "number" && nav.scrollHeight > nav.clientHeight + 1) {
+    if (br.top < nr.top) nav.scrollTop -= (nr.top - br.top) + 8;
+    else if (br.bottom > nr.bottom) nav.scrollTop += (br.bottom - nr.bottom) + 8;
+  }
 }
 
 function switchModule(id) {
