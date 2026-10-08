@@ -130,7 +130,8 @@ const src =
   "parseHash,hashFor,setRouteHash,currentModuleId,defaultModuleId,restoreRoute,gotoItem,LAST_MODULE_KEY," +
   "GIFT_USES,GIFT_PLACEHOLDERS,giftChip,giftUsesSection,NAME_INDEX," +
   "CRAFTING,CRAFT_CATS,CRAFTED_BY,craftedBySection,sortCrafting," +
-  "ARTISAN,artisanMachines};";
+  "ARTISAN,artisanMachines," +
+  "ARTIFACTS,MUSEUM_NAMES,MUSEUM_REWARDS,isDonated,toggleDonate,museumDonatedCount,readMuseum};";
 
 let data;
 try {
@@ -732,10 +733,10 @@ console.log("\n=== 3. 渲染冒烟 ===");
   /* 8.3 礼物落点的「已知缺口表」：全部必须来自尚未收录的模块，且表不能过期。
    * 收录「料理」模块后，其中的菜肴（沙拉/披萨/粉红蛋糕…）已可跳转，从表中移除。 */
   const GIFT_GAPS = [
-    "仙子玫瑰", "冷冻泪", "古代玩偶", "可乐", "墨鱼", "夏季紫丁香", "太阳精华", "宝石",
-    "桃子", "橙子", "油炸鱿鱼", "泡菜", "海洋料理", "炖豆", "电池", "石榴",
-    "秋季蔬菜", "罂粟", "羊奶酪", "羊毛", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华",
-    "虚空蛋", "辣鳗鱼", "鸵鸟蛋",
+    "仙子玫瑰", "冷冻泪", "可乐", "墨鱼", "夏季紫丁香", "太阳精华", "宝石", "桃子",
+    "橙子", "油炸鱿鱼", "泡菜", "海洋料理", "炖豆", "电池", "石榴", "秋季蔬菜",
+    "罂粟", "羊奶酪", "羊毛", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华", "虚空蛋",
+    "辣鳗鱼", "鸵鸟蛋",
   ];
   const giftGapActual = [...giftNames].filter((g) => !data.NAME_INDEX.has(g));
   const giftUntracked = giftGapActual.filter((g) => GIFT_GAPS.indexOf(g) < 0);
@@ -829,8 +830,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
   /* 材料落点：可跳转 + 已知缺口必须守恒 */
   const CR_GAPS = [
     "史莱姆泥", "夏季亮片种子", "太阳精华", "松果", "松焦油", "枫树种子", "枫糖浆", "树液",
-    "橡子", "橡树树脂", "河凝胶", "洞穴凝胶", "海凝胶", "矮人小工具", "蓝爵士种子", "虚空精华",
-    "虞美人种子", "虫肉", "蝙蝠翅膀", "郁金香球茎", "鱼", "鱼饵（物品）|鱼饵", "齐钻", "龙牙",
+    "橡子", "橡树树脂", "河凝胶", "洞穴凝胶", "海凝胶", "蓝爵士种子", "虚空精华", "虞美人种子",
+    "虫肉", "蝙蝠翅膀", "郁金香球茎", "鱼", "鱼饵（物品）|鱼饵", "齐钻", "龙牙",
   ];
   const craftMats = new Set(CR.flatMap((r) => (r.ingredients || []).map((i) => i.name)));
   const matHit = [...craftMats].filter((n) => data.NAME_INDEX.has(n));
@@ -923,8 +924,57 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(varItems.length > 0 && varItems.every((a) => a.priceNote && a.priceNote.length >= 4),
     varItems.length + " 个变价品均写明计价规则（如 " + (varItems[0] ? varItems[0].priceNote : "-") + "）");
 
-  /* ---------- 11. 视觉资源 ---------- */
-  console.log("\n=== 11. 视觉资源（模块图标贴图） ===");
+  /* ---------- 11. 古物与博物馆捐赠 ---------- */
+  console.log("\n=== 11. 古物与博物馆捐赠 ===");
+
+  const ARF = data.MODULE_DATA.ARTIFACTS;
+  const arfIds = ARF.map((a) => a.id);
+  const arfDup = [...new Set(arfIds.filter((v, i) => arfIds.indexOf(v) !== i))];
+  log(arfDup.length === 0, "古物 id 无重复（" + ARF.length + " 件）" + (arfDup.length ? "：" + arfDup.join(",") : ""));
+
+  const owner3 = new Map();
+  for (const sec of data.REGISTRY) for (const it of sec.data) if (!owner3.has(it.id)) owner3.set(it.id, sec.id);
+  const arfCross = ARF.filter((a) => owner3.get(a.id) !== "artifacts").map((a) => a.id + "(属" + owner3.get(a.id) + ")");
+  log(arfCross.length === 0, "古物 id 与其它模块无冲突" + (arfCross.length ? "：" + arfCross.join(",") : ""));
+
+  const badArf = ARF.filter((a) => !a.name || !a.from || !(a.sell >= 0));
+  log(badArf.length === 0, "古物字段齐全（名称/获取途径/售价）" + (badArf.length ? "：" + badArf.map((a) => a.id).join(",") : ""));
+
+  /* 博物馆清单 = 古物 + 矿物，且不重复 */
+  const mn = data.MUSEUM_NAMES;
+  log(mn.length === ARF.length + data.MODULE_DATA.MINERALS.length,
+    "博物馆清单 = 古物 " + ARF.length + " + 矿物 " + data.MODULE_DATA.MINERALS.length + " = " + mn.length);
+  const mnDup = [...new Set(mn.filter((v, i) => mn.indexOf(v) !== i))];
+  log(mnDup.length === 0, "博物馆清单无重名" + (mnDup.length ? "：" + mnDup.join(",") : ""));
+
+  /* 捐赠进度读写：勾选 → 落盘 → 读回 → 计数 */
+  store.clear();
+  log(data.museumDonatedCount() === 0, "初始捐赠数为 0");
+  const firstName = ARF[0].name;
+  data.toggleDonate(firstName);
+  log(data.isDonated(firstName), "勾选后该古物标记为已捐赠");
+  log(data.museumDonatedCount() === 1, "捐赠计数 = 1（实际 " + data.museumDonatedCount() + "）");
+  const rawMuseum = store.get("xlg.museum.v1");
+  log(!!rawMuseum && JSON.parse(rawMuseum)[firstName] === true, "进度已写入 localStorage");
+  data.toggleDonate(firstName);
+  log(!data.isDonated(firstName) && data.museumDonatedCount() === 0, "再次调用即取消捐赠");
+  store.clear();
+
+  /* 详情弹窗要显示获取途径与捐赠状态 */
+  const arfHtml = String(data.DETAIL_RENDERERS.artifacts(ARF[0].id));
+  log(arfHtml.includes("获取途径") && (arfHtml.includes("已捐赠") || arfHtml.includes("未捐赠")),
+    "古物详情含「获取途径」与捐赠状态（" + ARF[0].name + "）");
+
+  /* 奖励门槛必须单调递增且不超过清单总数（写错会让玩家永远拿不到） */
+  const needs = data.MUSEUM_REWARDS.map((r) => r.need);
+  const sortedNeeds = needs.slice().sort((a, b) => a - b);
+  log(JSON.stringify(needs) === JSON.stringify(sortedNeeds),
+    "博物馆奖励门槛递增（" + needs.join(" < ") + "）");
+  log(needs[needs.length - 1] <= mn.length,
+    "最高奖励门槛 " + needs[needs.length - 1] + " 不超过清单总数 " + mn.length);
+
+  /* ---------- 12. 视觉资源 ---------- */
+  console.log("\n=== 12. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

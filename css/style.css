@@ -609,6 +609,10 @@ html, body {
   border-color: #a8bccd;
   color: #46617a;
 }
+/* 博物馆捐赠进度条与奖励门槛 */
+.museum-bar { margin-bottom: 12px; }
+.museum-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.museum-rewards { display: flex; flex-wrap: wrap; gap: 6px; }
 /* 调料/食用增益 chip：与物品 chip 区分开，用暖金色 */
 .chip-buff {
   background: linear-gradient(180deg, #fff4dd, #f8e6c0);

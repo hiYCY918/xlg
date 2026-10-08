@@ -847,6 +847,92 @@ function renderArtisan() {
   body.appendChild(grid);
 }
 
+/* ---- 古物与博物馆 ---- */
+/* 博物馆可捐赠清单 = 古物 + 矿物（矿物条目已属采矿模块，这里只做进度聚合，不重复造条目） */
+const MUSEUM_KEY = "xlg.museum.v1";
+function readMuseum() {
+  try {
+    const raw = localStorage.getItem(MUSEUM_KEY);
+    const obj = raw ? JSON.parse(raw) : null;
+    return obj && typeof obj === "object" ? obj : {};
+  } catch (err) { return {}; }
+}
+function writeMuseum(obj) {
+  try { localStorage.setItem(MUSEUM_KEY, JSON.stringify(obj)); } catch (err) { /* 忽略 */ }
+}
+function isDonated(name) { return readMuseum()[name] === true; }
+/* 切换捐赠状态；返回是否发生变化 */
+function toggleDonate(name) {
+  const all = readMuseum();
+  if (all[name]) delete all[name];
+  else all[name] = true;
+  writeMuseum(all);
+  return true;
+}
+function museumDonatedCount() {
+  return MUSEUM_NAMES.filter(isDonated).length;
+}
+/* 进度奖励：达到门槛即视为已获得 */
+const MUSEUM_REWARDS = [
+  { need: 40,  reward: "矮人卷轴 I–IV 齐：解锁矮人语翻译" },
+  { need: 41,  reward: "古代种子：冈瑟给古代种子配方" },
+  { need: 60,  reward: "冈瑟给下水道钥匙（进入下水道）" },
+  { need: 95,  reward: "冈瑟给生锈的钥匙（进入女巫小屋）" },
+];
+
+function renderArtifacts() {
+  const body = $("#body-artifacts");
+  body.innerHTML = "";
+  const total = updateModuleCount(SECTION.artifacts);
+  setShown("artifacts", ARTIFACTS.length, total);
+
+  const donated = museumDonatedCount();
+  const all = MUSEUM_NAMES.length;
+  const pct = all ? Math.round((donated / all) * 100) : 0;
+
+  const bar = document.createElement("div");
+  bar.className = "museum-bar";
+  bar.innerHTML =
+    `<div class="museum-progress"><div class="bundle-bar"><i style="width: ${pct}%"></i></div>` +
+    `<span class="bundle-count">博物馆捐赠 ${donated} / ${all}（${pct}%）</span></div>` +
+    `<div class="museum-rewards">` + MUSEUM_REWARDS.map((r) =>
+      `<span class="chip${donated >= r.need ? " chip-buff" : " chip-plain"}">${donated >= r.need ? "✔ " : ""}${r.need} 件：${esc(r.reward)}</span>`
+    ).join("") + `</div>`;
+  body.appendChild(bar);
+
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "bundle-reset";
+  resetBtn.textContent = "清空捐赠进度";
+  resetBtn.addEventListener("click", () => {
+    writeMuseum({});
+    renderArtifacts();
+  });
+  const row = document.createElement("div");
+  row.className = "bundle-actions";
+  const hint = document.createElement("p");
+  hint.className = "bundle-hint";
+  hint.textContent = "勾选表示已捐赠给博物馆。进度保存在本机浏览器。";
+  row.appendChild(hint);
+  row.appendChild(resetBtn);
+  body.appendChild(row);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = ARTIFACTS.map((a) => {
+    const on = isDonated(a.name);
+    return `
+      <div ${cardAttrs(a.id)}>
+        ${itemIconHtml(a.id, a.name, GENERIC_ICON)}
+        <h3>${esc(a.name)}</h3>
+        <button class="bundle-item${on ? " is-done" : ""}" data-donate="${esc(a.name)}" role="checkbox" aria-checked="${on ? "true" : "false"}" title="标记已捐赠">
+          <span class="bundle-box">${on ? "✔" : ""}</span><span class="bundle-item-text">${on ? "已捐赠" : "未捐赠"}</span>
+        </button>
+        <div class="foot">售价 <span class="gold-text">${a.sell}</span><br><span class="muted">📍 ${esc(a.from)}</span></div>
+      </div>`;
+  }).join("") || emptyState("暂无古物数据");
+  body.appendChild(grid);
+}
+
 /* ---- 事件 ---- */
 function renderEvents() {
   const body = $("#body-events");
@@ -1085,6 +1171,19 @@ const REGISTRY = [
     },
   },
   {
+    id: "artifacts", stateKey: [], spriteFor: "", sprite: "ancient-doll", icon: "🏺", label: "古物",
+    sub: "博物馆收藏品的获取途径与捐赠进度", data: "ARTIFACTS", render: renderArtifacts,
+    indexExtra: (a) => [a.from],
+    detail: (a) => detailHead(itemIconHtml(a.id, a.name, GENERIC_ICON), a.name, "博物馆收藏品") +
+      detailSection("数值", kvGrid([
+        ["售价", a.sell + " 金"],
+        ["捐赠", isDonated(a.name) ? "✅ 已捐赠" : "未捐赠"],
+      ])) +
+      detailSection("获取途径", `<p>${esc(a.from)}</p>`) +
+      detailSection("用途", `<p>${esc("可捐赠给博物馆推进收藏进度，也可直接出售（售价通常不高，建议优先捐赠）。")}</p>`) +
+      detailSection("相关", `<div class="chip-list"><span class="chip chip-link" data-goto-module="artifacts" data-goto-id="${esc(a.id)}" role="button" tabindex="0">🏺 博物馆进度</span></div>`),
+  },
+  {
     id: "artisan", stateKey: ["artisan"], spriteFor: "", sprite: "cheese-press", icon: "🧀", label: "工匠制品",
     sub: "加工品的产出机器、原料与售价", data: "ARTISAN", render: renderArtisan,
     resetFilter: (s) => { s.artisan = "全部"; },
@@ -1162,10 +1261,12 @@ const REGISTRY = [
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
-  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN,
+  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
+/* 博物馆可捐赠清单：古物 + 矿物（矿物沿用采矿模块的条目名） */
+const MUSEUM_NAMES = ARTIFACTS.map((a) => a.name).concat(MUSEUM_MINERALS);
 
 /* 注册表自洽化：解析 data 引用、补全缺省字段、按 id 建表 */
 REGISTRY.forEach((s) => {
