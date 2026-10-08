@@ -991,7 +991,7 @@ function buildNav() {
     b.className = "nav-item";
     b.dataset.module = m.id;
     b.innerHTML = moduleIconHtml(m) + `<span class="nav-label">${esc(m.label)}</span>`;
-    b.addEventListener("click", () => switchModule(m.id));
+    b.addEventListener("click", () => gotoItem(m.id, null));
     nav.appendChild(b);
   });
 }
@@ -1012,6 +1012,101 @@ function buildSections() {
       <div class="module-body" id="body-${m.id}"></div>`;
     page.appendChild(sec);
   });
+}
+
+/* ============================================================
+ * 深链接与状态记忆（URL hash：#模块id/条目id）
+ * ------------------------------------------------------------
+ * 攻略站的常用入口是「搜到某条目 → 把链接发给队友」，所以刷新、分享、
+ * 浏览器前进后退都要能回到同一条目。hash 只影响片段、不触发整页刷新。
+ * ============================================================ */
+const LAST_MODULE_KEY = "xlg.lastModule.v1";
+
+/* routerGuard：程序化写 hash 时置位，避免 hashchange 再跑一遍造成重复跳转 */
+let routerGuard = false;
+
+function readSetting(key) {
+  try { return localStorage.getItem(key); } catch (err) { return null; }
+}
+function writeSetting(key, val) {
+  try { localStorage.setItem(key, val); } catch (err) { /* 隐私模式下忽略 */ }
+}
+/* 解析 #模块/条目；两段都要通过校验，非法输入一律安全降级 */
+function parseHash(hash) {
+  const raw = String(hash == null ? "" : hash).replace(/^#/, "");
+  if (!raw) return { module: null, item: null };
+  const parts = raw.split("/");
+  let module = null, item = null;
+  try { module = parts[0] ? decodeURIComponent(parts[0]) : null; } catch (err) { module = parts[0] || null; }
+  try { item = parts.length > 1 && parts[1] ? decodeURIComponent(parts[1]) : null; } catch (err) { item = parts[1] || null; }
+  if (module && !SECTION[module]) return { module: null, item: null };
+  if (item && module && !SECTION[module].data.some((x) => x.id === item)) return { module, item: null };
+  return { module, item };
+}
+function hashFor(moduleId, itemId) {
+  return "#" + encodeURIComponent(moduleId) + (itemId ? "/" + encodeURIComponent(itemId) : "");
+}
+function currentHash() {
+  return (typeof location !== "undefined" && location.hash) || "";
+}
+/* 写 URL 分两种粒度（R41）：
+ *   replace（默认）——模块切换只是"就地改写"，不压历史，否则后退要按很多次；
+ *   push——「打开某条目详情」才压一条，这样后退键正好关掉弹窗、回到浏览态。 */
+function setRouteHash(moduleId, itemId, mode) {
+  if (typeof history === "undefined") return;
+  const next = hashFor(moduleId, itemId);
+  if (currentHash() === next) return;
+  routerGuard = true;
+  try {
+    if (mode === "push" && history.pushState) history.pushState(history.state, "", next);
+    else if (history.replaceState) history.replaceState(history.state, "", next);
+  } catch (err) { /* file:// 等场景忽略 */ }
+  routerGuard = false;
+}
+function currentModuleId() {
+  const active = MODULES.find((m) => {
+    const sec = $(`#module-${m.id}`);
+    return sec && !sec.hidden;
+  });
+  return active ? active.id : MODULES[0].id;
+}
+/* 默认落地模块：优先 URL，其次上次访问，最后第一个模块 */
+function defaultModuleId() {
+  return parseHash(currentHash()).module || readSetting(LAST_MODULE_KEY) || MODULES[0].id;
+}
+/* 跳到某个条目：重置目标模块筛选 → 切换 → 高亮滚动。搜索、深链接共用这一条路径。 */
+function gotoItem(moduleId, itemId) {
+  const sec = SECTION[moduleId];
+  if (!sec) return false;
+  if (itemId && !sec.data.some((x) => x.id === itemId)) itemId = null;
+  resetModuleFilter(moduleId);
+  switchModule(moduleId);
+  writeSetting(LAST_MODULE_KEY, moduleId);
+  setRouteHash(moduleId, itemId);
+  const body = $(`#body-${moduleId}`);
+  const el = body && itemId ? body.querySelector(`[data-id="${itemId}"]`) : null;
+  if (el) {
+    el.classList.remove("is-highlight");
+    void el.offsetWidth;   // 重新触发动画
+    el.classList.add("is-highlight");
+    if (typeof el.scrollIntoView === "function") el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  return true;
+}
+/* 启动时按 URL 落地：有 #模块 → 切过去；带条目 → 重置筛选并直接展开详情 */
+function restoreRoute() {
+  const route = parseHash(currentHash());
+  const moduleId = route.module || defaultModuleId();
+  if (!SECTION[moduleId]) return false;
+  switchModule(moduleId);
+  writeSetting(LAST_MODULE_KEY, moduleId);
+  if (route.item) {
+    resetModuleFilter(moduleId);
+    switchModule(moduleId);
+    openDetail(moduleId, route.item);
+  }
+  setRouteHash(moduleId, route.item);
+  return true;
 }
 
 function switchModule(id) {
@@ -1066,13 +1161,20 @@ function initGlobalSearch() {
   const index = buildIndex();
   const input = $("#globalSearch");
   const drop = $("#searchDrop");
+  if (!input || !drop) return;
+
+  function searchHits(kw) {
+    const q = String(kw || "").trim().toLowerCase();
+    if (!q) return [];
+    return index.filter((e) => e.kw.toLowerCase().includes(q));
+  }
 
   function renderDrop(kw) {
-    kw = kw.trim().toLowerCase();
-    if (!kw) { drop.hidden = true; drop.innerHTML = ""; return; }
-    const hits = index.filter((e) => e.kw.toLowerCase().includes(kw)).slice(0, 8);
+    const q = String(kw || "").trim().toLowerCase();
+    if (!q) { drop.hidden = true; drop.innerHTML = ""; return; }
+    const hits = searchHits(kw).slice(0, 8);
     if (!hits.length) {
-      drop.innerHTML = `<div class="search-empty">没有匹配「${esc(kw)}」的结果</div>`;
+      drop.innerHTML = `<div class="search-empty">没有匹配「${esc(q)}」的结果</div>`;
     } else {
       drop.innerHTML = hits.map((h) => `
         <div class="search-item" data-module="${h.module}" data-id="${esc(h.id)}">
@@ -1086,14 +1188,24 @@ function initGlobalSearch() {
   input.addEventListener("input", () => renderDrop(input.value));
   input.addEventListener("focus", () => renderDrop(input.value));
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { drop.hidden = true; input.blur(); }
+    if (e.key === "Escape") { drop.hidden = true; input.blur(); return; }
+    /* 回车直达第一条结果：搜索后不必再用鼠标去点下拉项 */
+    if (e.key === "Enter") {
+      const hit = searchHits(input.value)[0];
+      if (!hit) return;
+      if (e.preventDefault) e.preventDefault();
+      gotoItem(hit.module, hit.id);
+      drop.hidden = true;
+      input.value = "";
+      input.blur();
+    }
   });
 
   drop.addEventListener("mousedown", (e) => {
     const item = e.target.closest(".search-item");
     if (!item) return;
     e.preventDefault();
-    focusItem(item.dataset.module, item.dataset.id);
+    gotoItem(item.dataset.module, item.dataset.id);
     drop.hidden = true;
     input.value = "";
     input.blur();
@@ -1102,19 +1214,6 @@ function initGlobalSearch() {
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".topbar-search")) drop.hidden = true;
   });
-}
-
-function focusItem(moduleId, id) {
-  resetModuleFilter(moduleId);
-  switchModule(moduleId);
-  const body = $(`#body-${moduleId}`);
-  const el = body.querySelector(`[data-id="${id}"]`);
-  if (el) {
-    el.classList.remove("is-highlight");
-    void el.offsetWidth; // 重新触发动画
-    el.classList.add("is-highlight");
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
 }
 
 /* ============================================================
@@ -1197,11 +1296,20 @@ document.addEventListener("DOMContentLoaded", () => {
   buildNav();
   buildSections();
   MODULES.forEach((m) => m.render());
-  switchModule(MODULES[0].id);
+  /* 先按 URL 落地（支持直接打开 #模块/条目 的分享链接），无 hash 时回落到上次访问的模块 */
+  switchModule(defaultModuleId());
+  restoreRoute();
   initGlobalSearch();
 
   /* 卡片 → 详情弹窗（事件委托，新渲染的卡片无需重新绑定） */
   const page = $("#page");
+  /* 打开某张卡片：连同 URL 一起更新，使「点开的那一条」可分享、可前进后退 */
+  function openCard(card) {
+    const sec = card.closest(".module");
+    if (!sec) return;
+    openDetail(sec.dataset.module, card.dataset.id);
+    setRouteHash(sec.dataset.module, card.dataset.id, "push");
+  }
   page.addEventListener("click", (e) => {
     /* 收集包的捐赠勾选框优先于卡片点击处理，否则勾选会顺手弹出详情 */
     const box = e.target.closest("[data-bundle]");
@@ -1212,17 +1320,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     const card = e.target.closest("[data-id]");
-    if (!card) return;
-    const sec = card.closest(".module");
-    if (sec) openDetail(sec.dataset.module, card.dataset.id);
+    if (card) openCard(card);
   });
   page.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
     const card = e.target.closest("[data-id]");
     if (!card || !card.classList.contains("clickable")) return;
     e.preventDefault();
-    const sec = card.closest(".module");
-    if (sec) openDetail(sec.dataset.module, card.dataset.id);
+    openCard(card);
   });
 
   /* 弹窗内：收集包勾选 + 交叉跳转（如怪物掉落物 → 对应条目） */
@@ -1235,15 +1340,33 @@ document.addEventListener("DOMContentLoaded", () => {
       if (b && toggleBundleSlot(b, Number(box.dataset.slot))) {
         renderBundles();
         openDetail("bundles", b.id);
+        setRouteHash("bundles", b.id, "push");
       }
       return;
     }
     const link = e.target.closest("[data-goto-id]");
     if (!link) return;
+    /* 交叉跳转可能跨模块（掉落物 → 采矿等），走 gotoItem 一并重置筛选与 URL */
+    gotoItem(link.dataset.gotoModule, link.dataset.gotoId);
     openDetail(link.dataset.gotoModule, link.dataset.gotoId);
   });
 
   $("#modalClose").addEventListener("click", closeModal);
   $("#modal").addEventListener("click", (e) => { if (e.target === $("#modal")) closeModal(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+  /* 浏览器前进 / 后退，或用户手改 hash：按新地址重新落地。
+   * routerGuard 置位期间忽略——那是我们自己写 hash，避免重复跳转。 */
+  window.addEventListener("hashchange", () => {
+    if (routerGuard) return;
+    const route = parseHash(currentHash());
+    const moduleId = route.module || defaultModuleId();
+    if (!SECTION[moduleId]) return;
+    /* 换了模块才重置筛选；同模块内切换条目应保留用户当前的筛选条件 */
+    if (moduleId !== currentModuleId()) resetModuleFilter(moduleId);
+    switchModule(moduleId);
+    writeSetting(LAST_MODULE_KEY, moduleId);
+    if (route.item) openDetail(moduleId, route.item);
+    else closeModal();
+  });
 });

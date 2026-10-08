@@ -56,6 +56,8 @@ class El {
   querySelectorAll() { return []; }
   closest() { return null; }
   scrollIntoView() {}
+  focus() { document.activeElement = this; }
+  blur() { if (document.activeElement === this) document.activeElement = null; }
   remove() {}
   get classList() {
     const s = this;
@@ -83,6 +85,29 @@ const document = {
 globalThis.document = document;
 globalThis.window = globalThis;
 
+/* 深链接用到 location / history：给出最小可用实现，
+ * 才能断言「切模块与打开条目会写 URL」「#模块/条目 能落地」 */
+const winListeners = {};
+globalThis.addEventListener = (t, cb) => { (winListeners[t] || (winListeners[t] = [])).push(cb); };
+globalThis.location = { hash: "", href: "https://example.test/" };
+/* 记录写历史的粒度：模块切换应为 replace，打开条目应为 push（对应 R41） */
+const historyCalls = [];
+globalThis.history = {
+  state: null,
+  replaceState(state, title, url) {
+    historyCalls.push({ mode: "replace", url });
+    this.state = state;
+    if (typeof url === "string" && url.charAt(0) === "#") globalThis.location.hash = url;
+    else globalThis.location.hash = "";
+  },
+  pushState(state, title, url) {
+    historyCalls.push({ mode: "push", url });
+    this.state = state;
+    if (typeof url === "string" && url.charAt(0) === "#") globalThis.location.hash = url;
+    else globalThis.location.hash = "";
+  },
+};
+
 /* localStorage 模拟：收集包进度全靠它，必须有可断言的实现才能验证「勾选后真的存下来了」 */
 const store = new Map();
 globalThis.localStorage = {
@@ -101,7 +126,8 @@ const src =
   "cropProfit,cropHarvests,cropGrowthDays,DETAIL_RENDERERS,CROP_SEASON_FILTERS,FISH_LOCS," +
   "MODULES,REGISTRY,MODULE_DATA,buildIndex,BUNDLES,BUNDLE_ROOMS,BUNDLE_ITEM_INDEX,BUNDLE_USES," +
   "toggleBundleSlot,bundleProgress,bundleFilled,isBundleDone,bundleNeeded,bundleSlotCount," +
-  "bundleItemNames,doneBundleCount,readBundleProgress,BUNDLE_PROGRESS_KEY};";
+  "bundleItemNames,doneBundleCount,readBundleProgress,BUNDLE_PROGRESS_KEY," +
+  "parseHash,hashFor,setRouteHash,currentModuleId,defaultModuleId,restoreRoute,gotoItem,LAST_MODULE_KEY};";
 
 let data;
 try {
@@ -550,8 +576,113 @@ console.log("\n=== 3. 渲染冒烟 ===");
   store.clear();
   registry.get("#modal").hidden = true;
 
-  /* ---------- 7. 视觉资源 ---------- */
-  console.log("\n=== 7. 视觉资源（模块图标贴图） ===");
+  /* ---------- 7. 深链接与状态记忆 ---------- */
+  console.log("\n=== 7. 深链接与状态记忆 ===");
+
+  /* 7.1 解析：合法 / 非法 / 越界 三种情况都要安全 */
+  const pt = [
+    ["#fishing/legend", "fishing", "legend"],
+    ["fishing/legend", "fishing", "legend"],
+    ["#bundles", "bundles", null],
+    ["", null, null],
+    ["#", null, null],
+    ["#not-a-module/legend", null, null],
+    ["#fishing/__not_exist__", "fishing", null],
+    ["#fishing/", "fishing", null],
+  ];
+  const parseFails = [];
+  for (const [h, m, it] of pt) {
+    const r = data.parseHash(h);
+    if (r.module !== m || r.item !== it) parseFails.push(JSON.stringify(h) + "→" + r.module + "/" + r.item);
+  }
+  log(parseFails.length === 0,
+    "hash 解析（含非法/越界降级）" + (parseFails.length ? "：不符 " + parseFails.join("; ") : " 8 例"));
+
+  /* 7.2 生成与写回：写 hash 必须带上条目，且不重复写 */
+  log(data.hashFor("fishing", "legend") === "#fishing/legend" &&
+      data.hashFor("bundles", null) === "#bundles",
+    "hash 生成格式正确");
+
+  /* 7.2b 写历史的粒度：模块切换 replace、打开条目 push（R41）。
+   * 粒度写错的表现是「后退一次回不到上一个有意义的位置」。 */
+  historyCalls.length = 0;
+  location.hash = "";
+  data.setRouteHash("mining", null);
+  data.setRouteHash("mining", "diamond", "push");
+  const modes = historyCalls.map((c) => c.mode).join(",");
+  log(modes === "replace,push", "模块切换用 replace、打开条目用 push（实际 " + modes + "）");
+
+  location.hash = "";
+  data.setRouteHash("fishing", "legend");
+  log(location.hash === "#fishing/legend", "setRouteHash 写入了 location.hash（" + location.hash + "）");
+  location.hash = "#fishing/legend";
+  data.setRouteHash("fishing", "legend");
+  log(location.hash === "#fishing/legend", "重复写同一 hash 不出错");
+
+  /* 7.3 直接打开分享链接能落地 */
+  location.hash = "#fishing/legend";
+  registry.get("#modal").hidden = true;
+  const okRestore = data.restoreRoute();
+  const mHtml = String(registry.get("#modalContent").innerHTML);
+  log(okRestore && data.currentModuleId() === "fishing",
+    "打开 #fishing/legend 后当前模块为 fishing（实际 " + data.currentModuleId() + "）");
+  log(registry.get("#modal").hidden === false && mHtml.includes("传说之鱼"),
+    "打开 #fishing/legend 后直接展开该条目详情");
+
+  /* 7.4 非法链接不能让页面崩，也不该误开弹窗（R2 空值安全） */
+  location.hash = "#not-a-module/whatever";
+  registry.get("#modal").hidden = true;
+  let crash = false;
+  try { data.restoreRoute(); } catch (e) { crash = true; }
+  log(!crash, "非法 hash 不抛异常");
+  location.hash = "#fishing/__not_exist__";
+  data.restoreRoute();
+  log(registry.get("#modal").hidden === true, "条目不存在时只切模块、不误开弹窗");
+
+  /* 7.5 状态记忆：上次访问的模块写入 localStorage，下次优先落地 */
+  store.clear();
+  data.gotoItem("bundles", null);
+  log(store.get(data.LAST_MODULE_KEY) === "bundles",
+    "切换模块写入上次访问记录（" + store.get(data.LAST_MODULE_KEY) + "）");
+  location.hash = "";
+  log(data.defaultModuleId() === "bundles", "无 hash 时按上次访问落地（" + data.defaultModuleId() + "）");
+  location.hash = "#mining";
+  log(data.defaultModuleId() === "mining", "有 hash 时 URL 优先于上次访问");
+
+  /* 7.6 浏览器前进/后退：hashchange 要重新落地，非法值安全忽略 */
+  const hashHandlers = winListeners.hashchange || [];
+  log(hashHandlers.length > 0, "已注册 hashchange 处理器");
+  if (hashHandlers.length) {
+    registry.get("#modal").hidden = true;
+    location.hash = "#npc/abigail";
+    hashHandlers[0]({});
+    log(data.currentModuleId() === "npc" && registry.get("#modal").hidden === false,
+      "hashchange 后切到 npc 并打开条目详情");
+    location.hash = "#not-a-module";
+    let crash2 = false;
+    try { hashHandlers[0]({}); } catch (e) { crash2 = true; }
+    log(!crash2 && data.currentModuleId() === "npc", "hashchange 收到非法模块时保持原状");
+    location.hash = "#npc";
+    hashHandlers[0]({});
+    log(registry.get("#modal").hidden === true, "回到模块级 hash 时关闭详情弹窗");
+  }
+
+  /* 7.7 搜索回车直达第一条结果 */
+  const searchInput = registry.get("#globalSearch");
+  const enterHandlers = (searchInput.listeners.keydown || []);
+  log(enterHandlers.length > 0, "搜索框已注册 keydown 处理器");
+  if (enterHandlers.length) {
+    location.hash = "";
+    registry.get("#modal").hidden = true;
+    searchInput.value = "传说之鱼";
+    enterHandlers[0]({ key: "Enter", preventDefault: () => {} });
+    log(data.currentModuleId() === "fishing" && location.hash === "#fishing/legend",
+      "搜索后回车直达第一条结果（" + location.hash + "）");
+    log(searchInput.value === "", "回车跳转后清空搜索框");
+  }
+
+  /* ---------- 8. 视觉资源 ---------- */
+  console.log("\n=== 8. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];
