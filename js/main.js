@@ -104,6 +104,17 @@ function setShown(moduleId, shown, total) {
   el.textContent = shown === total ? "" : ` · 当前显示 ${shown} 条`;
 }
 
+/* 计数一律由 renderSection() 统一更新，渲染函数不再各自 setCount，
+ * 从根本上消除「新增模块忘写计数」这一类漏配（R1 的机制化版本）。 */
+/* 计数：默认写数据条数；注册表声明了 countText 时改用自定义文案
+ * （收集包模块显示「已完成 12 / 31 包已齐」，条数对它没有意义） */
+function updateModuleCount(section) {
+  const total = section.data ? section.data.length : 0;
+  const text = typeof section.countText === "function" ? section.countText(total) : total;
+  setCount(section.id + "Count", text);
+  return total;
+}
+
 function controlRow() {
   const row = document.createElement("div");
   row.className = "control-row";
@@ -180,6 +191,7 @@ function moduleIconHtml(m) {
   mining: "全部", combat: "全部",
   npc: "全部",
   quests: "全部", events: "全部",
+  bundles: "全部",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -216,8 +228,8 @@ function renderCrops() {
     CROPS.filter((c) => state.crops === "全部" || c.season.includes(state.crops)),
     state.cropSort
   );
-  setCount("cropsCount", CROPS.length);
-  setShown("crops", list.length, CROPS.length);
+  const total = updateModuleCount(SECTION.crops);
+  setShown("crops", list.length, total);
 
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
@@ -270,8 +282,8 @@ function renderCollect() {
   const body = $("#body-collect");
   body.innerHTML = "";
   const list = COLLECTIBLES.filter((c) => state.collect === "全部" || c.season.includes(state.collect));
-  setCount("collectCount", COLLECTIBLES.length);
-  setShown("collect", list.length, COLLECTIBLES.length);
+  const total = updateModuleCount(SECTION.collect);
+  setShown("collect", list.length, total);
 
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
@@ -305,8 +317,8 @@ function renderFishing() {
     const okSea = state.fishingSeason === "全部" || f.season.includes(state.fishingSeason);
     return okLoc && okSea;
   });
-  setCount("fishingCount", FISH.length);
-  setShown("fishing", list.length, FISH.length);
+  const total = updateModuleCount(SECTION.fishing);
+  setShown("fishing", list.length, total);
 
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
@@ -344,8 +356,8 @@ function renderMining() {
   body.innerHTML = "";
   const types = [...new Set(MINERALS.map((m) => m.type))];
   const list = MINERALS.filter((m) => state.mining === "全部" || m.type === state.mining);
-  setCount("miningCount", MINERALS.length);
-  setShown("mining", list.length, MINERALS.length);
+  const total = updateModuleCount(SECTION.mining);
+  setShown("mining", list.length, total);
 
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
@@ -380,8 +392,8 @@ function renderCombat() {
     if (state.combat === "其他") return !MAIN_LOCS.some((l) => m.location.includes(l));
     return m.location.includes(state.combat);
   });
-  setCount("combatCount", MONSTERS.length);
-  setShown("combat", list.length, MONSTERS.length);
+  const total = updateModuleCount(SECTION.combat);
+  setShown("combat", list.length, total);
 
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
@@ -412,8 +424,8 @@ function renderQuests() {
   body.innerHTML = "";
   const types = [...new Set(QUESTS.map((q) => q.type))];
   const list = QUESTS.filter((q) => state.quests === "全部" || q.type === state.quests);
-  setCount("questsCount", QUESTS.length);
-  setShown("quests", list.length, QUESTS.length);
+  const total = updateModuleCount(SECTION.quests);
+  setShown("quests", list.length, total);
 
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
@@ -445,8 +457,8 @@ function renderNpc() {
   const list = NPCS.filter((n) =>
     state.npc === "全部" || (state.npc === "可婚" ? n.marriageable : !n.marriageable)
   );
-  setCount("npcCount", NPCS.length);
-  setShown("npc", list.length, NPCS.length);
+  const total = updateModuleCount(SECTION.npc);
+  setShown("npc", list.length, total);
 
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
@@ -479,8 +491,8 @@ function renderFestivals() {
   const body = $("#body-festivals");
   const dayNum = (d) => parseInt(String(d), 10) || 0;
   const sorted = [...FESTIVALS].sort((a, b) => (SEASON_ORDER[a.season] - SEASON_ORDER[b.season]) || (dayNum(a.day) - dayNum(b.day)));
-  setCount("festivalsCount", FESTIVALS.length);
-  setShown("festivals", sorted.length, FESTIVALS.length);
+  const total = updateModuleCount(SECTION.festivals);
+  setShown("festivals", sorted.length, total);
   const wrap = document.createElement("div");
   wrap.className = "list";
   wrap.innerHTML = sorted.map((f) => `
@@ -493,13 +505,189 @@ function renderFestivals() {
   body.appendChild(wrap);
 }
 
+/* ---- 收集包（社区中心） ---- */
+/* 进度存 localStorage：{ 包 id: [已勾选的槽位下标] }。
+ * 用「槽位下标」而非计数，才能记住玩家在「任选 N 个」包里具体选了哪几个。 */
+const BUNDLE_PROGRESS_KEY = "xlg.bundleProgress.v1";
+const BUNDLE_QUALITY_LABEL = { gold: "金星", silver: "银星", iridium: "铱星" };
+let bundleResetArmed = false;
+let bundleResetTimer = null;
+
+/* 收集包「需要提交的格数」与「可选物品总数」是两个概念：
+ * 全交包两者相等；任选包（choose>0）只需交 choose 格，物品却可能多得多。
+ * 混用会导致任选包永远判不出「已完成」（曾把 9 种物品当成要交 9 格）。 */
+function bundleNeeded(b) {
+  if (b.price) return 0;
+  const items = (b.items || []).length;
+  return b.choose > 0 ? Math.min(b.choose, items) : items;
+}
+function bundleSlotCount(b) {
+  return b.price ? 0 : (b.items || []).length;
+}
+function bundleItemNames(it) {
+  return it.alts && it.alts.length ? it.alts : [it.name];
+}
+function bundleItemLabel(it) {
+  const names = bundleItemNames(it);
+  return names.map((n) => (it.qty > 1 ? n + " ×" + it.qty : n)).join(" / ");
+}
+
+/* localStorage 在隐私模式/沙箱下可能抛错，读写一律兜住，绝不让存储问题拖垮整页 */
+function readBundleProgress() {
+  try {
+    const raw = localStorage.getItem(BUNDLE_PROGRESS_KEY);
+    const obj = raw ? JSON.parse(raw) : null;
+    return obj && typeof obj === "object" ? obj : {};
+  } catch (err) { return {}; }
+}
+function writeBundleProgress(obj) {
+  try { localStorage.setItem(BUNDLE_PROGRESS_KEY, JSON.stringify(obj)); } catch (err) { /* 忽略 */ }
+}
+/* 进度读取：下标一律归一化为整数再返回。
+ * 必须容忍字符串下标——DOM 的 dataset 取回来是 "0" 而不是 0，
+ * 早期版本用 Number.isInteger 过滤会把它整条丢掉，造成「界面显示已勾选、
+ * 实际进度为 0」的静默不一致（勾选看着生效，刷新后又没了）。 */
+function slotIndexList(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const x of v) {
+    const n = Number(x);
+    if (Number.isInteger(n) && n >= 0 && out.indexOf(n) < 0) out.push(n);
+  }
+  return out;
+}
+/* 同时接受「包 id」与「包对象」：早期只接受 id，传入对象时会静默返回空数组
+ * （查不到 key），表现为「明明勾选了却显示 0」，且不报任何错。 */
+function bundleProgress(idOrBundle) {
+  const id = idOrBundle && typeof idOrBundle === "object" ? idOrBundle.id : idOrBundle;
+  return slotIndexList(readBundleProgress()[id]);
+}
+function bundleFilled(b) {
+  const needed = bundleNeeded(b);
+  const total = bundleSlotCount(b);
+  const n = bundleProgress(b.id).filter((i) => i < total).length;
+  return Math.min(n, needed);
+}
+function isBundleDone(b) {
+  const needed = bundleNeeded(b);
+  return needed > 0 && bundleFilled(b) >= needed;
+}
+function doneBundleCount() {
+  return (SECTION.bundles ? SECTION.bundles.data : []).filter(isBundleDone).length;
+}
+/* 切换某个槽位的捐赠状态；返回是否发生变化。
+ * 已完成的包**允许撤销**——游戏里提交后仍可取回物品，进度面板也不该比游戏更死板。 */
+function toggleBundleSlot(b, index, on) {
+  const total = bundleSlotCount(b);
+  const slot = Number(index);            /* 收口成数字：调用方可能传 dataset 里的字符串 */
+  if (!Number.isInteger(slot) || slot < 0 || slot >= total) return false;
+  const next = bundleProgress(b.id).filter((i) => i < total);
+  const has = next.indexOf(slot) >= 0;
+  if ((on === true && has) || (on === false && !has)) return false;
+  if (!has) next.push(slot);
+  else if (on === false || on === undefined) next.splice(next.indexOf(slot), 1);
+  const all = readBundleProgress();
+  all[b.id] = next;
+  writeBundleProgress(all);
+  return true;
+}
+function clearBundleProgress() {
+  writeBundleProgress({});
+  pendingFocus = "bundleReset";
+}
+
+/* 收集包物品 → 站内条目（用于交叉跳转） */
+function bundleItemChip(name) {
+  const hit = BUNDLE_ITEM_INDEX.get(name);
+  if (!hit) return `<span class="chip">${esc(name)}</span>`;
+  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(name)}">${esc(name)}</span>`;
+}
+function bundleQualityTag(q) {
+  return q ? ` <span class="bundle-quality">${esc(BUNDLE_QUALITY_LABEL[q] || q)}</span>` : "";
+}
+
+function renderBundles() {
+  const body = $("#body-bundles");
+  body.innerHTML = "";
+  const list = BUNDLES.filter((b) => state.bundles === "全部" || b.room === state.bundles);
+  const total = updateModuleCount(SECTION.bundles);
+  setShown("bundles", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(
+    [{ value: "全部", label: "全部房间" }, ...BUNDLE_ROOMS.map((r) => ({ value: r.name, label: r.name + " " + r.count }))],
+    state.bundles,
+    (v) => { state.bundles = v; renderBundles(); }
+  ));
+  body.appendChild(toolbar);
+
+  const hint = document.createElement("p");
+  hint.className = "bundle-hint";
+  hint.textContent = "勾选表示已捐赠。进度保存在本机浏览器，可随时清空。";
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "bundle-reset" + (bundleResetArmed ? " is-armed" : "");
+  resetBtn.textContent = bundleResetArmed ? "再点一次确认清空" : "清空进度";
+  if (pendingFocus === "bundleReset") { pendingFocus = null; if (typeof resetBtn.focus === "function") resetBtn.focus(); }
+  resetBtn.addEventListener("click", () => {
+    if (!bundleResetArmed) {
+      bundleResetArmed = true;
+      if (bundleResetTimer) clearTimeout(bundleResetTimer);
+      bundleResetTimer = setTimeout(() => { bundleResetArmed = false; renderBundles(); }, 4000);
+      renderBundles();
+      return;
+    }
+    bundleResetArmed = false;
+    if (bundleResetTimer) clearTimeout(bundleResetTimer);
+    clearBundleProgress();
+    renderBundles();
+  });
+  const row = document.createElement("div");
+  row.className = "bundle-actions";
+  row.appendChild(hint);
+  row.appendChild(resetBtn);
+  body.appendChild(row);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((b) => {
+    const needed = bundleNeeded(b);
+    const filled = bundleFilled(b);
+    const done = isBundleDone(b);
+    const pct = needed ? Math.round((filled / needed) * 100) : 0;
+    const rew = (b.rewards || []).map((r) => r.name + (r.qty > 1 ? " ×" + r.qty : "")).join("、") || "—";
+
+    const chips = b.price
+      ? `<div class="bundle-items"><span class="bundle-price">💰 ${b.price} 金</span></div>`
+      : `<div class="bundle-items">` + (b.items || []).map((it, i) => {
+        const on = bundleProgress(b.id).indexOf(i) >= 0;
+        const label = bundleItemLabel(it);
+        return `<button class="bundle-item${on ? " is-done" : ""}" data-bundle="${esc(b.id)}" data-slot="${i}"` +
+          ` role="checkbox" aria-checked="${on ? "true" : "false"}" title="${esc(label)}">` +
+          `<span class="bundle-box">${on ? "✔" : ""}</span><span class="bundle-item-text">${esc(label)}</span></button>`;
+      }).join("") + `</div>`;
+
+    return `
+      <div class="card clickable bundle-card${done ? " is-done" : ""}" data-id="${esc(b.id)}" role="button" tabindex="0">
+        <h3>${esc(b.name)} <span class="badge brown">${esc(b.room)}</span></h3>
+        <div class="bundle-progress">
+          <div class="bundle-bar"><i style="width: ${pct}%"></i></div>
+          <span class="bundle-count">${b.price ? "待购买" : filled + " / " + needed + (b.choose ? "（任选）" : "")}</span>
+        </div>
+        ${chips}
+        <div class="foot">奖励 <span class="gold-text">${esc(rew)}</span></div>
+      </div>`;
+  }).join("") || emptyState("该房间暂无收集包数据");
+  body.appendChild(grid);
+}
+
 /* ---- 事件 ---- */
 function renderEvents() {
   const body = $("#body-events");
   body.innerHTML = "";
   const list = EVENTS.filter((e) => state.events === "全部" || e.type === state.events);
-  setCount("eventsCount", EVENTS.length);
-  setShown("events", list.length, EVENTS.length);
+  const total = updateModuleCount(SECTION.events);
+  setShown("events", list.length, total);
 
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
@@ -522,21 +710,279 @@ function renderEvents() {
 }
 
 /* ============================================================
- * 模块配置、导航与页面构建
+ * 模块注册表（唯一事实来源）
+ * ------------------------------------------------------------
+ * 每个模块的全部能力都声明在这一处：
+ *   label/sub/sprite/icon  导航与标题
+ *   data                   数据数组（计数、搜索索引、自检都从这里取）
+ *   render                 渲染函数
+ *   stateKey/resetFilter   筛选状态与「跳转前重置」
+ *   detail                 详情弹窗渲染函数
+ *   indexExtra             搜索索引的附加关键词（用途、掉落、礼物…）
+ * 新增模块只需在这里加一项 + 在 data.js 加一个数组，
+ * 不再需要改动 FILTER_RESET / DETAIL_RENDERERS / buildIndex / check.js 四处。
  * ============================================================ */
-/* 模块图标使用真实游戏贴图（img/<sprite>.png），emoji 仅作贴图缺失时的兜底。
- * 挑选原则：小尺寸下轮廓清晰、在深木色导航栏上够醒目、贴合模块语义。 */
-const MODULES = [
-  { id: "crops",     sprite: "parsnip",         icon: "🌾", label: "农作物", sub: "各季节作物成熟时间、价格与收益", render: renderCrops },
-  { id: "collect",   sprite: "common-mushroom", icon: "🍄", label: "收集物", sub: "野外采集物品的季节与地点",       render: renderCollect },
-  { id: "fishing",   sprite: "legend",          icon: "🎣", label: "钓鱼",   sub: "鱼类出现的水域、季节与时间",     render: renderFishing },
-  { id: "mining",    sprite: "diamond",         icon: "⛏️", label: "采矿",   sub: "矿石与宝石的分布层级",           render: renderMining },
-  { id: "combat",    sprite: "green-slime",     icon: "⚔️", label: "战斗",   sub: "怪物属性、出没地点与掉落",       render: renderCombat },
-  { id: "quests",    sprite: "star-shard",      icon: "📜", label: "任务",   sub: "主线与委托任务的目标与奖励",     render: renderQuests },
-  { id: "npc",       sprite: "npc-abigail",     icon: "👤", label: "NPC",    sub: "村民生日、最爱礼物与住址",       render: renderNpc },
-  { id: "festivals", sprite: "pumpkin",         icon: "🎉", label: "节日",   sub: "全年节日的日期、地点与玩法",     render: renderFestivals },
-  { id: "events",    sprite: "fairy-rose",      icon: "✨", label: "事件",   sub: "随机事件与心事件的触发条件",     render: renderEvents },
+const REGISTRY = [
+  {
+    id: "crops", stateKey: ["crops", "cropSort"], spriteFor: "", sprite: "parsnip", icon: "🌾", label: "农作物",
+    sub: "各季节作物成熟时间、价格与收益", data: "CROPS", render: renderCrops,
+    resetFilter: (s) => { s.crops = "全部"; s.cropSort = "default"; },
+    detail: (c) => detailHead(
+      itemIconHtml(c.id, c.name, CROP_ICONS[c.id] || GENERIC_ICON),
+      c.name,
+      esc(seasonLabel(c.season)) + " · " + (c.regrow > 0 ? "可多次收获" : "单次收获")
+    ) +
+      detailSection("经济数据", kvGrid([
+        ["种子价", c.seed + " 金"],
+        ["售价", c.sell + " 金"],
+        ["单收净利", money(c.sell - c.seed)],
+        ["每日净收益", raw(`<b class="${cropProfit(c) < 0 ? "neg-text" : "gold-text"}">${fmt1(cropProfit(c))}</b> 金/天`)],
+        ["成熟天数", cropGrowthText(c)],
+        ["再收间隔", c.regrow > 0 ? c.regrow + " 天" : "—"],
+        ["28 天可收", cropHarvests(c) + " 次"],
+        ["季节总收益", money(cropHarvests(c) * c.sell - c.seed)],
+      ])) +
+      detailSection("备注", `<p>${esc(c.note)}</p>`) +
+      bundleUsesSection(c.name) +
+      detailSection("算法说明", `<p class="muted">每日净收益 =（28 天季节内总收获额 − 种子价）÷ 末次收获日（第 ${cropLastDay(c)} 天）。多季作物按单季 28 天估算。</p>`),
+  },
+  {
+    id: "collect", stateKey: ["collect"], spriteFor: "", sprite: "common-mushroom", icon: "🍄", label: "收集物",
+    sub: "野外采集物品的季节与地点", data: "COLLECTIBLES", render: renderCollect,
+    resetFilter: (s) => { s.collect = "全部"; },
+    indexExtra: (c) => [c.use],
+    detail: (c) => detailHead(
+      itemIconHtml(c.id, c.name, COLLECT_ICONS[c.id] || GENERIC_ICON),
+      c.name,
+      esc(seasonLabel(c.season)) + " · 野外采集"
+    ) +
+      detailSection("基础信息", kvGrid([
+        ["季节", seasonLabel(c.season)],
+        ["采集地点", c.location],
+        ["售价", c.sell + " 金"],
+      ])) +
+      detailSection("用途", `<p>${esc(c.use)}</p>`) +
+      bundleUsesSection(c.name),
+  },
+  {
+    id: "fishing", stateKey: ["fishingLoc", "fishingSeason"], spriteFor: "", sprite: "legend", icon: "🎣", label: "钓鱼",
+    sub: "鱼类出现的水域、季节与时间", data: "FISH", render: renderFishing,
+    resetFilter: (s) => { s.fishingLoc = "全部"; s.fishingSeason = "全部"; },
+    indexExtra: (f) => [f.use, f.location],
+    detail: (f) => detailHead(
+      itemIconHtml(f.id, f.name, typeof FISH_ICON !== "undefined" ? FISH_ICON : GENERIC_ICON),
+      f.name,
+      esc(f.location) + " · " + esc(seasonLabel(f.season))
+    ) +
+      detailSection("出没条件", kvGrid([
+        ["水域", f.location],
+        ["季节", seasonLabel(f.season)],
+        ["时间", f.time],
+        ["天气", f.weather],
+        ["难度", raw(stars(f.difficulty) + ` <span class="muted">(${f.difficulty})</span>`)],
+      ])) +
+      detailSection("经济", kvGrid([["售价", f.sell + " 金"]])) +
+      detailSection("用途", `<p>${esc(f.use)}</p>`) +
+      bundleUsesSection(f.name),
+  },
+  {
+    id: "mining", stateKey: ["mining"], spriteFor: "", sprite: "diamond", icon: "⛏️", label: "采矿",
+    sub: "矿石与宝石的分布层级", data: "MINERALS", render: renderMining,
+    indexExtra: (m) => [m.use, m.type, m.level],
+    detail: (m) => detailHead(itemIconHtml(m.id, m.name, MINERAL_ICON), m.name, esc(m.type)) +
+      detailSection("分布", kvGrid([
+        ["类型", m.type],
+        ["出现层级", m.level],
+        ["售价", m.sell + " 金"],
+      ])) +
+      detailSection("用途", `<p>${esc(m.use)}</p>`) +
+      bundleUsesSection(m.name),
+  },
+  {
+    id: "combat", stateKey: ["combat"], spriteFor: "", sprite: "green-slime", icon: "⚔️", label: "战斗",
+    sub: "怪物属性、出没地点与掉落", data: "MONSTERS", render: renderCombat,
+    indexExtra: (m) => [m.type, m.location].concat(m.drops || []),
+    detail: (m) => detailHead(
+      itemIconHtml(m.id, m.name, MONSTER_ICON),
+      m.name,
+      esc(m.type) + " · " + esc(m.location)
+    ) +
+      detailSection("属性", kvGrid([
+        ["生命值", monsterStat(m.hp)],
+        ["伤害", monsterStat(m.damage)],
+        ["类型", m.type],
+        ["出没地点", m.location],
+      ])) +
+      bundleUsesSection(m.name) +
+      detailSection("掉落物", `<div class="chip-list">${m.drops.map(linkChip).join("")}</div>` +
+        (m.drops.some((d) => NAME_INDEX.has(d)) ? `<p class="muted">带下划线的掉落物可点击跳转。</p>` : "")),
+  },
+  {
+    id: "quests", stateKey: ["quests"], sprite: "star-shard", icon: "📜", label: "任务",
+    sub: "主线与委托任务的目标与奖励", data: "QUESTS", render: renderQuests,
+    indexExtra: (q) => [q.objective, q.source, q.type],
+    detail: (q) => detailHead(emojiIcon("📜"), q.name, esc(q.type)) +
+      detailSection("任务目标", `<p>${esc(q.objective)}</p>`) +
+      detailSection("来源与奖励", kvGrid([
+        ["来源", q.source],
+        ["类型", q.type],
+        ["奖励", q.reward],
+      ])),
+  },
+  {
+    id: "npc", stateKey: ["npc"], spriteFor: "npc-", sprite: "npc-abigail", icon: "👤", label: "NPC",
+    sub: "村民生日、最爱礼物与住址", data: "NPCS", render: renderNpc,
+    indexExtra: (n) => n.loves.concat([n.birthday, n.location]),
+    detail: (n) => detailHead(
+      npcIconHtml(n.id, n.name, npcAvatar(NPCS.indexOf(n))),
+      n.name,
+      `📍 ${esc(n.location)} · ${n.marriageable ? "可结婚" : "不可结婚"}`
+    ) +
+      detailSection("简介", `<p>${esc(n.desc)}</p>`) +
+      detailSection("生日", `<p>🎂 ${esc(n.birthday)}</p>`) +
+      detailSection("最爱的礼物", `<div class="chip-list">${n.loves.map((g) => `<span class="chip">🎁 ${esc(g)}</span>`).join("")}</div>`) +
+      bundleUsesSection(n.name),
+  },
+  {
+    id: "festivals", stateKey: [], sprite: "pumpkin", icon: "🎉", label: "节日",
+    sub: "全年节日的日期、地点与玩法", data: "FESTIVALS", render: renderFestivals,
+    indexExtra: (f) => [f.location, f.desc],
+    detail: (f) => detailHead(emojiIcon("🎉"), f.name, `${esc(f.season)}季 ${esc(String(f.day))} 日`) +
+      detailSection("时间地点", kvGrid([
+        ["季节", f.season],
+        ["日期", f.day + " 日"],
+        ["地点", f.location],
+        ["时间", f.time],
+      ])) +
+      detailSection("介绍", `<p>${esc(f.desc)}</p>`),
+  },
+  {
+    id: "events", stateKey: ["events"], sprite: "fairy-rose", icon: "✨", label: "事件",
+    sub: "随机事件与心事件的触发条件", data: "EVENTS", render: renderEvents,
+    indexExtra: (e) => [e.trigger, e.type],
+    detail: (e) => detailHead(emojiIcon("✨"), e.name, esc(e.type)) +
+      detailSection("触发条件", `<p>${esc(e.trigger)}</p>`) +
+      detailSection("说明", `<p>${esc(e.desc)}</p>`),
+  },
+  {
+    id: "bundles", stateKey: ["bundles"], sprite: "npc-junimo", icon: "📦", label: "收集包",
+    sub: "社区中心各房间的收集包物品与奖励", data: "BUNDLES", render: renderBundles,
+    resetFilter: (s) => { s.bundles = "全部"; },
+    /* 计数文案：收集包模块的核心信息是进度而非条数（后缀由标题模板决定，
+     * 故这里自带单位，末尾不再追加「条」） */
+    countText: () => doneBundleCount() + " / " + BUNDLES.length + " 包已齐",
+    countSuffix: "",
+    indexExtra: (b) => [b.room].concat((b.rewards || []).map((r) => r.name)),
+    detail: (b) => {
+      const needed = bundleNeeded(b);
+      const done = isBundleDone(b);
+      const filled = bundleFilled(b);
+      const room = BUNDLE_ROOMS.find((r) => r.name === b.room);
+      const rew = (b.rewards || []).map((r) => `${esc(r.name)} ×${r.qty}`).join("、") || "—";
+      const head = detailHead(emojiIcon("📦"), b.name,
+        `${esc(b.room)}${room && room.sub ? " · " + esc(room.sub) : ""}`);
+
+      const need = b.price
+        ? `<p>在社区中心金库点击「购买」按钮即可完成，需 <b class="gold-text">${b.price} 金</b>。</p>`
+        : `<div class="bundle-need">` + (b.items || []).map((it, i) => {
+          const on = bundleProgress(b.id).indexOf(i) >= 0;
+          const links = bundleItemNames(it).map(bundleItemChip).join(` <span class="or-text">或</span> `);
+          return `<div class="bundle-need-row${on ? " is-done" : ""}">` +
+            `<button class="bundle-item" data-bundle-detail="${esc(b.id)}" data-slot="${i}" role="checkbox" aria-checked="${on ? "true" : "false"}">` +
+            `<span class="bundle-box">${on ? "✔" : ""}</span></button>` +
+            `<span class="bundle-need-name">${links}${bundleQualityTag(it.quality)}` +
+            (it.qty > 1 ? ` <b class="gold-text">×${it.qty}</b>` : "") + `</span></div>`;
+        }).join("") + `</div>`;
+
+      const progress = b.price ? "" : detailSection("进度",
+        `<p>${done ? "✅ 该收集包已完成" : `已捐赠 <b class="gold-text">${filled}</b> / ${needed} 格`}` +
+        (b.choose ? `（共 ${(b.items || []).length} 种物品，任选 ${b.choose} 种提交即可）` : "") + `</p>`);
+
+      return head + progress +
+        detailSection(b.price ? "完成方式" : "所需物品", need) +
+        detailSection("奖励", `<p>${rew}</p>`) +
+        (room && room.sub ? detailSection("完成该房间", `<p>${esc(room.sub)}</p>`) : "");
+    },
+  },
 ];
+
+/* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
+const MODULE_DATA = {
+  CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
+  BUNDLES, BUNDLE_ROOMS,
+};
+
+/* 注册表自洽化：解析 data 引用、补全缺省字段、按 id 建表 */
+REGISTRY.forEach((s) => {
+  s.dataRef = s.data;                    /* 数组名留档（自检与调试用） */
+  s.data = MODULE_DATA[s.dataRef] || [];
+  if (!s.stateKey) s.stateKey = [];
+  if (!s.indexExtra) s.indexExtra = () => [];
+  if (typeof s.resetFilter !== "function") s.resetFilter = () => {};
+  if (typeof s.detail !== "function") s.detail = () => null;
+});
+const SECTION = Object.fromEntries(REGISTRY.map((s) => [s.id, s]));
+
+/* 对外保持 MODULES 形状不变（banner 导航、自检第 6 节都读它） */
+const MODULES = REGISTRY.map((s) => ({
+  id: s.id, sprite: s.sprite, icon: s.icon, label: s.label, sub: s.sub, render: s.render,
+  /* dataRef：数据数组名。自检侧据此由注册表反查数据，做到「加模块不用改测试」 */
+  dataRef: s.dataRef,
+  /* countSuffix：标题里计数后面的单位，默认「条」；收集包这类自带单位的模块传空串 */
+  countSuffix: s.countSuffix,
+}));
+
+/* 筛选值 → 结果集（各渲染函数共用，避免同一段 filter 抄 9 遍） */
+function selectBy(sectionId, key, value) {
+  const list = SECTION[sectionId].data;
+  return value === "全部" ? list.slice() : list.filter((x) => (x[key] || "").includes(value));
+}
+/* 详情渲染器：对外仍是 id → html（不认识/不存在的 id 返回 null，保持空值安全） */
+function renderDetail(moduleId, id) {
+  const sec = SECTION[moduleId];
+  if (!sec || !id) return null;
+  const item = sec.data.find((x) => x.id === id);
+  if (!item) return null;
+  try { return sec.detail(item); } catch (err) { return null; }
+}
+const DETAIL_RENDERERS = Object.fromEntries(REGISTRY.map((s) => [s.id, (id) => renderDetail(s.id, id)]));
+
+/* 收集包物品 → 站内条目（用于交叉跳转）。
+ * 两份来源：①站内已有条目名；②收集包物品自带的「同源 id」（如 wood → mining/木材，
+ * 与站内 img/wood.png 同一套命名），后者能接住「词汇不同但同一物品」的情况。 */
+const BUNDLE_ITEM_INDEX = (() => {
+  const map = new Map();
+  REGISTRY.forEach((s) => s.data.forEach((it) => { if (!map.has(it.name)) map.set(it.name, { module: s.id, id: it.id }); }));
+  BUNDLES.forEach((b) => (b.items || []).forEach((it) => {
+    const names = bundleItemNames(it);
+    names.forEach((n) => {
+      if (map.has(n) || !it.id) return;
+      const host = REGISTRY.find((s) => s.data.some((x) => x.id === it.id));
+      if (host) map.set(n, { module: host.id, id: it.id });
+    });
+  }));
+  return map;
+})();
+
+/* 反向索引：物品名 → 需要它的收集包（详情页「用于收集包」一节用） */
+const BUNDLE_USES = (() => {
+  const map = new Map();
+  BUNDLES.forEach((b) => (b.items || []).forEach((it) => {
+    bundleItemNames(it).forEach((n) => {
+      if (!map.has(n)) map.set(n, []);
+      map.get(n).push(b);
+    });
+  }));
+  return map;
+})();
+/* 详情页附加区块：该物品用于哪些收集包 */
+function bundleUsesSection(name) {
+  const list = BUNDLE_USES.get(name);
+  if (!list || !list.length) return "";
+  return detailSection("用于收集包", `<div class="chip-list">` +
+    list.map((b) => `<span class="chip chip-link" data-goto-module="bundles" data-goto-id="${esc(b.id)}" role="button" tabindex="0" title="查看${esc(b.name)}">${esc(b.name)}</span>`).join("") +
+    `</div>`);
+}
 
 function buildNav() {
   const nav = $("#nav");
@@ -561,7 +1007,7 @@ function buildSections() {
     sec.innerHTML = `
       <div class="module-head">
         <h2>${moduleIconHtml(m)}<span class="h2-label">${esc(m.label)}</span></h2>
-        <p class="sub">${m.sub} · 共 <span id="${m.id}Count">0</span> 条<span class="shown-count" id="shown-${m.id}"></span></p>
+        <p class="sub">${m.sub} · 共 <span id="${m.id}Count">0</span>${esc(m.countSuffix === undefined ? " 条" : m.countSuffix)}<span class="shown-count" id="shown-${m.id}"></span></p>
       </div>
       <div class="module-body" id="body-${m.id}"></div>`;
     page.appendChild(sec);
@@ -578,40 +1024,43 @@ function switchModule(id) {
   });
 }
 
-/* 全局搜索跳转前清空该模块筛选，避免目标条目被当前筛选条件挡住 */
-const FILTER_RESET = {
-  crops: () => { state.crops = "全部"; },
-  collect: () => { state.collect = "全部"; },
-  fishing: () => { state.fishingLoc = "全部"; state.fishingSeason = "全部"; },
-  mining: () => { state.mining = "全部"; },
-  combat: () => { state.combat = "全部"; },
-  quests: () => { state.quests = "全部"; },
-  npc: () => { state.npc = "全部"; },
-  events: () => { state.events = "全部"; },
-};
+/* 全局搜索跳转前清空该模块筛选，避免目标条目被当前筛选条件挡住（R18）。
+ * 重置逻辑由注册表提供，新增模块自动获得该能力。 */
 function resetModuleFilter(moduleId) {
-  const reset = FILTER_RESET[moduleId];
-  const mod = MODULES.find((m) => m.id === moduleId);
-  if (reset && mod) { reset(); mod.render(); }
+  const sec = SECTION[moduleId];
+  if (!sec) return;
+  sec.resetFilter(state);
+  sec.render();
 }
 
 /* ============================================================
  * 全局搜索
  * ============================================================ */
-function buildIndex() {
-  return [
-    ...CROPS.map((c) => ({ module: "crops", id: c.id, name: c.name, kw: c.name + c.season.join("") })),
-    ...COLLECTIBLES.map((c) => ({ module: "collect", id: c.id, name: c.name, kw: c.name })),
-    ...FISH.map((f) => ({ module: "fishing", id: f.id, name: f.name, kw: f.name + f.location })),
-    ...MINERALS.map((m) => ({ module: "mining", id: m.id, name: m.name, kw: m.name + m.type })),
-    ...MONSTERS.map((m) => ({ module: "combat", id: m.id, name: m.name, kw: m.name + m.location })),
-    ...QUESTS.map((q) => ({ module: "quests", id: q.id, name: q.name, kw: q.name })),
-    ...NPCS.map((n) => ({ module: "npc", id: n.id, name: n.name, kw: n.name + n.loves.join("") + n.birthday })),
-    ...FESTIVALS.map((f) => ({ module: "festivals", id: f.id, name: f.name, kw: f.name })),
-    ...EVENTS.map((e) => ({ module: "events", id: e.id, name: e.name, kw: e.name })),
-  ];
+/* 索引项 = 名字 + 注册表声明的附加关键词（用途/掉落/礼物/地点…），
+ * 让「按用途找东西」这类攻略站最常见的查法可用。 */
+function indexTerms(item) {
+  if (!item) return [];
+  return [item.name, item.use, item.note, item.desc, item.objective, item.location, item.type]
+    .concat(Array.isArray(item.season) ? item.season : [])
+    .concat(item.drops || [])
+    .concat(item.loves || [])
+    .filter(Boolean);
 }
-const MODULE_LABEL = Object.fromEntries(MODULES.map((m) => [m.id, m.label]));
+function buildIndex() {
+  const out = [];
+  REGISTRY.forEach((sec) => {
+    sec.data.forEach((item) => {
+      out.push({
+        module: sec.id,
+        id: item.id,
+        name: item.name,
+        kw: indexTerms(item).concat(sec.indexExtra(item) || []).filter(Boolean).join(" "),
+      });
+    });
+  });
+  return out;
+}
+const MODULE_LABEL = Object.fromEntries(REGISTRY.map((s) => [s.id, s.label]));
 
 function initGlobalSearch() {
   const index = buildIndex();
@@ -715,143 +1164,6 @@ function emojiIcon(ch) {
   return `<span class="item-icon emoji-icon"><span class="icon-fallback">${ch}</span></span>`;
 }
 
-const DETAIL_RENDERERS = {
-  crops(id) {
-    const c = CROPS.find((x) => x.id === id);
-    if (!c) return null;
-    const h = cropHarvests(c);
-    const last = cropLastDay(c);
-    return detailHead(
-      itemIconHtml(c.id, c.name, CROP_ICONS[c.id] || GENERIC_ICON),
-      c.name,
-      esc(seasonLabel(c.season)) + " · " + (c.regrow > 0 ? "可多次收获" : "单次收获")
-    ) +
-      detailSection("经济数据", kvGrid([
-        ["种子价", c.seed + " 金"],
-        ["售价", c.sell + " 金"],
-        ["单收净利", money(c.sell - c.seed)],
-        ["每日净收益", raw(`<b class="${cropProfit(c) < 0 ? "neg-text" : "gold-text"}">${fmt1(cropProfit(c))}</b> 金/天`)],
-        ["成熟天数", cropGrowthText(c)],
-        ["再收间隔", c.regrow > 0 ? c.regrow + " 天" : "—"],
-        ["28 天可收", h + " 次"],
-        ["季节总收益", money(h * c.sell - c.seed)],
-      ])) +
-      detailSection("备注", `<p>${esc(c.note)}</p>`) +
-      detailSection("算法说明", `<p class="muted">每日净收益 =（28 天季节内总收获额 − 种子价）÷ 末次收获日（第 ${last} 天）。多季作物按单季 28 天估算。</p>`);
-  },
-
-  collect(id) {
-    const c = COLLECTIBLES.find((x) => x.id === id);
-    if (!c) return null;
-    return detailHead(
-      itemIconHtml(c.id, c.name, COLLECT_ICONS[c.id] || GENERIC_ICON),
-      c.name,
-      esc(seasonLabel(c.season)) + " · 野外采集"
-    ) +
-      detailSection("基础信息", kvGrid([
-        ["季节", seasonLabel(c.season)],
-        ["采集地点", c.location],
-        ["售价", c.sell + " 金"],
-      ])) +
-      detailSection("用途", `<p>${esc(c.use)}</p>`);
-  },
-
-  fishing(id) {
-    const f = FISH.find((x) => x.id === id);
-    if (!f) return null;
-    return detailHead(
-      itemIconHtml(f.id, f.name, typeof FISH_ICON !== "undefined" ? FISH_ICON : GENERIC_ICON),
-      f.name,
-      esc(f.location) + " · " + esc(seasonLabel(f.season))
-    ) +
-      detailSection("出没条件", kvGrid([
-        ["水域", f.location],
-        ["季节", seasonLabel(f.season)],
-        ["时间", f.time],
-        ["天气", f.weather],
-        ["难度", raw(stars(f.difficulty) + ` <span class="muted">(${f.difficulty})</span>`)],
-      ])) +
-      detailSection("经济", kvGrid([["售价", f.sell + " 金"]])) +
-      detailSection("用途", `<p>${esc(f.use)}</p>`);
-  },
-
-  mining(id) {
-    const m = MINERALS.find((x) => x.id === id);
-    if (!m) return null;
-    return detailHead(itemIconHtml(m.id, m.name, MINERAL_ICON), m.name, esc(m.type)) +
-      detailSection("分布", kvGrid([
-        ["类型", m.type],
-        ["出现层级", m.level],
-        ["售价", m.sell + " 金"],
-      ])) +
-      detailSection("用途", `<p>${esc(m.use)}</p>`);
-  },
-
-  combat(id) {
-    const m = MONSTERS.find((x) => x.id === id);
-    if (!m) return null;
-    return detailHead(
-      itemIconHtml(m.id, m.name, MONSTER_ICON),
-      m.name,
-      esc(m.type) + " · " + esc(m.location)
-    ) +
-      detailSection("属性", kvGrid([
-        ["生命值", monsterStat(m.hp)],
-        ["伤害", monsterStat(m.damage)],
-        ["类型", m.type],
-        ["出没地点", m.location],
-      ])) +
-      detailSection("掉落物", `<div class="chip-list">${m.drops.map(linkChip).join("")}</div>` +
-        (m.drops.some((d) => NAME_INDEX.has(d)) ? `<p class="muted">带下划线的掉落物可点击跳转。</p>` : ""));
-  },
-
-  quests(id) {
-    const q = QUESTS.find((x) => x.id === id);
-    if (!q) return null;
-    return detailHead(emojiIcon("📜"), q.name, esc(q.type)) +
-      detailSection("任务目标", `<p>${esc(q.objective)}</p>`) +
-      detailSection("来源与奖励", kvGrid([
-        ["来源", q.source],
-        ["类型", q.type],
-        ["奖励", q.reward],
-      ]));
-  },
-
-  npc(id) {
-    const n = NPCS.find((x) => x.id === id);
-    if (!n) return null;
-    const idx = NPCS.indexOf(n);
-    return detailHead(
-      npcIconHtml(n.id, n.name, npcAvatar(idx)),
-      n.name,
-      `📍 ${esc(n.location)} · ${n.marriageable ? "可结婚" : "不可结婚"}`
-    ) +
-      detailSection("简介", `<p>${esc(n.desc)}</p>`) +
-      detailSection("生日", `<p>🎂 ${esc(n.birthday)}</p>`) +
-      detailSection("最爱的礼物", `<div class="chip-list">${n.loves.map((g) => `<span class="chip">🎁 ${esc(g)}</span>`).join("")}</div>`);
-  },
-
-  festivals(id) {
-    const f = FESTIVALS.find((x) => x.id === id);
-    if (!f) return null;
-    return detailHead(emojiIcon("🎉"), f.name, `${esc(f.season)}季 ${esc(String(f.day))} 日`) +
-      detailSection("时间地点", kvGrid([
-        ["季节", f.season],
-        ["日期", f.day + " 日"],
-        ["地点", f.location],
-        ["时间", f.time],
-      ])) +
-      detailSection("介绍", `<p>${esc(f.desc)}</p>`);
-  },
-
-  events(id) {
-    const e = EVENTS.find((x) => x.id === id);
-    if (!e) return null;
-    return detailHead(emojiIcon("✨"), e.name, esc(e.type)) +
-      detailSection("触发条件", `<p>${esc(e.trigger)}</p>`) +
-      detailSection("说明", `<p>${esc(e.desc)}</p>`);
-  },
-};
 
 let lastFocused = null;
 function openDetail(moduleId, id) {
@@ -891,6 +1203,14 @@ document.addEventListener("DOMContentLoaded", () => {
   /* 卡片 → 详情弹窗（事件委托，新渲染的卡片无需重新绑定） */
   const page = $("#page");
   page.addEventListener("click", (e) => {
+    /* 收集包的捐赠勾选框优先于卡片点击处理，否则勾选会顺手弹出详情 */
+    const box = e.target.closest("[data-bundle]");
+    if (box) {
+      if (e.stopPropagation) e.stopPropagation();
+      const b = BUNDLES.find((x) => x.id === box.dataset.bundle);
+      if (b && toggleBundleSlot(b, Number(box.dataset.slot))) renderBundles();
+      return;
+    }
     const card = e.target.closest("[data-id]");
     if (!card) return;
     const sec = card.closest(".module");
@@ -905,9 +1225,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (sec) openDetail(sec.dataset.module, card.dataset.id);
   });
 
-  /* 弹窗内交叉跳转（如怪物掉落物 → 对应条目） */
+  /* 弹窗内：收集包勾选 + 交叉跳转（如怪物掉落物 → 对应条目） */
   const content = $("#modalContent");
   content.addEventListener("click", (e) => {
+    /* 弹窗里的勾选改的是同一份进度，因此要连带刷新背后的模块卡片 */
+    const box = e.target.closest("[data-bundle-detail]");
+    if (box) {
+      const b = BUNDLES.find((x) => x.id === box.dataset.bundleDetail);
+      if (b && toggleBundleSlot(b, Number(box.dataset.slot))) {
+        renderBundles();
+        openDetail("bundles", b.id);
+      }
+      return;
+    }
     const link = e.target.closest("[data-goto-id]");
     if (!link) return;
     openDetail(link.dataset.gotoModule, link.dataset.gotoId);

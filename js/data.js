@@ -434,3 +434,54 @@ const EVENTS = [
   { id: "heart-shane6", name: "谢恩 6 心",    type: "心事件", trigger: "谢恩 6 心",   desc: "在他情绪低落时给予支持，逐渐打开心扉。" },
   { id: "heart-penny8", name: "潘妮 8 心",    type: "心事件", trigger: "潘妮 8 心",   desc: "陪伴潘妮进行她的课外教学活动。" },
 ];
+
+/* ---------- 社区中心收集包 ----------
+ * 来源：中文 Wiki「收集包」页逐包解析（2026-10-08），物品名出自 Wiki 的 Module:Items 名表，
+ * 与站内其他模块同源，可据此做交叉跳转。
+ * items 为捐赠所需物品；choose>0 表示「物品数多于槽位，任选 choose 个即可」；
+ * alts 表示该槽「二者之一皆可」；quality 为所需品质（gold/silver）；
+ * price 为金库类收集包（用金币完成，无所需物品）。 */
+const BUNDLES = [
+  { id: "spring-foraging-bundle", name: "春季采集收集包", room: "工艺室", items: [{ name: "野山葵", qty: 1 }, { name: "黄水仙", qty: 1 }, { name: "韭葱", qty: 1 }, { name: "蒲公英", qty: 1 }], rewards: [{ name: "春季种子", qty: 30 }] },
+  { id: "summer-foraging-bundle", name: "夏季采集收集包", room: "工艺室", items: [{ name: "葡萄", qty: 1 }, { name: "香味浆果", qty: 1 }, { name: "甜豌豆", qty: 1 }], rewards: [{ name: "夏季种子", qty: 30 }] },
+  { id: "fall-foraging-bundle", name: "秋季采集收集包", room: "工艺室", items: [{ name: "普通蘑菇", qty: 1 }, { name: "野梅", qty: 1 }, { name: "榛子", qty: 1 }, { name: "黑莓", qty: 1 }], rewards: [{ name: "秋季种子", qty: 30 }] },
+  { id: "winter-foraging-bundle", name: "冬季采集收集包", room: "工艺室", items: [{ name: "冬根", qty: 1 }, { name: "水晶果", qty: 1 }, { name: "雪山药", qty: 1 }, { name: "番红花", qty: 1 }], rewards: [{ name: "冬季种子", qty: 30 }] },
+  { id: "construction-bundle", name: "建筑收集包", room: "工艺室", choose: 4, items: [{ name: "木材", qty: 99 }, { name: "木材", qty: 99 }, { name: "石头", qty: 99 }, { name: "硬木", qty: 10 }], rewards: [{ name: "煤炭窑", qty: 1 }] },
+  { id: "exotic-foraging-bundle", name: "异国情调采集收集包", room: "工艺室", choose: 5, items: [{ name: "椰子", qty: 1 }, { name: "仙人掌果子", qty: 1 }, { name: "山洞萝卜", qty: 1 }, { name: "红蘑菇", qty: 1 }, { name: "紫蘑菇", qty: 1 }, { name: "枫糖浆", qty: 1 }, { name: "橡树树脂", qty: 1 }, { name: "松焦油", qty: 1 }, { name: "羊肚菌", qty: 1 }], rewards: [{ name: "秋日恩赐", qty: 5 }] },
+  { id: "spring-crops-bundle", name: "春季作物收集包", room: "茶水间", items: [{ name: "防风草", qty: 1 }, { name: "青豆", qty: 1 }, { name: "花椰菜", qty: 1 }, { name: "土豆", qty: 1 }], rewards: [{ name: "生长激素", qty: 20 }] },
+  { id: "summer-crops-bundle", name: "夏季作物收集包", room: "茶水间", items: [{ name: "西红柿", qty: 1 }, { name: "辣椒", qty: 1 }, { name: "蓝莓", qty: 1 }, { name: "甜瓜", qty: 1 }], rewards: [{ name: "优质洒水器", qty: 1 }] },
+  { id: "fall-crops-bundle", name: "秋季作物收集包", room: "茶水间", items: [{ name: "玉米", qty: 1 }, { name: "茄子", qty: 1 }, { name: "南瓜", qty: 1 }, { name: "山药", qty: 1 }], rewards: [{ name: "蜂房", qty: 1 }] },
+  { id: "quality-crops-bundle", name: "高品质作物收集包", room: "茶水间", choose: 3, items: [{ name: "防风草", qty: 1, quality: "gold" }, { name: "甜瓜", qty: 1, quality: "gold" }, { name: "南瓜", qty: 1, quality: "gold" }, { name: "玉米", qty: 1, quality: "gold" }], rewards: [{ name: "罐头瓶", qty: 1 }] },
+  { id: "animal-bundle", name: "动物收集包", room: "茶水间", items: [{ name: "大壶牛奶", qty: 1 }, { alts: ["大鸡蛋", "棕色大鸡蛋"], qty: 1 }, { name: "大瓶羊奶", qty: 1 }, { name: "动物毛", qty: 1 }, { name: "鸭蛋", qty: 1 }], rewards: [{ name: "压酪机", qty: 1 }] },
+  { id: "artisan-bundle", name: "工匠收集包", room: "茶水间", choose: 6, items: [{ name: "松露油", qty: 1 }, { name: "布料", qty: 1 }, { name: "山羊奶酪", qty: 1 }, { name: "奶酪", qty: 1 }, { name: "蜂蜜", qty: 1 }, { name: "果酱", qty: 1 }, { name: "苹果", qty: 1 }, { name: "杏子", qty: 1 }, { name: "橙子", qty: 1 }, { name: "桃子", qty: 1 }, { name: "石榴", qty: 1 }, { name: "樱桃", qty: 1 }], rewards: [{ name: "小桶", qty: 1 }] },
+  { id: "river-fish-bundle", name: "河鱼收集包", room: "鱼缸", items: [{ name: "太阳鱼", qty: 1 }, { name: "鲶鱼", qty: 1 }, { name: "西鲱", qty: 1 }, { name: "虎纹鳟鱼", qty: 1 }], rewards: [{ name: "高级鱼饵", qty: 30 }] },
+  { id: "lake-fish-bundle", name: "湖鱼收集包", room: "鱼缸", items: [{ name: "大嘴鲈鱼", qty: 1 }, { name: "鲤鱼", qty: 1 }, { name: "大头鱼", qty: 1 }, { name: "鲟鱼", qty: 1 }], rewards: [{ name: "精装旋式鱼饵", qty: 1 }] },
+  { id: "ocean-fish-bundle", name: "海鱼收集包", room: "鱼缸", items: [{ name: "沙丁鱼", qty: 1 }, { name: "金枪鱼", qty: 1 }, { name: "红鲷鱼", qty: 1 }, { name: "罗非鱼", qty: 1 }], rewards: [{ name: "传送图腾：海滩", qty: 5 }] },
+  { id: "night-fishing-bundle", name: "夜间垂钓收集包", room: "鱼缸", items: [{ name: "大眼鱼", qty: 1 }, { name: "鲷鱼", qty: 1 }, { name: "鳗鱼", qty: 1 }], rewards: [{ name: "光辉戒指", qty: 1 }] },
+  { id: "crab-pot-bundle", name: "蟹笼收集包", room: "鱼缸", choose: 5, items: [{ name: "龙虾", qty: 1 }, { name: "小龙虾", qty: 1 }, { name: "螃蟹", qty: 1 }, { name: "鸟蛤", qty: 1 }, { name: "蚌", qty: 1 }, { name: "虾", qty: 1 }, { name: "蜗牛", qty: 1 }, { name: "玉黍螺", qty: 1 }, { name: "牡蛎", qty: 1 }, { name: "蛤", qty: 1 }], rewards: [{ name: "蟹笼", qty: 3 }] },
+  { id: "specialty-fish-bundle", name: "特色鱼类收集包", room: "鱼缸", items: [{ name: "河豚", qty: 1 }, { name: "鬼鱼", qty: 1 }, { name: "沙鱼", qty: 1 }, { name: "木跃鱼", qty: 1 }], rewards: [{ name: "海之菜肴", qty: 5 }] },
+  { id: "blacksmiths-bundle", name: "铁匠的收集包", room: "锅炉房", items: [{ name: "铜锭", qty: 1 }, { name: "铁锭", qty: 1 }, { name: "金锭", qty: 1 }], rewards: [{ name: "熔炉", qty: 1 }] },
+  { id: "geologists-bundle", name: "地理学家的收集包", room: "锅炉房", items: [{ name: "石英", qty: 1 }, { name: "地晶", qty: 1 }, { name: "泪晶", qty: 1 }, { name: "火水晶", qty: 1 }], rewards: [{ name: "万象晶球", qty: 5 }] },
+  { id: "adventurers-bundle", name: "冒险家的收集包", room: "锅炉房", choose: 2, items: [{ name: "史莱姆泥", qty: 99 }, { name: "蝙蝠翅膀", qty: 10 }, { name: "太阳精华", qty: 1 }, { name: "虚空精华", qty: 1 }], rewards: [{ name: "小型磁铁戒指", qty: 1 }] },
+  { id: "chefs-bundle", name: "厨师收集包", room: "布告栏", items: [{ name: "枫糖浆", qty: 1 }, { name: "蕨菜", qty: 1 }, { name: "松露", qty: 1 }, { name: "虞美人花", qty: 1 }, { name: "生鱼寿司", qty: 1 }, { name: "煎鸡蛋", qty: 1 }], rewards: [{ name: "粉红蛋糕", qty: 3 }] },
+  { id: "dye-bundle", name: "染料收集包", room: "布告栏", items: [{ name: "红蘑菇", qty: 1 }, { name: "海胆", qty: 1 }, { name: "向日葵", qty: 1 }, { name: "鸭毛", qty: 1 }, { name: "海蓝宝石", qty: 1 }, { name: "红叶卷心菜", qty: 1 }], rewards: [{ name: "种子生产器", qty: 1 }] },
+  { id: "field-research-bundle", name: "土地研究收集包", room: "布告栏", items: [{ name: "紫蘑菇", qty: 1 }, { name: "鹦鹉螺", qty: 1 }, { name: "鲢鱼", qty: 1 }, { name: "冰封晶球", qty: 1 }], rewards: [{ name: "回收机", qty: 1 }] },
+  { id: "fodder-bundle", name: "饲料收集包", room: "布告栏", choose: 3, items: [{ name: "小麦", qty: 10 }, { name: "干草", qty: 10 }, { name: "苹果", qty: 3 }], rewards: [{ name: "加热器", qty: 1 }] },
+  { id: "enchanters-bundle", name: "魔法师收集包", room: "布告栏", items: [{ name: "橡树树脂", qty: 1 }, { name: "果酒", qty: 1 }, { name: "兔子的脚", qty: 1 }, { name: "石榴", qty: 1 }], rewards: [{ name: "金锭", qty: 5 }] },
+  { id: "2-500-bundle", name: "2,500金收集包", room: "金库", price: 2500, items: [], rewards: [{ name: "巧克力蛋糕", qty: 3 }] },
+  { id: "5-000-bundle", name: "5,000金收集包", room: "金库", price: 5000, items: [], rewards: [{ name: "高级肥料", qty: 30 }] },
+  { id: "10-000-bundle", name: "10,000金收集包", room: "金库", price: 10000, items: [], rewards: [{ name: "避雷针", qty: 1 }] },
+  { id: "25-000-bundle", name: "25,000金收集包", room: "金库", price: 25000, items: [], rewards: [{ name: "宝石复制机", qty: 1 }] },
+  { id: "the-missing-bundle", name: "失踪的收集包", room: "废弃Joja超市", choose: 5, items: [{ name: "恐龙蛋黄酱", qty: 1 }, { name: "五彩碎片", qty: 1 }, { name: "鱼籽酱", qty: 1 }, { name: "果酒", qty: 1, quality: "silver" }, { name: "上古水果", qty: 1, quality: "gold" }, { name: "虚空鲑鱼", qty: 1, quality: "gold" }], rewards: [] },
+];
+
+/* ---------- 社区中心房间（收集包所属分组） ---------- */
+const BUNDLE_ROOMS = [
+  { id: "crafts-room", name: "工艺室", sub: "修复采石场桥梁，解锁采石场与金色镰刀", count: 6 },
+  { id: "pantry", name: "茶水间", sub: "修复农舍厨房，解锁烹饪", count: 6 },
+  { id: "fish-tank", name: "鱼缸", sub: "修复镇上的桥梁，解锁闪光石与淘金", count: 6 },
+  { id: "boiler-room", name: "锅炉房", sub: "修复矿车，两地之间快速移动", count: 3 },
+  { id: "bulletin-board", name: "布告栏", sub: "提升与全体村民的好感度", count: 5 },
+  { id: "vault", name: "金库", sub: "修复巴士站，可前往沙漠", count: 4 },
+  { id: "abandoned-jojamart", name: "废弃Joja超市", sub: "将废弃超市改造成电影院", count: 1 },
+];

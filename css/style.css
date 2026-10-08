@@ -485,6 +485,110 @@ html, body {
   color: var(--wood);
 }
 
+/* ===== 收集包（社区中心） ===== */
+.bundle-card { min-height: 150px; }
+.bundle-card.is-done { border-color: var(--accent); }
+.bundle-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+.bundle-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.bundle-reset {
+  font: inherit;
+  font-size: 13px;
+  color: var(--wood);
+  background: linear-gradient(180deg, #fbf1dd, #f2e3c6);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.bundle-reset:hover { border-color: var(--danger); color: var(--danger); }
+.bundle-reset.is-armed { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 700; }
+
+/* 进度条 */
+.bundle-progress { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
+.bundle-bar {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: #e6d5b6;
+  border: 1px solid var(--border-strong);
+  overflow: hidden;
+}
+.bundle-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+  transition: width 0.18s ease;
+}
+.bundle-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+/* 物品勾选：做成游戏里的物品栏格子质感 */
+.bundle-items { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 2px; }
+.bundle-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--wood);
+  background: linear-gradient(180deg, #fdf6e6, #f3e6ca);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 3px 8px 3px 4px;
+  cursor: pointer;
+  text-align: left;
+}
+.bundle-item:hover { border-color: var(--slot); background: linear-gradient(180deg, #fffaea, #f7ecd4); }
+.bundle-item:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.bundle-item .bundle-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border-radius: 3px;
+  background: var(--slot);
+  box-shadow: inset 1px 1px 0 var(--slot-hi), inset -1px -1px 0 var(--slot-lo);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.bundle-item.is-done {
+  color: var(--muted);
+  border-color: var(--accent);
+  background: linear-gradient(180deg, #f0f7e6, #e4f0d4);
+}
+.bundle-item.is-done .bundle-item-text { text-decoration: line-through; }
+.bundle-item.is-done .bundle-box { background: var(--accent); }
+.bundle-price { font-size: 13px; color: #b07f15; font-weight: 700; }
+
+/* 详情弹窗里的所需物品清单：条目多（工匠包 12 项、蟹笼包 10 项）时单列会拖得很长，
+ * 宽屏下自动分列，窄屏回落到单列。 */
+.bundle-need {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px 14px;
+}
+.bundle-need-row { display: flex; align-items: center; gap: 8px; }
+.bundle-need-row.is-done .bundle-need-name { color: var(--muted); text-decoration: line-through; }
+.bundle-need-name { font-size: 13px; color: var(--wood); }
+.or-text { color: var(--muted); font-size: 12px; }
+.bundle-quality {
+  font-size: 11px;
+  color: #b07f15;
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
 /* ===== 页脚 ===== */
 .footer {
   text-align: center;
