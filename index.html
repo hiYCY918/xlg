@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="星露谷物语攻略站：农作物、收集物、钓鱼、采矿、战斗、任务、NPC、节日、事件、社区中心收集包一站式攻略" />
   <title>星露谷物语 · 攻略站</title>
-  <link rel="stylesheet" href="css/style.css?v=37" />
+  <link rel="stylesheet" href="css/style.css?v=38" />
 </head>
 <body>
   <!-- 顶部品牌栏（导航已移入左侧侧栏） -->
@@ -29,11 +29,18 @@
     </div>
   </header>
 
-  <!-- 左侧模块侧栏 + 内容区（都是同一个 flex 行；窄屏时 flex 变纵向，
-       导航自动变回顶部的横向滚动条——同一份 DOM，不重复维护两套） -->
+  <!-- 左侧模块侧栏 + 内容列（同一个 flex 行；窄屏时 flex 变纵向，
+       导航自动变回顶部的横向滚动条——同一份 DOM，不重复维护两套）
+       ⚠️ 页脚必须放在 .main-col **里面**：侧栏是 sticky 的，粘附范围就是 .layout；
+       页脚若留在 .layout 之外，滚到页面最底时侧栏会被顶上去、下方露出一条空白。 -->
   <div class="layout">
     <nav class="nav" id="nav" aria-label="模块导航"></nav>
-    <main class="page" id="page"></main>
+    <div class="main-col">
+      <main class="page" id="page"></main>
+      <footer class="footer">
+        <p>数据为星露谷物语示例内容，可在 <code>js/data.js</code> 中自由补充修改</p>
+      </footer>
+    </div>
   </div>
 
   <!-- 详情弹窗 -->
@@ -44,12 +51,8 @@
     </div>
   </div>
 
-  <footer class="footer">
-    <p>数据为星露谷物语示例内容，可在 <code>js/data.js</code> 中自由补充修改</p>
-  </footer>
-
-  <script src="js/data.js?v=37"></script>
-  <script src="js/icons.js?v=37"></script>
-  <script src="js/main.js?v=37"></script>
+  <script src="js/data.js?v=38"></script>
+  <script src="js/icons.js?v=38"></script>
+  <script src="js/main.js?v=38"></script>
 </body>
 </html>

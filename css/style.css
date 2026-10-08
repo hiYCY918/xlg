@@ -184,10 +184,18 @@ html, body {
   padding: 14px 12px 18px;
   border-top: none;
   border-right: 2px solid rgba(0, 0, 0, 0.22);
-  /* 木板纹理：横排时是竖向拼缝，竖排时改成横向拼缝（同一块木板转 90°） */
+  /* 木板纹理：横排时是竖向拼缝，竖排时改成横向拼缝（同一块木板转 90°）。
+   * ⚠️ 缝的周期必须**等于条目行距**（条目高 42 + 间距 2 = 44），并且把 2px 的线
+   * 放在每一段的末尾 [42,44)——这样线正好落在两个条目之间的空隙里。
+   * 原来写 46px 与行距不同周期，越往下越错位，"模块和线对不齐"就是这么来的。 */
   background:
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.10) 0 2px, transparent 2px 46px),
+    repeating-linear-gradient(0deg, transparent 0 42px, rgba(0, 0, 0, 0.13) 42px 44px),
     linear-gradient(180deg, #7d5531, var(--wood-deep));
+  /* ⚠️ 缝那一层必须是 local：背景默认贴在元素的盒子上、**不随内容滚动**，
+   * 而侧栏内容超出一屏时会独立滚动——那样条目在动、缝不动，滚两下就又错位了。
+   * local 让第一层（缝）跟着内容走，第二层（木色渐变）保持 scroll 铺满整列。
+   * 注意：必须写在 background 简写**之后**，简写会把 attachment 重置回 scroll。 */
+  background-attachment: local, scroll;
   box-shadow: inset -3px 0 0 rgba(0, 0, 0, 0.22), inset 2px 0 0 rgba(255, 255, 255, 0.06);
   /* 独立滚动：模块多了只滚这一列 */
   overflow-y: auto;
@@ -207,8 +215,10 @@ html, body {
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
-  /* 竖排有空间，内边距可以给足，点击热区更大 */
-  padding: 8px 10px;
+  /* ⚠️ 高度必须固定成 42px：它 + 2px 间距 = 44px 的行距，
+   * 侧栏木板缝的周期就是按这个数画的（改这里要同步改 .nav 的背景）。 */
+  height: 42px;
+  padding: 0 10px;
   border: none;
   background: transparent;
   color: #f0e2c8;
@@ -232,14 +242,32 @@ html, body {
   font-variant-numeric: tabular-nums;
 }
 .nav-item:hover { background: rgba(255,255,255,0.12); color: #fff; }
-/* 侧栏小标题 */
+/* 侧栏标题：居中 + 加重。
+ * ⚠️ 高度固定 28px：28 + .nav 的 14px 上内边距 = 42px，正好让**第一个条目落在 44px 处**
+ * （与木板缝的周期对齐）。改字号/行高不影响这条，因为高度是写死的。 */
 .nav-title {
-  color: rgba(255, 235, 205, 0.55);
-  font-size: 11.5px; font-weight: 700; letter-spacing: 3px;
-  padding: 0 10px 8px;
+  height: 28px;
+  /* ⚠️ 必须 flex: 0 0 auto：.nav 是 flex 纵向容器，内容超出一屏时子项默认会**被压缩**
+   * （实测标题从 28px 缩到 18px），它一缩，下面所有条目就整体上移、与木板缝错开。
+   * .nav-item 早就写了 flex: 0 0 auto，标题这里漏了。 */
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 字间距会让整行视觉左偏，用等量的左内边距补回来 */
+  letter-spacing: 6px;
+  padding-left: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 240, 214, 0.92);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45), 0 0 10px rgba(255, 214, 150, 0.18);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.07);
   user-select: none;
 }
-/* 选中态做成游戏里的「标签页」：内高光 + 底部压边 + 轻微上浮 */
+/* 选中态做成游戏里的「标签页」：内高光 + 底部压边。
+ * ⚠️ 竖排里**不加 translateY(-1px)**：那 1px 上浮会让选中项压到上方的木板缝上，
+ * 与"条目和缝对齐"直接冲突。横排（≤640）时再把它加回来——那里本来就是标签页形态。 */
 .nav-item.is-active {
   background: linear-gradient(180deg, #93c25a, var(--accent));
   color: #fff;
@@ -248,7 +276,6 @@ html, body {
     inset 0 2px 0 rgba(255, 255, 255, 0.38),
     inset 0 -3px 0 rgba(0, 0, 0, 0.18),
     0 3px 0 rgba(0, 0, 0, 0.30);
-  transform: translateY(-1px);
 }
 
 /* ===== 页面 / 模块 ===== */
@@ -256,7 +283,10 @@ html, body {
   max-width: var(--page-max);
   margin: 24px auto;
   padding: 0 20px;
-  /* 侧栏是 flex 兄弟节点，内容区要能收缩（否则宽表格/长内容会把侧栏挤扁） */
+}
+/* 内容列：侧栏的 flex 兄弟。要能收缩（否则长内容会把侧栏挤扁）；
+ * 页脚也在这一列里——见 index.html 的注释（sticky 粘附范围必须覆盖页脚） */
+.main-col {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -829,12 +859,15 @@ html, body {
  * 1121 用完整侧栏与 1120 用图标条都稳定给 3 列，跨界不跳档。 */
 @media (max-width: 1120px) {
   :root { --side-w: 64px; }
-  .nav { padding: 10px 8px 14px; align-items: center; }
+  /* 上内边距归零：标题藏起来后，第一个条目直接从 0 开始，
+   * 才能继续与 44px 一格的木板缝对齐（否则整体错开 14px） */
+  .nav { padding: 0 8px 14px; align-items: center; }
   .nav-title { display: none; }
   /* 只留图标；名称与计数藏起来（title 属性仍然可读） */
   .nav-label, .nav-item .nav-count { display: none; }
-  .nav-item { justify-content: center; padding: 9px 0; }
-  .nav-item .mod-icon { width: 28px; height: 28px; }
+  /* 高度保持 42px（行距 44 不能变，否则木板缝又对不上） */
+  .nav-item { justify-content: center; padding: 0; }
+  .nav-item .mod-icon { width: 26px; height: 26px; }
 }
 
 @media (max-width: 640px) {
@@ -866,6 +899,8 @@ html, body {
   /* ⚠️ 必须把名称放回来：上面 ≤1120 的图标条规则把 .nav-label 藏了，
    * 这里只切回横排是不够的——否则手机上是一条"只有图标"的导航（踩过一次） */
   .nav-label { display: inline; }
+  /* 横排是标签页形态，把"轻微上浮"加回来（竖排里它会让选中项压到木板缝上） */
+  .nav-item.is-active { transform: translateY(-1px); }
 }
 
 @media (max-width: 860px) {

@@ -1232,6 +1232,41 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(navVisSrc.indexOf("scrollLeft") >= 0 && navVisSrc.indexOf("scrollTop") >= 0,
     "ensureNavVisible 同时处理横向与纵向滚动（两种布局各自兜底）");
 
+  /* ---- 侧栏几何一致性（木板缝 ↔ 条目）----
+   * 侧栏背景的横向木板缝要和条目**对齐**，靠的是三个数字互相咬合：
+   *   缝周期 == 条目高 + 间距，且缝的起点 == 条目高（线正好落在两条目之间）
+   *   标题高 + 侧栏上内边距 == 缝周期（第一个条目也落在整格边界上）
+   * 这三处写在不同的 CSS 规则里，改一处忘了另两处就"模块和线对不齐"——
+   * 本轮真出过这个 bug（缝周期原写 46px，行距是 44px，越往下越错）。
+   * DOM 模拟没有布局引擎、量不了真实几何，所以直接对 CSS 源码做一致性校验。 */
+  const cssSrc = fs.readFileSync(path.join(__dirname, "..", "css", "style.css"), "utf8");
+  const num = (re, src) => { const m = re.exec(src); return m ? Number(m[1]) : null; };
+  const itemH = num(/\.nav-item \{[\s\S]*?height: (\d+)px;/, cssSrc);
+  const navGap = num(/\.nav \{[\s\S]*?gap: (\d+)px;/, cssSrc);
+  const navPadTop = num(/\.nav \{[\s\S]*?padding: (\d+)px \d+px \d+px;/, cssSrc);
+  const titleH = num(/\.nav-title \{[\s\S]*?height: (\d+)px;/, cssSrc);
+  const seam = /repeating-linear-gradient\(0deg, transparent 0 (\d+)px, rgba\([^)]*\) (\d+)px (\d+)px\)/.exec(cssSrc);
+  const seamStart = seam ? Number(seam[2]) : null;
+  const seamPeriod = seam ? Number(seam[3]) : null;
+
+  log(itemH !== null && navGap !== null && seamPeriod !== null,
+    "侧栏几何参数可解析（条目高 " + itemH + " / 间距 " + navGap + " / 缝周期 " + seamPeriod + "）");
+  log(seamPeriod === itemH + navGap,
+    "木板缝周期 == 条目高 + 间距（" + seamPeriod + " == " + itemH + " + " + navGap + "）");
+  log(seamStart === itemH,
+    "木板缝起点 == 条目高（线正好落在两条目之间的空隙里：起始 " + seamStart + "）");
+  /* 第一个条目的位置 = 上内边距 + 标题高 + 间距（标题与条目之间也有一道间距） */
+  log(titleH !== null && navPadTop !== null && navPadTop + titleH + navGap === itemH + navGap,
+    "上内边距 + 标题高 + 间距 == 缝周期，第一个条目也落在整格边界上（" +
+    navPadTop + " + " + titleH + " + " + navGap + " == " + (itemH + navGap) + "）");
+
+  /* 溢出时标题会被 flex 压缩（实测 28→18px），一缩就把下面所有条目顶离缝 */
+  log(/\.nav-title \{[\s\S]*?flex: 0 0 auto;/.test(cssSrc),
+    "侧栏标题有 flex: 0 0 auto（否则内容溢出时被压缩、条目整体错位）");
+  /* 背景默认贴在元素的盒子上、不随内容滚动；侧栏能独立滚动，不加 local 一滚就错位 */
+  log(/background-attachment: local/.test(cssSrc),
+    "木板缝那层用 background-attachment: local（侧栏自身滚动时缝跟着内容走）");
+
   /* ---------- 16. 视觉资源 ---------- */
   console.log("\n=== 16. 视觉资源（模块图标贴图） ===");
 
