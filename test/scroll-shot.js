@@ -22,6 +22,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * ⚠️ 必须补回 scrollTop：滚动量一般不是行距的整数倍，用视口坐标比会误报错位。 */
 const MEASURE_EXPR = `(() => {
   const nav = document.querySelector('#nav');
+  if (!nav) return JSON.stringify({ error: 'no #nav' });
   const title = nav.querySelector('.nav-title');
   const items = [...nav.querySelectorAll('.nav-item')];
   const navTop = nav.getBoundingClientRect().top;
@@ -29,16 +30,35 @@ const MEASURE_EXPR = `(() => {
   const cs = getComputedStyle(nav);
   const last = items[items.length - 1];
   return JSON.stringify({
+    /* 侧栏是竖排还是横排：横排（≤640 手机端）时"木板缝对齐"不适用，不该判错位 */
+    navDir: cs.flexDirection,
     navPadTop: cs.paddingTop, navGap: cs.rowGap || cs.gap,
     navScrollTop: nav.scrollTop, navScrollH: nav.scrollHeight, navClientH: nav.clientHeight,
+    navScrollW: nav.scrollWidth, navClientW: nav.clientWidth,
     titleTop: title ? off(title) : null,
     titleH: title ? Math.round(title.getBoundingClientRect().height) : null,
     items: items.map((e) => ({ m: e.dataset.module, top: off(e), h: Math.round(e.getBoundingClientRect().height) })),
-    lastItem: { m: last.dataset.module, top: off(last), h: Math.round(last.getBoundingClientRect().height) },
+    lastItem: last ? { m: last.dataset.module, top: off(last), h: Math.round(last.getBoundingClientRect().height) } : null,
     layoutBottom: Math.round(document.querySelector('.layout').getBoundingClientRect().bottom + window.scrollY),
     docH: document.documentElement.scrollHeight,
   });
 })()`;
+
+/* 等到页面真正渲染出导航再操作：线上首次加载（CDN 冷）比本地慢得多，
+ * 固定 sleep 会偶发地在 #nav 还没建好时就求值，表达式抛错、量测返回 undefined。
+ * 轮询"导航条目数 > 0"比加长 sleep 更稳，也更快。 */
+async function waitReady(send, timeoutMs) {
+  const deadline = Date.now() + (timeoutMs || 15000);
+  while (Date.now() < deadline) {
+    const r = await send("Runtime.evaluate", {
+      expression: "document.querySelectorAll('#nav .nav-item').length",
+      returnByValue: true,
+    });
+    if (r && r.result && r.result.value > 0) return r.result.value;
+    await sleep(250);
+  }
+  return 0;
+}
 
 async function connect(url, W, H) {
   const PORT = 9433 + Math.floor(Math.random() * 200);
@@ -95,28 +115,45 @@ async function connect(url, W, H) {
 
   if (out === "measure") {
     const { send, close } = await connect(url, W, H);
+    const n = await waitReady(send);
+    if (!n) { console.error("[FAIL] 页面没有渲染出导航（等不到 #nav .nav-item）"); await close(); process.exit(1); }
     /* 先把侧栏自身滚到底，验证"滚动后缝仍与条目对齐"（背景 local 的意义所在） */
     const sc = await send("Runtime.evaluate", { expression: "document.querySelector('#nav').scrollTop = 99999; document.querySelector('#nav').scrollTop", returnByValue: true });
     const r = await send("Runtime.evaluate", { expression: MEASURE_EXPR, returnByValue: true });
-    const d = JSON.parse(r.result.value);
-    const PITCH = (d.items[0] ? d.items[0].h : 42) + (parseInt(d.navGap, 10) || 2);
-    console.log("侧栏几何 @ " + W + "x" + H + "（已把侧栏自身滚到底 scrollTop=" + sc.result.value + "）");
-    console.log("  上内边距 " + d.navPadTop + "，间距 " + d.navGap + "，标题高 " + d.titleH + "，行距 " + PITCH);
-    let bad = 0;
-    for (const it of d.items) {
-      const k = Math.round(it.top / PITCH);
-      const exp = k * PITCH;
-      const ok = Math.abs(it.top - exp) <= 1 && it.h * 1 === (it.h | 0);
-      if (!ok) bad++;
+    if (!r || !r.result || typeof r.result.value !== "string") {
+      console.error("[FAIL] 量测表达式未返回结果：" + JSON.stringify(r && r.result));
+      await close(); process.exit(1);
     }
-    console.log("  条目落在整格边界上：" + (d.items.length - bad) + " / " + d.items.length + (bad ? "  ← 有 " + bad + " 项错位" : "  ✓"));
-    console.log("  侧栏可独立滚动：" + (d.navScrollH > d.navClientH ? "是（" + d.navScrollH + " > " + d.navClientH + "）" : "否（内容未超出一屏）"));
-    console.log("  sticky 粘附范围覆盖到文档底：" + (Math.abs(d.layoutBottom - d.docH) <= 2 ? "是 ✓（滚到底不露白）" : "否 ✗ 差 " + (d.docH - d.layoutBottom) + "px"));
+    const d = JSON.parse(r.result.value);
+    const isColumn = d.navDir === "column";
+    const PITCH = (d.items[0] ? d.items[0].h : 42) + (parseInt(d.navGap, 10) || 2);
+    console.log("侧栏几何 @ " + W + "x" + H + "（" + (isColumn ? "竖排侧栏" : "横排导航") +
+      "，已把导航自身滚到底 scrollTop=" + sc.result.value + "）");
+    if (!isColumn) {
+      /* 横排（≤640 手机端）用的是"竖向拼缝"的另一套背景，周期对齐不适用 */
+      console.log("  横排模式：木板缝对齐不适用，跳过该项校验");
+    } else {
+      console.log("  上内边距 " + d.navPadTop + "，间距 " + d.navGap + "，标题高 " + d.titleH + "，行距 " + PITCH);
+      let bad = 0;
+      for (const it of d.items) {
+        const exp = Math.round(it.top / PITCH) * PITCH;
+        if (Math.abs(it.top - exp) > 1 || it.h !== PITCH - (parseInt(d.navGap, 10) || 2)) bad++;
+      }
+      console.log("  条目落在整格边界上：" + (d.items.length - bad) + " / " + d.items.length + (bad ? "  ← 有 " + bad + " 项错位" : "  ✓"));
+      if (bad) { await close(); process.exit(1); }
+    }
+    /* 看轴向：竖排看高度溢出，横排看宽度溢出 */
+    const overflow = isColumn ? (d.navScrollH > d.navClientH) : (d.navScrollW > d.navClientW);
+    const dims = isColumn ? (d.navScrollH + " > " + d.navClientH) : (d.navScrollW + " > " + d.navClientW);
+    console.log("  导航可独立滚动：" + (overflow ? "是（" + dims + "）" : "否（内容未超出一屏）"));
+    const noGap = Math.abs(d.layoutBottom - d.docH) <= 2;
+    console.log("  sticky 粘附范围覆盖到文档底：" + (noGap ? "是 ✓（滚到底不露白）" : "否 ✗ 差 " + (d.docH - d.layoutBottom) + "px"));
     await close();
-    process.exit(bad ? 1 : 0);
+    process.exit(noGap ? 0 : 1);
   }
 
   const { send, close } = await connect(url, W, H);
+  await waitReady(send);
   const expr = a6 === "bottom"
     ? "window.scrollTo(0, document.documentElement.scrollHeight); 'ok'"
     : "window.scrollTo(0, " + (parseInt(a6, 10) || 0) + "); 'ok'";
