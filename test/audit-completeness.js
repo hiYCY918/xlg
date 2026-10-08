@@ -45,6 +45,7 @@ const UNIVERSE = [
   ["战斗", ["怪物"], [], "MONSTERS"],
   ["NPC", ["NPC"], [], "NPCS"],
   ["节日", ["春季节日", "夏季节日", "秋季节日", "冬季节日"], [], "FESTIVALS"],
+  ["种子", ["种子"], [], "SEEDS"],
 ];
 
 /* 分类/导航页而非内容条目，比对时排除 */
@@ -53,7 +54,7 @@ const HUB_PAGES = new Set(["鱼", "怪物", "矿石", "晶球", "采集", "矿�
 
 /* 有意不收录：经核对后判定不属于对应模块范围。明确记录，避免每次审计重复排查。 */
 const EXCLUDED = new Map(Object.entries({
-  "西蓝花种子": "是种子而非作物本身（应归入「种子」系统，本站暂无该模块）",
+  "咖啡豆": "同一物品已由「农作物」收录——它既是种子又是作物，重复收录会让名称索引产生二义（R53/R57）",
   "杂草": "农场杂物、不可出售，不是采集物",
   "草": "需用草籽种植，属作物类",
   "树液": "砍树的副产品，不是野外采集物",
@@ -62,16 +63,12 @@ const EXCLUDED = new Map(Object.entries({
   "居民": "泛指分类，不是具体 NPC",
 }));
 
-/* 整块系统盘点：本站是否有对应模块 */
+/* 整块系统盘点：**只列本站还没有对应模块的系统**（已收录的从本表移除，
+ * 否则报告会永远显示「本站均无对应模块」，与事实不符）。 */
 const SYSTEMS = [
-  ["烹饪", "料理 / 烹饪配方"],
-  ["可制作物品", "打造 / 制作配方"],
-  ["工匠物品", "工匠制品（酒 / 果酱 / 奶酪 / 蛋黄酱）"],
   ["果树", "果树"],
   ["动物", "牧场动物"],
   ["武器", "武器"],
-  ["种子", "种子"],
-  ["古物", "古物（博物馆捐赠）"],
   ["建筑", "农场建筑"],
   ["工具", "工具与升级"],
 ];
@@ -79,7 +76,7 @@ const SYSTEMS = [
 (async () => {
   const data = new Function(
     fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS};"
+    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS};"
   )();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */
@@ -142,5 +139,4 @@ const SYSTEMS = [
     await sleep(110);
   }
   console.log("\n整块系统条目合计：" + sysTotal + " 项（本站均无对应模块）");
-  console.log("\n提示：种子与农作物、工匠制品与农作物存在重叠，合计值有重复计数，仅用于衡量量级。");
-})();
+  console.log("\n提示：种子与农作物、工匠制品与农作物存在重叠，合计值有重复计数，仅用于衡量量级。");})();

@@ -123,18 +123,16 @@ const EN = {
   },
 };
 
-const MODULES = [
-  ["crops", "CROPS", "农作物"],
-  ["collect", "COLLECTIBLES", "收集物"],
-  ["fish", "FISH", "钓鱼"],
-  ["minerals", "MINERALS", "采矿"],
-  ["monsters", "MONSTERS", "战斗"],
-  ["npc", "NPCS", "NPC"],
-  ["festivals", "FESTIVALS", "节日"],
-];
+/* 有意不纳入核对的数据数组：不是「Wiki 条目」本身（不是模块清单的例外，而是数据形态的例外）。
+ * ⚠️ 这里只放**确实不是条目**的数组；模块增删一律由 data.js 自动发现，不要在此处加模块名——
+ * 那正是本工具曾经失守的方式（模块清单硬编码，新增的 355 条从未被核对过，见 #82）。 */
+const NON_ITEM_ARRAYS = new Set([
+  "BUNDLE_ROOMS",     // 收集包房间（如「储藏室」），是分组标签而非 Wiki 条目
+  "SEASONS",          // 季节字符串常量
+]);
 
 /* 已知 wiki 无独立页、但内容真实存在（挂在汇总页下），不计入异常 */
-const KNOWN_HUB_ONLY = /史莱姆|蝙蝠|^星碎$/;
+const KNOWN_HUB_ONLY = /史莱姆|蝙蝠|^星碎$|收集包$/;
 
 /* 批量按标题核对页面是否存在 */
 async function checkTitles(api, titles) {
@@ -157,18 +155,31 @@ async function checkTitles(api, titles) {
 
 (async () => {
   const src = fs.readFileSync(path.join(root, "js/data.js"), "utf8");
-  const data = new Function(
-    src + "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS};"
-  )();
+  /* 模块清单**从 data.js 自动发现**，不再硬编码。
+   * 旧的硬编码清单只覆盖 7 个模块，导致料理/打造/工匠制品/古物/收集包/种子
+   * 这 355 条从未被存在性核对过——「新增数据必须验证存在性」（R12）因此形同虚设（#82）。
+   * 判据：顶层 `const X = [` 的数组、且元素是带 name 的对象。 */
+  const arrayNames = [...src.matchAll(/^const ([A-Z_]+) = \[/gm)].map((m) => m[1]);
+  const D = new Function(src + "; return {" + arrayNames.join(",") + "};")();
+  /* EN 表的键是模块名，data 的键是**数据数组名**，两者要显式对上 */
+  const EN_KEY = {
+    crops: "CROPS", collect: "COLLECTIBLES", fish: "FISH", minerals: "MINERALS",
+    monsters: "MONSTERS", npc: "NPCS", festivals: "FESTIVALS",
+  };
 
-  /* 全部条目（含 QUESTS/EVENTS —— 此前完全未纳入审计） */
+  const data = {};
   const all = [];
-  for (const [mod, key, label] of MODULES) {
-    data[key].forEach((x) => all.push({ mod, label, id: x.id, name: x.name }));
+  const skipped = [];
+  for (const key of arrayNames) {
+    const arr = D[key];
+    if (!Array.isArray(arr) || !arr.length) continue;
+    if (NON_ITEM_ARRAYS.has(key)) { skipped.push(key); continue; }
+    if (typeof arr[0] !== "object" || arr[0] === null || !("name" in arr[0])) { skipped.push(key); continue; }
+    data[key] = arr;
+    arr.forEach((x) => all.push({ mod: key, label: key, id: x.id, name: x.name }));
   }
-  data.QUESTS.forEach((x) => all.push({ mod: "quests", label: "任务", id: x.id, name: x.name }));
-  data.EVENTS.forEach((x) => all.push({ mod: "events", label: "事件", id: x.id, name: x.name }));
-
+  console.log("自动发现 " + Object.keys(data).length + " 个数据数组：" + Object.keys(data).join("、"));
+  if (skipped.length) console.log("跳过（非条目数组）：" + skipped.join("、"));
   console.log("待核对：" + all.length + " 条\n");
 
   /* ---------- 第一轮：中文名 → 中文 Wiki（全量） ---------- */
@@ -180,16 +191,18 @@ async function checkTitles(api, titles) {
 
   /* ---------- 第二轮：英文名 → 英文 Wiki（仅 EN 表覆盖的条目） ---------- */
   const withEn = [];
-  for (const [mod, , label] of MODULES) {
-    const key = MODULES.find((m) => m[0] === mod)[1];
-    data[key].forEach((x) => { if (EN[mod] && EN[mod][x.id]) withEn.push({ mod, label, id: x.id, name: x.name, en: EN[mod][x.id] }); });
+  for (const [mod, key] of Object.entries(EN_KEY)) {
+    if (!data[key] || !EN[mod]) continue;
+    data[key].forEach((x) => {
+      if (EN[mod][x.id]) withEn.push({ mod, label: key, id: x.id, name: x.name, en: EN[mod][x.id] });
+    });
   }
   console.log("\n=== 第二轮：英文名 → 英文 Wiki（" + withEn.length + " 条有映射，交叉验证）===");
   const enFound = await checkTitles(EN_API, withEn.map((x) => x.en));
   const enMiss = withEn.filter((x) => !enFound.has(x.en));
   console.log("命中 " + (withEn.length - enMiss.length) + " / " + withEn.length);
   const noEn = all.length - withEn.length;
-  console.log("（另有 " + noEn + " 条无英文映射，仅由第一轮覆盖 —— 这正是旧版审计的盲区）");
+  console.log("（另有 " + noEn + " 条无英文映射，仅由第一轮覆盖）");
 
   /* ---------- 汇总 ---------- */
   const bothMiss = zhMiss.filter((x) => {

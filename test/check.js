@@ -131,7 +131,8 @@ const src =
   "GIFT_USES,GIFT_PLACEHOLDERS,giftChip,giftUsesSection,NAME_INDEX," +
   "CRAFTING,CRAFT_CATS,CRAFTED_BY,craftedBySection,sortCrafting," +
   "ARTISAN,artisanMachines," +
-  "ARTIFACTS,MUSEUM_NAMES,MUSEUM_REWARDS,isDonated,toggleDonate,museumDonatedCount,readMuseum};";
+  "ARTIFACTS,MUSEUM_NAMES,MUSEUM_REWARDS,isDonated,toggleDonate,museumDonatedCount,readMuseum," +
+  "SEEDS,SEED_SEASON_FILTERS,SEEDED_BY,seededBySection,seedPriceText,seedGrowthText,sortSeeds};";
 
 let data;
 try {
@@ -827,11 +828,14 @@ console.log("\n=== 3. 渲染冒烟 ===");
   const missCat = craftCats.filter((c) => data.CRAFT_CATS.indexOf(c) < 0);
   log(missCat.length === 0, "打造筛选覆盖全部 " + craftCats.length + " 个分类" + (missCat.length ? "：缺 " + missCat.join(",") : ""));
 
-  /* 材料落点：可跳转 + 已知缺口必须守恒 */
+  /* 材料落点：可跳转 + 已知缺口必须守恒。
+   * 第十四轮加「种子」模块后，本表自动收了 7 项（夏季亮片种子/松果/枫树种子/橡子/
+   * 蓝爵士种子/虞美人种子/郁金香球茎）——这正是这套「可解释归零」机制的设计意图：
+   * 模块补齐后表会自己变小，过期项没删则会直接失败（R31）。 */
   const CR_GAPS = [
-    "史莱姆泥", "夏季亮片种子", "太阳精华", "松果", "松焦油", "枫树种子", "枫糖浆", "树液",
-    "橡子", "橡树树脂", "河凝胶", "洞穴凝胶", "海凝胶", "蓝爵士种子", "虚空精华", "虞美人种子",
-    "虫肉", "蝙蝠翅膀", "郁金香球茎", "鱼", "鱼饵（物品）|鱼饵", "齐钻", "龙牙",
+    "史莱姆泥", "太阳精华", "松焦油", "枫糖浆", "树液",
+    "橡树树脂", "河凝胶", "洞穴凝胶", "海凝胶", "虚空精华",
+    "虫肉", "蝙蝠翅膀", "鱼", "鱼饵（物品）|鱼饵", "齐钻", "龙牙",
   ];
   const craftMats = new Set(CR.flatMap((r) => (r.ingredients || []).map((i) => i.name)));
   const matHit = [...craftMats].filter((n) => data.NAME_INDEX.has(n));
@@ -973,8 +977,85 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(needs[needs.length - 1] <= mn.length,
     "最高奖励门槛 " + needs[needs.length - 1] + " 不超过清单总数 " + mn.length);
 
-  /* ---------- 12. 视觉资源 ---------- */
-  console.log("\n=== 12. 视觉资源（模块图标贴图） ===");
+  /* ---------- 12. 种子（价格 / 成熟时间 / 结果物） ---------- */
+  console.log("\n=== 12. 种子（价格 / 成熟时间 / 结果物） ===");
+
+  const SD = arrays.seeds || [];
+  const sdIds = SD.map((s) => s.id);
+  const sdDup = [...new Set(sdIds.filter((v, i) => sdIds.indexOf(v) !== i))];
+  log(sdDup.length === 0, "种子 id 无重复（" + SD.length + " 条）" + (sdDup.length ? "：" + sdDup.join(",") : ""));
+
+  /* id 全局唯一（深链接键；种子 id 同时是贴图文件名） */
+  const ownerS = new Map();
+  for (const sec of data.REGISTRY) for (const it of sec.data) if (!ownerS.has(it.id)) ownerS.set(it.id, sec.id);
+  const sdCross = SD.filter((s) => ownerS.get(s.id) !== "seeds").map((s) => s.id + "(属" + ownerS.get(s.id) + ")");
+  log(sdCross.length === 0, "种子 id 与其它模块无冲突" + (sdCross.length ? "：" + sdCross.join(",") : ""));
+
+  /* 名称唯一性：反向索引（结果物 → 种子）与搜索都以**名字**为键，
+   * 重名会让「由这些种子种出」互相串台，而界面上完全看不出来（R57 的同类） */
+  const sdNames = SD.map((s) => s.name);
+  const sdNameDup = [...new Set(sdNames.filter((v, i) => sdNames.indexOf(v) !== i))];
+  log(sdNameDup.length === 0, "种子名称无重复（名字是反向索引与搜索的键）" + (sdNameDup.length ? "：" + sdNameDup.join(",") : ""));
+
+  /* 字段齐全：成熟时间可以「不定」，但必须写明文字，否则界面上是一片空白 */
+  const badSd = [];
+  for (const s of SD) {
+    if (!s.name) badSd.push(s.id + "(无名称)");
+    if (!(s.season || []).length) badSd.push(s.id + "(无季节)");
+    if (s.growth == null && !s.growthText) badSd.push(s.id + "(成熟时间既无天数也无文字)");
+    if (typeof s.sell !== "number") badSd.push(s.id + "(无售价)");
+    if (!s.source) badSd.push(s.id + "(无获取方式)");
+  }
+  log(badSd.length === 0, "种子字段齐全（名称/季节/成熟时间/售价/获取方式）" + (badSd.length ? "：" + badSd.slice(0, 6).join(",") : ""));
+
+  /* 季节筛选必须覆盖数据里出现过的全部季节（R17：否则该季节的种子筛不出来） */
+  const sdSeasons = [...new Set(SD.flatMap((s) => s.season))];
+  const missSdSeason = sdSeasons.filter((x) => data.SEED_SEASON_FILTERS.indexOf(x) < 0);
+  log(missSdSeason.length === 0,
+    "种子季节筛选覆盖全部季节（" + sdSeasons.join("/") + "）" + (missSdSeason.length ? "：缺 " + missSdSeason.join(",") : ""));
+
+  /* 结果物落点守恒：能跳转的 + 已知缺口的 == 全部有固定结果物的种子。
+   * 缺口表里的目标都属于尚未收录的模块（树木 / 果树 / 草），补上对应模块后本表会自动收缩（R31）。
+   * 注意「纤维」在采矿、「蘑菇树」在事件，都已收录，故**不**入表。 */
+  const SD_CROP_GAPS = [
+    "杏子", "松树", "枫树", "桃子", "桃花心木树", "樱桃", "橙子", "橡树",
+    "石榴", "神秘树", "苹果", "草", "绿雨树", "香蕉",
+  ];
+  const sdWithCrop = SD.filter((s) => s.crop);
+  const sdHit = sdWithCrop.filter((s) => data.NAME_INDEX.has(s.crop));
+  const sdGap = [...new Set(sdWithCrop.filter((s) => !data.NAME_INDEX.has(s.crop)).map((s) => s.crop))].sort();
+  const sdUntracked = sdGap.filter((n) => SD_CROP_GAPS.indexOf(n) < 0);
+  log(sdUntracked.length === 0,
+    "种子结果物无表外缺口（" + sdHit.length + " 可跳转 / " + sdGap.length + " 个名字在缺口表内）" +
+    (sdUntracked.length ? "：新增 " + sdUntracked.join(",") : ""));
+  const sdStale = SD_CROP_GAPS.filter((n) => sdGap.indexOf(n) < 0);
+  log(sdStale.length === 0, "种子结果物缺口表无过期项（" + SD_CROP_GAPS.length + " 项）" +
+    (sdStale.length ? "：已可跳转却仍在表内 " + sdStale.join(",") : ""));
+  log(SD.filter((s) => !s.crop).length > 0, "存在「结果不固定」的种子（混合种子类）(" +
+    SD.filter((s) => !s.crop).map((s) => s.name).join("、") + ")");
+
+  /* 反向索引：每个可跳转的结果物，都要能在「由这些种子种出」里查到对应的种子 */
+  const sdRevMiss = sdHit.filter((s) => (data.SEEDED_BY.get(s.crop) || []).indexOf(s) < 0);
+  log(sdRevMiss.length === 0, "种子反向索引（结果物 → 种子）覆盖全部可跳转项" +
+    (sdRevMiss.length ? "：缺 " + sdRevMiss.slice(0, 5).map((s) => s.name).join(",") : ""));
+
+  /* 详情弹窗要能看到「怎么获得」与「长成什么」，否则卡片上只有价格 */
+  const sdHtml = String(data.DETAIL_RENDERERS.seeds(SD[0].id));
+  log(sdHtml.includes("获取方式") && sdHtml.includes("成熟结果"),
+    "种子详情含「获取方式」与「成熟结果」分区（" + SD[0].name + "）");
+
+  /* 结果物 chip 应生成跳转链接（如 防风草种子 → 防风草） */
+  const sdLinked = SD.find((s) => data.NAME_INDEX.has(s.crop));
+  const sdLinkHtml = sdLinked ? String(data.DETAIL_RENDERERS.seeds(sdLinked.id)) : "";
+  log(sdLinkHtml.includes("data-goto-id"), "种子详情中的结果物生成了跳转链接（" + (sdLinked ? sdLinked.name : "—") + "）");
+
+  /* 售价 0 是「不可出售」的真实值，渲染层必须给出文字而不是显示 0 金（R24） */
+  const sdZero = SD.filter((s) => s.sell === 0);
+  log(sdZero.length === 0 || data.seedPriceText(sdZero[0]) === "不可出售",
+    "售价为 0 的种子渲染成「不可出售」而非 0 金（" + sdZero.length + " 条）");
+
+  /* ---------- 13. 视觉资源 ---------- */
+  console.log("\n=== 13. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

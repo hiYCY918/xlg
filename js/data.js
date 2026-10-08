@@ -803,5 +803,91 @@ const ARTIFACTS = [
   { id: "trilobite", name: "三叶虫", sell: 50, from: "海滩（1.7% + 2.3-5%） / 森林（1.9%） / 深山（1.8%） / 骨头矿（0.8%）" },
 ];
 
+/* ============================================================
+ * 种子（中文 Wiki Category:种子 全集 70 项，本站收录 69）
+ * 数据来源：各页的 {{Infobox seed}} + Module:Items 的权威中英名表（R36/R42）
+ * 排除「咖啡豆」：同一物品已由 CROPS 收录（它既是种子又是作物），重复收录会让
+ *   名称索引产生二义、界面上出现两张同样的图（R53 冲突时以已有模块为准 / R57）
+ * crop = 成熟后得到的物品名；渲染时交给 NAME_INDEX 自动落到农作物 / 收集物
+ * growth 为 null 表示成熟时间不定，此时用 growthText 存原文（不定 / 立即 / 不固定）
+ * sell = 0 是真实值，含义为「不可出售」
+ * ============================================================ */
+const SEEDS = [
+  /* ---------- 春季 ---------- */
+  { id: "ancient-seeds", name: "上古种子", crop: "上古水果", season: ["春", "夏", "秋"], growth: 28, sell: 30, buy: null, source: "打造 / 种子生产器 / 博物馆", recipe: "将古代种子古物捐赠给博物馆" },
+  { id: "potato-seeds", name: "土豆种子", crop: "土豆", season: ["春"], growth: 6, sell: 25, buy: 50, source: "皮埃尔的杂货店 50 金 / Joja超市 62 金 / 旅行货车 25 金 / 夜市 15 日" },
+  { id: "garlic-seeds", name: "大蒜种子", crop: "蒜", season: ["春"], growth: 4, sell: 20, buy: 40, source: "皮埃尔的杂货店 40 金 / 旅行货车 20 金 / 夜市 15 日 / Joja超市 / 种子生产器" },
+  { id: "rhubarb-seeds", name: "大黄种子", crop: "大黄", season: ["春"], growth: 13, sell: 50, buy: null, source: "旅行货车 50 金 / 绿洲 / 种子生产器" },
+  { id: "spring-seeds", name: "春季种子", crop: "野山葵", season: ["春"], growth: 7, sell: 35, buy: null, source: "打造 / 旅行货车 35 金 / 种子生产器 / 宝箱", recipe: "采集1级" },
+  { id: "apricot-sapling", name: "杏子树苗", crop: "杏子", season: ["春"], growth: 28, sell: 500, buy: 2000, source: "皮埃尔的杂货店 2000 金 / 旅行货车 500 金 / 谜之盒 / 金色谜之盒" },
+  { id: "cherry-sapling", name: "樱桃树苗", crop: "樱桃", season: ["春"], growth: 28, sell: 850, buy: 3400, source: "皮埃尔的杂货店 3400 金 / 旅行货车 850 金 / 谜之盒 / 金色谜之盒" },
+  { id: "kale-seeds", name: "甘蓝种子", crop: "甘蓝菜", season: ["春"], growth: 6, sell: 35, buy: 70, source: "皮埃尔的杂货店 70 金 / Joja超市 87 金 / 旅行货车 35 金 / 夜市 15 日" },
+  { id: "rice-shoot", name: "稻苗", crop: "未碾米", season: ["春"], growth: 8, sell: 20, buy: 40, source: "皮埃尔的杂货店 40 金 / 旅行货车 10 金 / 种子生产器 / 远古斑点" },
+  { id: "carrot-seeds", name: "胡萝卜种子", crop: "胡萝卜", season: ["春"], growth: 3, sell: 15, buy: null, source: "种子生产器 / 谜之盒 / 金色谜之盒 / 怪物" },
+  { id: "cauliflower-seeds", name: "花椰菜种子", crop: "花椰菜", season: ["春"], growth: 12, sell: 40, buy: 80, source: "皮埃尔的杂货店 80 金 / Joja超市 100 金 / 旅行货车 40 金 / 夜市 15 日" },
+  { id: "grass-starter", name: "草籽", crop: "草", season: ["春", "夏", "秋"], growth: null, growthText: "立即", sell: 50, buy: 100, source: "皮埃尔的杂货店 100 金 / Joja超市 125 金 / 打造 / 沙漠节 / 沙漠", recipe: "皮埃尔的杂货店以1000 金购买" },
+  { id: "strawberry-seeds", name: "草莓种子", crop: "草莓", season: ["春"], growth: 8, sell: 0, buy: null, source: "沙漠节 / 复活节 / 种子生产器 / 沙漠" },
+  { id: "jazz-seeds", name: "蓝爵士种子", crop: "蓝爵", season: ["春"], growth: 7, sell: 15, buy: 30, source: "皮埃尔的杂货店 30 金 / Joja超市 37 金 / 旅行货车 15 金 / 夜市 15 日" },
+  { id: "blue-grass-starter", name: "蓝色草籽", crop: "草", season: ["春", "夏", "秋"], growth: null, growthText: "立即", sell: 50, buy: null, source: "打造", recipe: "齐先生的核桃房以40 齐钻购买" },
+  { id: "tulip-bulb", name: "郁金香球茎", crop: "郁金香", season: ["春"], growth: 6, sell: 10, buy: 20, source: "皮埃尔的杂货店 20 金 / Joja超市 25 金 / 旅行货车 10 金 / 夜市 15 日" },
+  { id: "parsnip-seeds", name: "防风草种子", crop: "防风草", season: ["春"], growth: 4, sell: 10, buy: 20, source: "皮埃尔的杂货店 20 金 / Joja超市 25 金 / 旅行货车 10 金 / 夜市 15 日" },
+  { id: "bean-starter", name: "青豆种子", crop: "青豆", season: ["春"], growth: 10, sell: 30, buy: 60, source: "皮埃尔的杂货店 60 金 / Joja超市 75 金 / 旅行货车 30 金 / 夜市 15 日" },
+  /* ---------- 夏季 ---------- */
+  { id: "sunflower-seeds", name: "向日葵种子", crop: "向日葵", season: ["夏", "秋"], growth: 8, sell: 20, buy: 200, source: "皮埃尔的杂货店 200 金 / Joja超市 125 金 / 旅行货车 20 金 / 夜市 16和17 日" },
+  { id: "hops-starter", name: "啤酒花种子", crop: "啤酒花", season: ["夏"], growth: 11, sell: 30, buy: 60, source: "皮埃尔的杂货店 60 金 / Joja超市 75 金 / 旅行货车 30 金 / 夜市 16 日" },
+  { id: "spangle-seeds", name: "夏季亮片种子", crop: "夏季亮片", season: ["夏"], growth: 8, sell: 25, buy: 50, source: "皮埃尔的杂货店 50 金 / Joja超市 62 金 / 旅行货车 25 金 / 夜市 16 日" },
+  { id: "summer-seeds", name: "夏季种子", crop: "葡萄", season: ["夏"], growth: 7, sell: 55, buy: null, source: "打造 / 旅行货车 55 金 / 种子生产器 / 宝箱", recipe: "采集4级" },
+  { id: "wheat-seeds", name: "小麦种子", crop: "小麦", season: ["夏", "秋"], growth: 4, sell: 5, buy: 10, source: "皮埃尔的杂货店 10 金 / Joja超市 12 金 / 旅行货车 5 金 / 夜市 16 & 17 日" },
+  { id: "starfruit-seeds", name: "杨桃种子", crop: "杨桃", season: ["夏"], growth: 13, sell: 200, buy: null, source: "旅行货车 200 金 / 绿洲 / 种子生产器 / 宝箱" },
+  { id: "peach-sapling", name: "桃子树苗", crop: "桃子", season: ["夏"], growth: 28, sell: 1500, buy: 6000, source: "皮埃尔的杂货店 6000 金 / 旅行货车 1500 金 / 谜之盒 / 金色谜之盒" },
+  { id: "orange-sapling", name: "橙子树苗", crop: "橙子", season: ["夏"], growth: 28, sell: 1000, buy: 4000, source: "皮埃尔的杂货店 4000 金 / 旅行货车 1000 金 / 谜之盒 / 金色谜之盒" },
+  { id: "corn-seeds", name: "玉米种子", crop: "玉米", season: ["夏", "秋"], growth: 14, sell: 75, buy: 150, source: "皮埃尔的杂货店 150 金 / Joja超市 187 金 / 旅行货车 75 金 / 夜市 16 & 17 日" },
+  { id: "melon-seeds", name: "甜瓜种子", crop: "甜瓜", season: ["夏"], growth: 12, sell: 40, buy: 80, source: "皮埃尔的杂货店 80 金 / Joja超市 100 金 / 旅行货车 40 金 / 夜市 16 日" },
+  { id: "red-cabbage-seeds", name: "红叶卷心菜种子", crop: "红叶卷心菜", season: ["夏"], growth: 9, sell: 50, buy: 100, source: "皮埃尔的杂货店 100 金 / 旅行货车 50 金 / 夜市 16 日 / 种子生产器" },
+  { id: "radish-seeds", name: "萝卜种子", crop: "萝卜", season: ["夏"], growth: 6, sell: 20, buy: 40, source: "皮埃尔的杂货店 40 金 / Joja超市 50 金 / 旅行货车 20 金 / 夜市 16 日" },
+  { id: "blueberry-seeds", name: "蓝莓种子", crop: "蓝莓", season: ["夏"], growth: 13, sell: 40, buy: 80, source: "皮埃尔的杂货店 80 金 / 旅行货车 40 金 / 夜市 16 日 / 种子生产器" },
+  { id: "poppy-seeds", name: "虞美人种子", crop: "虞美人花", season: ["夏"], growth: 7, sell: 50, buy: 100, source: "皮埃尔的杂货店 100 金 / Joja超市 125 金 / 旅行货车 50 金 / 夜市 16 日" },
+  { id: "tomato-seeds", name: "西红柿种子", crop: "西红柿", season: ["夏"], growth: 11, sell: 25, buy: 50, source: "皮埃尔的杂货店 50 金 / Joja超市 62 金 / 旅行货车 25 金 / 夜市 16 日" },
+  { id: "pepper-seeds", name: "辣椒种子", crop: "辣椒", season: ["夏"], growth: 5, sell: 20, buy: 40, source: "皮埃尔的杂货店 40 金 / Joja超市 50 金 / 旅行货车 20 金 / 夜市 16 日" },
+  { id: "summer-squash-seeds", name: "金皮西葫芦种子", crop: "金皮西葫芦", season: ["夏"], growth: 6, sell: 20, buy: null, source: "种子生产器 / 谜之盒 / 金色谜之盒 / 怪物" },
+  /* ---------- 秋季 ---------- */
+  { id: "pumpkin-seeds", name: "南瓜种子", crop: "南瓜", season: ["秋"], growth: 13, sell: 50, buy: 100, source: "皮埃尔的杂货店 100 金 / Joja超市 125 金 / 旅行货车 50 金 / 夜市 17 日" },
+  { id: "bok-choy-seeds", name: "小白菜种子", crop: "小白菜", season: ["秋"], growth: 4, sell: 25, buy: 50, source: "皮埃尔的杂货店 50 金 / Joja超市 62 金 / 旅行货车 25 金 / 夜市 17 日" },
+  { id: "yam-seeds", name: "山药种子", crop: "山药", season: ["秋"], growth: 10, sell: 30, buy: 60, source: "皮埃尔的杂货店 60 金 / Joja超市 75 金 / 旅行货车 30 金 / 夜市 17 日" },
+  { id: "artichoke-seeds", name: "洋蓟种子", crop: "洋蓟", season: ["秋"], growth: 8, sell: 15, buy: 30, source: "皮埃尔的杂货店 30 金 / 旅行货车 15 金 / 夜市 17 日 / 种子生产器" },
+  { id: "fairy-seeds", name: "玫瑰仙子种子", crop: "玫瑰仙子", season: ["秋"], growth: 12, sell: 100, buy: 200, source: "皮埃尔的杂货店 200 金 / Joja超市 250 金 / 旅行货车 100 金 / 夜市 17 日" },
+  { id: "beet-seeds", name: "甜菜种子", crop: "甜菜", season: ["秋"], growth: 6, sell: 10, buy: null, source: "旅行货车 10 金 / 绿洲 / 种子生产器" },
+  { id: "pomegranate-sapling", name: "石榴树苗", crop: "石榴", season: ["秋"], growth: 28, sell: 1500, buy: 6000, source: "皮埃尔的杂货店 6000 金 / 旅行货车 1500 金 / 谜之盒 / 金色谜之盒" },
+  { id: "fall-seeds", name: "秋季种子", crop: "黑莓", season: ["秋"], growth: 7, sell: 45, buy: null, source: "打造 / 旅行货车 45 金 / 种子生产器 / 宝箱", recipe: "采集6级" },
+  { id: "rare-seed", name: "稀有种子", crop: "宝石甜莓", season: ["秋"], growth: 24, sell: 200, buy: null, source: "旅行货车 1000 金 / 种子生产器" },
+  { id: "amaranth-seeds", name: "苋菜种子", crop: "苋菜", season: ["秋"], growth: 7, sell: 35, buy: 70, source: "皮埃尔的杂货店 70 金 / Joja超市 87 金 / 旅行货车 35 金 / 夜市 17 日" },
+  { id: "apple-sapling", name: "苹果树苗", crop: "苹果", season: ["秋"], growth: 28, sell: 1000, buy: 4000, source: "皮埃尔的杂货店 4000 金 / 旅行货车 1000 金 / 谜之盒 / 金色谜之盒" },
+  { id: "eggplant-seeds", name: "茄子种子", crop: "茄子", season: ["秋"], growth: 5, sell: 10, buy: 20, source: "皮埃尔的杂货店 20 金 / Joja超市 25 金 / 旅行货车 10 金 / 夜市 17 日" },
+  { id: "grape-starter", name: "葡萄种子", crop: "葡萄", season: ["秋"], growth: 10, sell: 30, buy: 60, source: "皮埃尔的杂货店 60 金 / Joja超市 75 金 / 旅行货车 30 金 / 夜市 17 日" },
+  { id: "cranberry-seeds", name: "蔓越莓种子", crop: "蔓越莓", season: ["秋"], growth: 7, sell: 60, buy: 240, source: "皮埃尔的杂货店 240 金 / Joja超市 300 金 / 旅行货车 120 金 / 夜市 17 日" },
+  { id: "broccoli-seeds", name: "西蓝花种子", crop: "西蓝花", season: ["秋"], growth: 8, sell: 40, buy: null, source: "种子生产器 / 谜之盒 / 金色谜之盒 / 怪物" },
+  /* ---------- 冬季 ---------- */
+  { id: "winter-seeds", name: "冬季种子", crop: "番红花", season: ["冬"], growth: 7, sell: 30, buy: null, source: "打造 / 旅行货车 30 金 / 种子生产器 / 宝箱", recipe: "采集7级" },
+  { id: "powdermelon-seeds", name: "霜瓜种子", crop: "霜瓜", season: ["冬"], growth: 7, sell: 20, buy: null, source: "种子生产器 / 谜之盒 / 金色谜之盒 / 怪物" },
+  /* ---------- 全季节 ---------- */
+  { id: "cactus-seeds", name: "仙人掌种子", crop: "仙人掌果子", season: ["春", "夏", "秋", "冬"], growth: 12, sell: 0, buy: null, source: "绿洲 / 鱼塘 / 宝箱 / 姜岛" },
+  { id: "pine-cone", name: "松果", crop: "松树", season: ["春", "夏", "秋", "冬"], growth: null, growthText: "不定", sell: 5, buy: null, source: "旅行货车 5 金 / 垃圾桶 / 鱼塘 / 浣熊 / 任务" },
+  { id: "maple-seed", name: "枫树种子", crop: "枫树", season: ["春", "夏", "秋", "冬"], growth: null, growthText: "不定", sell: 5, buy: null, source: "旅行货车 5 金 / 垃圾桶 / 鱼塘 / 浣熊 / 任务" },
+  { id: "mahogany-seed", name: "桃花心木种子", crop: "桃花心木树", season: ["春", "夏", "秋", "冬"], growth: null, growthText: "不定", sell: 100, buy: null, source: "姜岛商人 / 打造 / 金色椰子 / 史莱姆" },
+  { id: "acorn", name: "橡子", crop: "橡树", season: ["春", "夏", "秋", "冬"], growth: null, growthText: "不定", sell: 20, buy: null, source: "旅行货车 20 金 / 垃圾桶 / 鱼塘 / 任务" },
+  { id: "mixed-seeds", name: "混合种子", crop: null, season: ["春", "夏", "秋", "冬"], growth: null, growthText: "不固定", sell: 0, buy: null, source: "皮埃尔的杂货店 / 沙漠节 / 种子生产器 / 打造" },
+  { id: "mixed-flower-seeds", name: "混合花卉种子", crop: null, season: ["春", "夏", "秋", "冬"], growth: null, growthText: "不固定", sell: 0, buy: null, source: "沙漠节 / 打造 / 谜之盒 / 杂草" },
+  { id: "mystic-tree-seed", name: "神秘树种", crop: "神秘树", season: ["春", "夏", "秋", "冬"], growth: null, growthText: "不定", sell: 100, buy: null, source: "打造 / 任务", recipe: "采集精通" },
+  { id: "fiber-seeds", name: "纤维种子", crop: "纤维", season: ["春", "夏", "秋", "冬"], growth: 7, sell: 5, buy: null, source: "打造 / 任务", recipe: "特别任务：社区清理" },
+  { id: "taro-tuber", name: "芋头块茎", crop: "芋头", season: ["春", "夏", "秋", "冬"], growth: 10, sell: 20, buy: null, source: "姜岛商人 / 金色椰子 / 远古斑点 / 杂草" },
+  { id: "mango-sapling", name: "芒果幼苗", crop: "芒果", season: ["春", "夏", "秋", "冬"], growth: 28, sell: 850, buy: null, source: "姜岛商人 / 金色椰子 / 史莱姆 / 怪物" },
+  { id: "tea-sapling", name: "茶苗", crop: "茶叶", season: ["春", "夏", "秋", "冬"], growth: 20, sell: 250, buy: null, source: "打造 / 旅行货车 250 金 / 沙漠节 / 沙漠", recipe: "卡洛琳2心事件后第二天会收到信件。" },
+  { id: "pineapple-seeds", name: "菠萝种子", crop: "菠萝", season: ["春", "夏", "秋", "冬"], growth: 14, sell: 240, buy: null, source: "姜岛商人 / 种子生产器 / 金色椰子 / 史莱姆" },
+  { id: "mushroom-tree-seed", name: "蘑菇树种子", crop: "蘑菇树", season: ["春", "夏", "秋", "冬"], growth: null, growthText: "不定", sell: 100, buy: null, source: "齐先生" },
+  { id: "mossy-seed", name: "长满苔藓的种子", crop: "绿雨树", season: ["春", "夏", "秋", "冬"], growth: null, growthText: "不定", sell: 100, buy: null, source: "巨大杂草 / 杂草 / 任务" },
+  { id: "banana-sapling", name: "香蕉树苗", crop: "香蕉", season: ["春", "夏", "秋", "冬"], growth: 28, sell: 850, buy: null, source: "姜岛商人 / 沙漠节 / 金色椰子 / 姜岛" },
+  { id: "qi-bean", name: "齐豆", crop: "齐瓜", season: ["春", "夏", "秋", "冬"], growth: 4, sell: 1, buy: null, source: "种子生产器 / 谜之盒 / 金色谜之盒 / 金色椰子" },
+];
+
 /* 博物馆可捐赠的矿物名（与 MINERALS 同名，用于进度统计与反查） */
 const MUSEUM_MINERALS = MINERALS.map((m) => m.name);

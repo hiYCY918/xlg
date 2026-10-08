@@ -200,6 +200,7 @@ function moduleIconHtml(m) {
   cooking: "全部", cookSort: "default",
   crafting: "全部", craftSort: "default",
   artisan: "全部",
+  seeds: "全部", seedSort: "default",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -746,6 +747,83 @@ function renderCooking() {
   body.appendChild(grid);
 }
 
+/* ---- 种子 ---- */
+/* 季节筛选入口必须覆盖数据里出现过的全部季节（R17：否则内容「存在但不可达」） */
+const SEED_SEASON_FILTERS = ["全部", "春", "夏", "秋", "冬"];
+const SEED_SORTS = [
+  { value: "default", label: "默认顺序" },
+  { value: "sell", label: "售价 ↓" },
+  { value: "buy", label: "购买价 ↑" },
+  { value: "growth", label: "成熟天数 ↑" },
+];
+/* 成熟天数：生长时间不定的种子（松果 / 草籽…）用很大的值排在最后，
+ * 排序比较器里出现 NaN 会污染整个列表顺序（R16），所以显式兜底 */
+function seedGrowthDays(s) {
+  return s.growth == null ? 9999 : s.growth;
+}
+function sortSeeds(list, mode) {
+  const arr = list.slice();
+  const by = {
+    sell: (a, b) => (b.sell || 0) - (a.sell || 0),
+    buy: (a, b) => (a.buy || 0) - (b.buy || 0),
+    growth: (a, b) => seedGrowthDays(a) - seedGrowthDays(b),
+  }[mode];
+  return by ? arr.sort(by) : arr;
+}
+/* 成熟时间文案：数字用「N 天」，不定的用原始文字（不定 / 立即 / 不固定） */
+function seedGrowthText(s) {
+  return s.growth == null ? (s.growthText || "不定") : s.growth + " 天";
+}
+/* 售价 0 在游戏里是「不可出售」，直接显示 0 金会被当成解析错误（R24：正确性≠可读性） */
+function seedPriceText(s) {
+  return s.sell > 0 ? s.sell + " 金" : "不可出售";
+}
+/* 获取方式串较长，卡片上只留前两段，完整内容在详情里 */
+function shortSource(src) {
+  const parts = String(src || "").split(" / ");
+  return parts.slice(0, 2).join(" / ") + (parts.length > 2 ? " 等" : "");
+}
+function renderSeeds() {
+  const body = $("#body-seeds");
+  body.innerHTML = "";
+  const list = sortSeeds(
+    SEEDS.filter((s) => state.seeds === "全部" || s.season.indexOf(state.seeds) >= 0),
+    state.seedSort
+  );
+  const total = updateModuleCount(SECTION.seeds);
+  setShown("seeds", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(
+    SEED_SEASON_FILTERS.map((v) => ({ value: v, label: v === "全部" ? "全部" : v + "季" })),
+    state.seeds,
+    (v) => { state.seeds = v; renderSeeds(); }
+  ));
+  toolbar.appendChild(controlRow(
+    sortSelect(SEED_SORTS, state.seedSort, (v) => {
+      state.seedSort = v;
+      pendingFocus = "seedSort";
+      renderSeeds();
+    }, "seedSort"),
+    hintNode("全季节种子在任一季节筛选下都会出现")
+  ));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((s) => `
+    <div ${cardAttrs(s.id)}>
+      ${itemIconHtml(s.id, s.name, GENERIC_ICON)}
+      <h3>${esc(s.name)}</h3>
+      <div class="meta">${esc(seasonLabel(s.season))} · 成熟 ${esc(seedGrowthText(s))}</div>
+      <div class="meta">售价 <span class="gold-text">${esc(seedPriceText(s))}</span>${s.buy != null ? " · 购买 " + s.buy + " 金" : ""}</div>
+      <div class="meta">🌱 ${s.crop ? "成熟后得到 " + linkChip(s.crop) : "成熟结果不固定"}</div>
+      <div class="foot"><span class="muted">${esc(shortSource(s.source))}</span></div>
+    </div>`).join("") || emptyState("没有符合条件的种子");
+  body.appendChild(grid);
+}
+
 /* ---- 事件 ---- */
 /* ---- 打造（制造配方） ---- */
 const CRAFT_SORTS = [
@@ -1003,6 +1081,7 @@ const REGISTRY = [
       bundleUsesSection(c.name) +
       cookedBySection(c.name) +
       craftedBySection(c.name) +
+      seededBySection(c.name) +
       detailSection("算法说明", `<p class="muted">每日净收益 =（28 天季节内总收获额 − 种子价）÷ 末次收获日（第 ${cropLastDay(c)} 天）。多季作物按单季 28 天估算。</p>`),
   },
   {
@@ -1023,7 +1102,8 @@ const REGISTRY = [
       detailSection("用途", `<p>${esc(c.use)}</p>`) +
       giftUsesSection(c.name) +
       bundleUsesSection(c.name) +
-      cookedBySection(c.name),
+      cookedBySection(c.name) +
+      seededBySection(c.name),
   },
   {
     id: "fishing", stateKey: ["fishingLoc", "fishingSeason"], spriteFor: "", sprite: "legend", icon: "🎣", label: "钓鱼",
@@ -1260,12 +1340,32 @@ const REGISTRY = [
         cookedBySection(c.name);
     },
   },
+  {
+    id: "seeds", stateKey: ["seeds", "seedSort"], spriteFor: "", sprite: "parsnip-seeds", icon: "🌱", label: "种子",
+    sub: "各季节种子的价格、成熟时间与长成的作物", data: "SEEDS", render: renderSeeds,
+    resetFilter: (s) => { s.seeds = "全部"; s.seedSort = "default"; },
+    indexExtra: (s) => [s.crop, s.source, s.growthText],
+    detail: (s) => detailHead(itemIconHtml(s.id, s.name, GENERIC_ICON), s.name,
+      (s.crop ? "成熟后得到 " + s.crop : "成熟结果不固定") + " · " + seedGrowthText(s)) +
+      detailSection("数值", kvGrid([
+        ["售价", seedPriceText(s)],
+        ["购买价", s.buy != null ? s.buy + " 金" : "—"],
+        ["成熟时间", seedGrowthText(s)],
+        ["季节", seasonLabel(s.season)],
+      ])) +
+      detailSection("获取方式", `<p>${esc(s.source || "—")}</p>` +
+        (s.recipe ? `<p class="muted">配方 / 条件：${esc(s.recipe)}</p>` : "")) +
+      detailSection("成熟结果", `<div class="chip-list">${seedCropChip(s)}</div>` +
+        (s.crop && NAME_INDEX.has(s.crop) ? `<p class="muted">点击可查看成熟后得到的条目。</p>` : "")) +
+      giftUsesSection(s.name) +
+      bundleUsesSection(s.name),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
-  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS,
+  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
@@ -1416,6 +1516,29 @@ function craftedBySection(name) {
   return detailSection("用于打造", `<div class="chip-list">` +
     list.map((r) => `<span class="chip chip-link" data-goto-module="crafting" data-goto-id="${esc(r.id)}" role="button" tabindex="0" title="查看${esc(r.name)}">🔨 ${esc(r.name)}</span>`).join("") +
     `</div>`);
+}
+/* 种子反向索引：结果物名 → 能种出它的种子（农作物/收集物详情页「由这些种子种出」一节用）。
+ * 以**名字**为键，所以必须保证种子名唯一——自检里有「种子 id 无重复 + 名字无重复」断言兜底（R57）。 */
+const SEEDED_BY = (() => {
+  const map = new Map();
+  SEEDS.forEach((s) => {
+    if (!s.crop) return;
+    if (!map.has(s.crop)) map.set(s.crop, []);
+    if (!map.get(s.crop).some((x) => x.id === s.id)) map.get(s.crop).push(s);
+  });
+  return map;
+})();
+function seededBySection(name) {
+  const list = SEEDED_BY.get(name);
+  if (!list || !list.length) return "";
+  return detailSection("由这些种子种出", `<div class="chip-list">` +
+    list.map((s) => `<span class="chip chip-link" data-goto-module="seeds" data-goto-id="${esc(s.id)}" role="button" tabindex="0" title="查看${esc(s.name)}">🌱 ${esc(s.name)}</span>`).join("") +
+    `</div>`);
+}
+/* 种子卡片/详情里的结果物 chip：交给 NAME_INDEX 自动落到农作物 / 收集物 / 任意模块 */
+function seedCropChip(s) {
+  if (!s.crop) return `<span class="chip chip-plain">结果不固定</span>`;
+  return linkChip(s.crop);
 }
 
 function buildNav() {
