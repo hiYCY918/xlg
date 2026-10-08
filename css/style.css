@@ -603,6 +603,12 @@ html, body {
 .bundle-need-row.is-done .bundle-need-name { color: var(--muted); text-decoration: line-through; }
 .bundle-need-name { font-size: 13px; color: var(--wood); }
 .or-text { color: var(--muted); font-size: 12px; }
+/* 产出机器 chip：与物品 chip 区分（蓝灰调） */
+.chip-machine {
+  background: linear-gradient(180deg, #eef3f8, #dfe8f1);
+  border-color: #a8bccd;
+  color: #46617a;
+}
 /* 调料/食用增益 chip：与物品 chip 区分开，用暖金色 */
 .chip-buff {
   background: linear-gradient(180deg, #fff4dd, #f8e6c0);

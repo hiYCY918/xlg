@@ -719,3 +719,36 @@ const CRAFTING = [
   { id: "anvil", name: "铁砧", cat: "杂项", source: "战斗精通", ingredients: [{ name: "铁锭", qty: 50 }] },
   { id: "mini-forge", name: "迷你锻造台", cat: "杂项", source: "战斗精通", ingredients: [{ name: "龙牙", qty: 5 }, { name: "铁锭", qty: 10 }, { name: "金锭", qty: 10 }, { name: "铱锭", qty: 5 }] },
 ];
+
+/* ---------- 工匠制品 ----------
+ * 来源：中文 Wiki「Category:工匠物品」的权威清单（28 项，2026-10-08）+ 各机器页的产品表。
+ * id 取自各物品的图片文件名（即英文名），与贴图 img/<id>.png 一致。
+ * machines 为该物品的产出机器；sell 为基础售价（0 表示随原料浮动，见 priceNote）。 */
+const ARTISAN = [
+  { id: "honey", name: "蜂蜜", machines: ["蜂房"], sell: 100 },
+  { id: "wine", name: "果酒", machines: ["小桶", "木桶"], mats: ["任意水果"], priceNote: "3 × 原料价值" },
+  { id: "juice", name: "果汁", machines: ["小桶"], mats: ["任意蔬菜"], priceNote: "2.25 × 原料价值" },
+  { id: "jelly", name: "果酱和腌菜", machines: ["罐头瓶"], mats: ["任意水果或蔬菜"], priceNote: "2 × 原料价值 + 50" },
+  { id: "dried-fruit", name: "果干", machines: ["烘干机"], mats: ["任意水果"], priceNote: "7.5 × 原料价值 + 25" },
+  { id: "dried-mushrooms", name: "蘑菇干", machines: ["烘干机"], mats: ["任意蘑菇"], priceNote: "7.5 × 原料价值 + 25" },
+  { id: "raisins", name: "葡萄干", machines: ["烘干机"], sell: 600, mats: ["葡萄"] },
+  { id: "smoked-fish", name: "熏鱼", machines: ["熏鱼机"], mats: ["任意鱼 + 煤炭"], priceNote: "2 × 原料价值" },
+  { id: "caviar", name: "鱼籽酱", machines: ["罐头瓶"], sell: 500, mats: ["鲟鱼鱼籽"] },
+  { id: "aged-roe", name: "腌鱼籽", machines: ["罐头瓶"], mats: ["任意鱼籽"], priceNote: "2 × 原料价值" },
+  { id: "cheese", name: "奶酪", machines: ["压酪机", "木桶"], sell: 230, mats: ["牛奶", "大壶牛奶"] },
+  { id: "goat-cheese", name: "山羊奶酪", machines: ["压酪机", "木桶"], sell: 400, mats: ["羊奶", "大瓶羊奶"] },
+  { id: "mayonnaise", name: "蛋黄酱", machines: ["蛋黄酱机"], sell: 190, mats: ["蛋", "大鸡蛋"] },
+  { id: "duck-mayonnaise", name: "鸭蛋黄酱", machines: ["蛋黄酱机"], sell: 375, mats: ["鸭蛋"] },
+  { id: "void-mayonnaise", name: "虚空蛋黄酱", machines: ["蛋黄酱机"], sell: 275, mats: ["虚空蛋"] },
+  { id: "dinosaur-mayonnaise", name: "恐龙蛋黄酱", machines: ["蛋黄酱机"], sell: 800, mats: ["恐龙蛋"] },
+  { id: "truffle-oil", name: "松露油", machines: ["产油机"], sell: 1065, mats: ["松露"] },
+  { id: "oil", name: "油", machines: ["产油机"], sell: 100, mats: ["玉米", "向日葵", "向日葵种子"] },
+  { id: "vinegar", name: "醋", machines: ["小桶"], sell: 100, mats: ["大米"] },
+  { id: "beer", name: "啤酒", machines: ["小桶"], sell: 200, mats: ["小麦"] },
+  { id: "pale-ale", name: "淡啤酒", machines: ["小桶"], sell: 300, mats: ["啤酒花"] },
+  { id: "mead", name: "蜜蜂酒", machines: ["小桶"], sell: 300, mats: ["蜂蜜"] },
+  { id: "green-tea", name: "绿茶", machines: ["小桶"], sell: 100, mats: ["茶叶"] },
+  { id: "coffee", name: "咖啡", machines: ["小桶"], sell: 150, mats: ["咖啡豆"] },
+  { id: "cloth", name: "布料", machines: ["织布机"], sell: 470, mats: ["动物毛"] },
+  { id: "mystic-syrup", name: "神秘糖浆", machines: ["神秘树"], sell: 1000, mats: ["神秘树"], priceNote: "由神秘树产出" },
+];

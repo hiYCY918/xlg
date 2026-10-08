@@ -15,7 +15,7 @@ const root = path.join(__dirname, "..");
 
 let failures = 0;
 const log = (ok, msg) => {
-  console.log((ok ? "✓ " : "✗ ") + msg);
+  console.log((ok ? "[OK] " : "[FAIL] ") + msg);
   if (!ok) failures++;
 };
 
@@ -129,7 +129,8 @@ const src =
   "bundleItemNames,doneBundleCount,readBundleProgress,BUNDLE_PROGRESS_KEY," +
   "parseHash,hashFor,setRouteHash,currentModuleId,defaultModuleId,restoreRoute,gotoItem,LAST_MODULE_KEY," +
   "GIFT_USES,GIFT_PLACEHOLDERS,giftChip,giftUsesSection,NAME_INDEX," +
-  "CRAFTING,CRAFT_CATS,CRAFTED_BY,craftedBySection,sortCrafting};";
+  "CRAFTING,CRAFT_CATS,CRAFTED_BY,craftedBySection,sortCrafting," +
+  "ARTISAN,artisanMachines};";
 
 let data;
 try {
@@ -199,8 +200,8 @@ for (const [countId, label, arr] of groups) {
   }
 }
 const noImg = imgIds.filter((i) => !haveImgs.includes(i));
-console.log(`ℹ 图片覆盖：${imgIds.length - noImg.length}/${imgIds.length}（缺失 ${noImg.length} 个，将用兜底图标）` + (noImg.length ? ": " + noImg.join(",") : ""));
-console.log(`ℹ 贴图模块 ${groups.length - emojiOnly.length} 个；emoji 呈现模块 ${emojiOnly.length} 个（${emojiOnly.join(" / ")}），不计入覆盖率`);
+console.log(`[INFO] 图片覆盖：${imgIds.length - noImg.length}/${imgIds.length}（缺失 ${noImg.length} 个，将用兜底图标）` + (noImg.length ? ": " + noImg.join(",") : ""));
+console.log(`[INFO] 贴图模块 ${groups.length - emojiOnly.length} 个；emoji 呈现模块 ${emojiOnly.length} 个（${emojiOnly.join(" / ")}），不计入覆盖率`);
 
 // 模块数量
 for (const [, label, arr] of groups) log(arr.length > 0, label + " 数据 " + arr.length + " 条");
@@ -370,7 +371,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
   console.log("\n=== 6. 收集包（进度勾选 + localStorage） ===");
 
   const B = data.BUNDLES;
-  console.log("ℹ 收集包 " + B.length + " 个 / 房间 " + data.BUNDLE_ROOMS.length +
+  console.log("[INFO] 收集包 " + B.length + " 个 / 房间 " + data.BUNDLE_ROOMS.length +
     " 个 / 需求项 " + B.reduce((n, b) => n + (b.items || []).length, 0) + " 项");
 
   /* 6.1 数据完整性 */
@@ -417,15 +418,9 @@ console.log("\n=== 3. 渲染冒烟 ===");
     "大瓶羊奶": "待建：后续模块",
     "大鸡蛋": "待建：后续模块",
     "太阳精华": "待建：后续模块",
-    "奶酪": "待建：后续模块",
-    "山羊奶酪": "待建：后续模块",
-    "布料": "待建：后续模块",
     "干草": "待建：后续模块",
-    "恐龙蛋黄酱": "待建：后续模块",
     "杏子": "待建：后续模块",
     "松焦油": "待建：后续模块",
-    "松露油": "待建：后续模块",
-    "果酒": "待建：后续模块",
     "果酱": "待建：后续模块",
     "枫糖浆": "待建：后续模块",
     "桃子": "待建：后续模块",
@@ -436,9 +431,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
     "石榴": "待建：后续模块",
     "苹果": "待建：后续模块",
     "虚空精华": "待建：后续模块",
-    "蜂蜜": "待建：后续模块",
     "蝙蝠翅膀": "待建：后续模块",
-    "鱼籽酱": "待建：后续模块",
     "鸭毛": "待建：后续模块",
     "鸭蛋": "待建：后续模块",
   };
@@ -499,7 +492,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
 
   /* 6.4 「任选 N 个」：提交够 choose 格即完成，不必全交 */
   const chooseBundle = B.find((b) => b.choose > 0 && (b.items || []).length > b.choose);
-  console.log("ℹ 任选型收集包 " + B.filter((b) => b.choose > 0).length + " 个，用例取「" +
+  console.log("[INFO] 任选型收集包 " + B.filter((b) => b.choose > 0).length + " 个，用例取「" +
     (chooseBundle ? chooseBundle.name + "」（" + chooseBundle.choose + " / " + chooseBundle.items.length + "）" : "无") + "」");
   if (chooseBundle) {
     store.clear();
@@ -739,11 +732,10 @@ console.log("\n=== 3. 渲染冒烟 ===");
   /* 8.3 礼物落点的「已知缺口表」：全部必须来自尚未收录的模块，且表不能过期。
    * 收录「料理」模块后，其中的菜肴（沙拉/披萨/粉红蛋糕…）已可跳转，从表中移除。 */
   const GIFT_GAPS = [
-    "仙子玫瑰", "冷冻泪", "古代玩偶", "可乐", "咖啡", "啤酒", "墨鱼", "夏季紫丁香",
-    "太阳精华", "宝石", "山羊奶酪", "松露油", "桃子", "橙子", "油炸鱿鱼", "泡菜",
-    "海洋料理", "炖豆", "电池", "石榴", "秋季蔬菜", "绿茶", "罂粟", "羊奶酪",
-    "羊毛", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华", "虚空蛋", "虚空蛋黄酱", "辣鳗鱼",
-    "鸵鸟蛋",
+    "仙子玫瑰", "冷冻泪", "古代玩偶", "可乐", "墨鱼", "夏季紫丁香", "太阳精华", "宝石",
+    "桃子", "橙子", "油炸鱿鱼", "泡菜", "海洋料理", "炖豆", "电池", "石榴",
+    "秋季蔬菜", "罂粟", "羊奶酪", "羊毛", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华",
+    "虚空蛋", "辣鳗鱼", "鸵鸟蛋",
   ];
   const giftGapActual = [...giftNames].filter((g) => !data.NAME_INDEX.has(g));
   const giftUntracked = giftGapActual.filter((g) => GIFT_GAPS.indexOf(g) < 0);
@@ -836,10 +828,9 @@ console.log("\n=== 3. 渲染冒烟 ===");
 
   /* 材料落点：可跳转 + 已知缺口必须守恒 */
   const CR_GAPS = [
-    "史莱姆泥", "夏季亮片种子", "太阳精华", "布料", "松果", "松焦油", "松露油", "枫树种子",
-    "枫糖浆", "树液", "橡子", "橡树树脂", "河凝胶", "油", "洞穴凝胶", "海凝胶",
-    "矮人小工具", "神秘糖浆", "蓝爵士种子", "虚空精华", "虞美人种子", "虫肉", "蜂蜜", "蝙蝠翅膀",
-    "郁金香球茎", "鱼", "鱼饵（物品）|鱼饵", "齐钻", "龙牙",
+    "史莱姆泥", "夏季亮片种子", "太阳精华", "松果", "松焦油", "枫树种子", "枫糖浆", "树液",
+    "橡子", "橡树树脂", "河凝胶", "洞穴凝胶", "海凝胶", "矮人小工具", "蓝爵士种子", "虚空精华",
+    "虞美人种子", "虫肉", "蝙蝠翅膀", "郁金香球茎", "鱼", "鱼饵（物品）|鱼饵", "齐钻", "龙牙",
   ];
   const craftMats = new Set(CR.flatMap((r) => (r.ingredients || []).map((i) => i.name)));
   const matHit = [...craftMats].filter((n) => data.NAME_INDEX.has(n));
@@ -885,8 +876,55 @@ console.log("\n=== 3. 渲染冒烟 ===");
     "打造详情含「所需材料」与「配方获取」分区（" + cFirst.name + "）");
   log(cHtml.includes("data-goto-id"), "打造详情中的材料生成了跳转链接");
 
-  /* ---------- 10. 视觉资源 ---------- */
-  console.log("\n=== 10. 视觉资源（模块图标贴图） ===");
+  /* ---------- 10. 工匠制品（加工品 ↔ 产出机器） ---------- */
+  console.log("\n=== 10. 工匠制品（加工品 ↔ 产出机器） ===");
+
+  const AR = data.MODULE_DATA.ARTISAN;
+  const arIds = AR.map((a) => a.id);
+  const arDup = [...new Set(arIds.filter((v, i) => arIds.indexOf(v) !== i))];
+  log(arDup.length === 0, "工匠制品 id 无重复（" + AR.length + " 条）" + (arDup.length ? "：" + arDup.join(",") : ""));
+
+  /* id 全局唯一（深链接键） */
+  const owner2 = new Map();
+  for (const sec of data.REGISTRY) for (const it of sec.data) if (!owner2.has(it.id)) owner2.set(it.id, sec.id);
+  const arCross = AR.filter((a) => owner2.get(a.id) !== "artisan").map((a) => a.id + "(属" + owner2.get(a.id) + ")");
+  log(arCross.length === 0, "工匠制品 id 与其它模块无冲突" + (arCross.length ? "：" + arCross.join(",") : ""));
+
+  const badAr = [];
+  for (const a of AR) {
+    if (!a.name) badAr.push(a.id + "(无名称)");
+    if (!(a.machines || []).length) badAr.push(a.id + "(无产出机器)");
+    /* 无固定售价的必须写明计价规则，否则界面上只有一个「浮动」无从理解 */
+    if (!a.sell && !a.priceNote) badAr.push(a.id + "(既无售价也无计价规则)");
+  }
+  log(badAr.length === 0, "工匠制品字段齐全（名称/机器/售价或计价规则）" + (badAr.length ? "：" + badAr.slice(0, 6).join(",") : ""));
+
+  /* 分组覆盖：数据里出现过的产出机器都必须能筛（沿用 R17 口径） */
+  const arMachines = [];
+  AR.forEach((a) => (a.machines || []).forEach((m) => { if (arMachines.indexOf(m) < 0) arMachines.push(m); }));
+  log(arMachines.length > 0, "工匠制品按 " + arMachines.length + " 类产出机器分组（" + arMachines.join("/") + "）");
+
+  const arHtml = String(data.DETAIL_RENDERERS.artisan(AR[0].id));
+  log(arHtml.includes("产出机器") && arHtml.includes("基础售价"),
+    "工匠详情含「产出机器」与「基础售价」分区（" + AR[0].name + "）");
+  const CRAFT_ALL = data.MODULE_DATA.CRAFTING;
+  const linkedMachine = AR.find((a) => (a.machines || []).some((m) => CRAFT_ALL.some((c) => c.name === m)));
+  if (linkedMachine) {
+    const h = String(data.DETAIL_RENDERERS.artisan(linkedMachine.id));
+    log(h.includes('data-goto-module="crafting"'),
+      "产出机器可跳转到打造配方（" + linkedMachine.name + " → " +
+      (linkedMachine.machines || []).find((m) => CRAFT_ALL.some((c) => c.name === m)) + "）");
+  } else {
+    log(false, "找不到「产出机器能对上打造配方」的工匠条目");
+  }
+
+  /* 变价品必须写明规则（界面不能只显示「浮动」） */
+  const varItems = AR.filter((a) => !a.sell);
+  log(varItems.length > 0 && varItems.every((a) => a.priceNote && a.priceNote.length >= 4),
+    varItems.length + " 个变价品均写明计价规则（如 " + (varItems[0] ? varItems[0].priceNote : "-") + "）");
+
+  /* ---------- 11. 视觉资源 ---------- */
+  console.log("\n=== 11. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];
@@ -928,13 +966,13 @@ console.log("\n=== 3. 渲染冒烟 ===");
       }
     }
   }
-  console.log("ℹ 贴图格式：非 PNG 者 " + notPng.length + " 个" + (notPng.length ? "：" + notPng.join(", ") : ""));
+  console.log("[INFO] 贴图格式：非 PNG 者 " + notPng.length + " 个" + (notPng.length ? "：" + notPng.join(", ") : ""));
 
   /* 临时文件防漏：deploy.bat 会 git add -A，根目录下遗留的 _ 开头文件会被误提交 */
   const strayTmp = fs.readdirSync(root).filter((f) => f.startsWith("_"));
   log(strayTmp.length === 0,
     "仓库根目录无临时文件残留" + (strayTmp.length ? ": " + strayTmp.join(", ") : ""));
 
-  console.log(failures ? `\n结果：失败 ${failures} 项` : "\n结果：全部通过 ✓");
+  console.log(failures ? `\n结果：失败 ${failures} 项` : "\n结果：全部通过");
   process.exit(failures ? 1 : 0);
 })();

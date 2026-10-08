@@ -195,6 +195,7 @@ function moduleIconHtml(m) {
   bundles: "全部",
   cooking: "全部", cookSort: "default",
   crafting: "全部", craftSort: "default",
+  artisan: "全部",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -808,6 +809,44 @@ function renderCrafting() {
   body.appendChild(grid);
 }
 
+/* ---- 工匠制品（加工品） ---- */
+/* 产出机器清单：从数据派生，保证筛选入口随数据自动扩展（R17 的口径） */
+function artisanMachines() {
+  const set = [];
+  ARTISAN.forEach((a) => (a.machines || []).forEach((m) => { if (set.indexOf(m) < 0) set.push(m); }));
+  return set;
+}
+function renderArtisan() {
+  const body = $("#body-artisan");
+  body.innerHTML = "";
+  const list = ARTISAN.filter((a) => state.artisan === "全部" || (a.machines || []).indexOf(state.artisan) >= 0);
+  const total = updateModuleCount(SECTION.artisan);
+  setShown("artisan", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(
+    [{ value: "全部", label: "全部机器" }].concat(artisanMachines().map((m) => ({ value: m, label: m }))),
+    state.artisan,
+    (v) => { state.artisan = v; renderArtisan(); }
+  ));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((a) => `
+    <div ${cardAttrs(a.id)}>
+      ${itemIconHtml(a.id, a.name, GENERIC_ICON)}
+      <h3>${esc(a.name)}</h3>
+      <div class="chip-list">${(a.machines || []).map((m) => `<span class="chip chip-machine">${esc(m)}</span>`).join("")}</div>
+      <div class="foot">
+        ${a.sell ? `售价 <span class="gold-text">${a.sell}</span>` : `<span class="muted">售价随原料浮动</span>`}
+        ${(a.mats || []).length ? `<br><span class="muted">原料：${esc((a.mats || []).join(" / "))}</span>` : ""}
+      </div>
+    </div>`).join("") || emptyState("该机器暂无产物");
+  body.appendChild(grid);
+}
+
 /* ---- 事件 ---- */
 function renderEvents() {
   const body = $("#body-events");
@@ -1046,6 +1085,31 @@ const REGISTRY = [
     },
   },
   {
+    id: "artisan", stateKey: ["artisan"], spriteFor: "", sprite: "cheese-press", icon: "🧀", label: "工匠制品",
+    sub: "加工品的产出机器、原料与售价", data: "ARTISAN", render: renderArtisan,
+    resetFilter: (s) => { s.artisan = "全部"; },
+    indexExtra: (a) => (a.machines || []).concat(a.mats || []),
+    detail: (a) => detailHead(itemIconHtml(a.id, a.name, GENERIC_ICON), a.name,
+      (a.machines || []).join(" / ") + " 产出") +
+      detailSection("数值", kvGrid([
+        ["基础售价", a.sell ? a.sell + " 金" : "随原料浮动"],
+        ["计价规则", a.priceNote || "—"],
+        ["产出机器", (a.machines || []).join("、") || "—"],
+        ["所需原料", (a.mats || []).join("、") || "—"],
+      ])) +
+      (a.priceNote ? detailSection("为什么是浮动价", `<p>${esc("这类加工品的售价取决于投入原料的价值，因此没有固定售价：" + a.priceNote + "。选贵的原料产出更值钱。")}</p>`) : "") +
+      detailSection("用途", `<p>${esc("可用于送礼、完成收集包，或直接出售换取金币。")}</p>`) +
+      giftUsesSection(a.name) +
+      bundleUsesSection(a.name) +
+      detailSection("产出机器", `<div class="chip-list">${(a.machines || []).map((m) => {
+        const rec = CRAFTING.find((c) => c.name === m);
+        return rec
+          ? `<span class="chip chip-link" data-goto-module="crafting" data-goto-id="${esc(rec.id)}" role="button" tabindex="0" title="查看${esc(m)}">🔨 ${esc(m)}</span>`
+          : `<span class="chip chip-machine">${esc(m)}</span>`;
+      }).join("")}</div>` +
+        ((a.machines || []).some((m) => CRAFTING.some((c) => c.name === m)) ? `<p class="muted">带下划线的机器可点击查看打造配方。</p>` : "")),
+  },
+  {
     id: "crafting", stateKey: ["crafting", "craftSort"], spriteFor: "", sprite: "furnace", icon: "🔨", label: "打造",
     sub: "制造配方的所需材料与获取方式", data: "CRAFTING", render: renderCrafting,
     resetFilter: (s) => { s.crafting = "全部"; s.craftSort = "default"; },
@@ -1098,7 +1162,7 @@ const REGISTRY = [
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
-  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING,
+  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
