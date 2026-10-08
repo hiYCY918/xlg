@@ -46,6 +46,7 @@ const UNIVERSE = [
   ["NPC", ["NPC"], [], "NPCS"],
   ["节日", ["春季节日", "夏季节日", "秋季节日", "冬季节日"], [], "FESTIVALS"],
   ["种子", ["种子"], [], "SEEDS"],
+  ["果树", ["果树"], [], "FRUIT_TREES"],
 ];
 
 /* 分类/导航页而非内容条目，比对时排除 */
@@ -66,7 +67,7 @@ const EXCLUDED = new Map(Object.entries({
 /* 整块系统盘点：**只列本站还没有对应模块的系统**（已收录的从本表移除，
  * 否则报告会永远显示「本站均无对应模块」，与事实不符）。 */
 const SYSTEMS = [
-  ["果树", "果树"],
+  ["树", "树木（松树 / 枫树 / 橡树 / 桃花心木 / 神秘树 / 绿雨树）"],
   ["动物", "牧场动物"],
   ["武器", "武器"],
   ["建筑", "农场建筑"],
@@ -76,7 +77,7 @@ const SYSTEMS = [
 (async () => {
   const data = new Function(
     fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS};"
+    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES};"
   )();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */

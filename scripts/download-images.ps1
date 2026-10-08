@@ -370,6 +370,15 @@ $items = @{
   "bean-starter" = "Bean_Starter.png"
   "banana-sapling" = "Banana_Sapling.png"
   "qi-bean" = "Qi_Bean.png"
+  # ---------- 果树（第十六轮补；图标用**果实图** 48×48，树图 96×160 会造成非整数缩放） ----------
+  "apricot" = "Apricot.png"
+  "peach" = "Peach.png"
+  "cherry" = "Cherry.png"
+  "orange" = "Orange.png"
+  "pomegranate" = "Pomegranate.png"
+  "mango-tree" = "Mango.png"
+  "apple" = "Apple.png"
+  "banana" = "Banana.png"
 }
 
 $imgDir = Join-Path $Root "img"

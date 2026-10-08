@@ -201,6 +201,7 @@ function moduleIconHtml(m) {
   crafting: "全部", craftSort: "default",
   artisan: "全部",
   seeds: "全部", seedSort: "default",
+  fruittrees: "全部", treeSort: "default",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -824,6 +825,69 @@ function renderSeeds() {
   body.appendChild(grid);
 }
 
+/* ---- 果树 ---- */
+/* 季节筛选项**从数据派生**：以后新增在别的季节结果的果树，筛选栏自动跟上（R17） */
+const TREE_SEASONS = ["春", "夏", "秋", "冬"].filter((s) => FRUIT_TREES.some((t) => t.season.indexOf(s) >= 0));
+const TREE_SORTS = [
+  { value: "default", label: "默认顺序" },
+  { value: "fruit", label: "果实售价 ↓" },
+  { value: "sapling", label: "树苗价 ↑" },
+];
+function sortTrees(list, mode) {
+  const arr = list.slice();
+  const by = {
+    fruit: (a, b) => (b.fruitSell || 0) - (a.fruitSell || 0),
+    sapling: (a, b) => (a.saplingSell || 0) - (b.saplingSell || 0),
+  }[mode];
+  return by ? arr.sort(by) : arr;
+}
+function renderFruitTrees() {
+  const body = $("#body-fruittrees");
+  body.innerHTML = "";
+  const list = sortTrees(
+    FRUIT_TREES.filter((t) => state.fruittrees === "全部" || t.season.indexOf(state.fruittrees) >= 0),
+    state.treeSort
+  );
+  const total = updateModuleCount(SECTION.fruittrees);
+  setShown("fruittrees", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(
+    [{ value: "全部", label: "全部" }].concat(TREE_SEASONS.map((s) => ({ value: s, label: s + "季" }))),
+    state.fruittrees,
+    (v) => { state.fruittrees = v; renderFruitTrees(); }
+  ));
+  toolbar.appendChild(controlRow(
+    sortSelect(TREE_SORTS, state.treeSort, (v) => {
+      state.treeSort = v;
+      pendingFocus = "treeSort";
+      renderFruitTrees();
+    }, "treeSort"),
+    hintNode("果树成熟后当季每天结果，果实最多累积 3 天")
+  ));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((t) => `
+    <div ${cardAttrs(t.id)}>
+      ${itemIconHtml(t.id, t.fruit, GENERIC_ICON)}
+      <h3>${esc(t.name)}</h3>
+      <div class="meta">${esc(seasonLabel(t.season))}结果 · 成熟 ${t.growth} 天</div>
+      <div class="meta">果实 <b>${esc(t.fruit)}</b> · 售价 <span class="gold-text">${t.fruitSell} 金</span></div>
+      <div class="meta">🌱 由 ${saplingChip(t)} 种出</div>
+      <div class="foot"><span class="muted">${t.island ? "姜岛上全年结果" : "需 3×3 空地，冬季不结果"}</span></div>
+    </div>`).join("") || emptyState("没有符合条件的果树");
+  body.appendChild(grid);
+}
+/* 树苗 chip：一定落在种子模块（收口断言已保证每个树苗都能在 SEEDS 里找到） */
+function saplingChip(t) {
+  const hit = NAME_INDEX.get(t.sapling);
+  if (!hit) return `<span class="chip chip-plain">${esc(t.sapling)}</span>`;
+  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(t.sapling)}">🌱 ${esc(t.sapling)}</span>`;
+}
+
 /* ---- 事件 ---- */
 /* ---- 打造（制造配方） ---- */
 const CRAFT_SORTS = [
@@ -1360,12 +1424,41 @@ const REGISTRY = [
       giftUsesSection(s.name) +
       bundleUsesSection(s.name),
   },
+  {
+    id: "fruittrees", stateKey: ["fruittrees", "treeSort"], spriteFor: "", sprite: "apple", icon: "🍎", label: "果树",
+    sub: "果树的成熟周期、结果季节与果实价值", data: "FRUIT_TREES", render: renderFruitTrees,
+    resetFilter: (s) => { s.fruittrees = "全部"; s.treeSort = "default"; },
+    indexExtra: (t) => [t.fruit, t.sapling],
+    detail: (t) => detailHead(itemIconHtml(t.id, t.fruit, GENERIC_ICON), t.name,
+      esc(seasonLabel(t.season)) + "结果 · 成熟 " + t.growth + " 天") +
+      detailSection("数值", kvGrid([
+        ["果实", t.fruit],
+        ["果实售价", t.fruitSell + " 金"],
+        ["食用回复体力", String(t.edibility)],
+        ["成熟时间", t.growth + " 天"],
+        ["结果季节", seasonLabel(t.season)],
+        ["树苗售价", t.saplingSell != null ? t.saplingSell + " 金" : "—"],
+      ])) +
+      detailSection("树苗", `<div class="chip-list">${saplingChip(t)}</div>` +
+        (t.altSource ? `<p class="muted">其他获取方式：${esc(t.altSource)}</p>` : "")) +
+      detailSection("果树通用规则", `<p>${esc(
+        "需种在 3×3 空地中央，与其他果树至少间隔 2 格；果树不用浇水，冬季也不会死。" +
+        "成熟后在对应季节每天产出一个果实，果实最多累积 3 天。" +
+        "成熟一年后开始产出银星果实、两年金星、三年铱星。" +
+        "温室与姜岛上的果树全年结果。"
+      )}</p>` + (t.island ? `<p class="muted">本树在姜岛上全年结果。</p>` : "")) +
+      /* 果实的用途：复用现有的四类反查区块（都按**物品名**索引，传果实名即可） */
+      giftUsesSection(t.fruit) +
+      bundleUsesSection(t.fruit) +
+      cookedBySection(t.fruit) +
+      craftedBySection(t.fruit),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
-  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS,
+  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
@@ -1803,13 +1896,27 @@ function money(n) {
   return n < 0 ? raw(`<b class="neg-text">${n} 金</b>`) : n + " 金";
 }
 
-/* 物品名 → 条目索引，用于掉落物交叉跳转 */
 /* 物品名 → 条目索引：由注册表驱动，新增模块自动进入（此前是逐个模块手写，
- * 加「料理」时就被漏掉，导致菜肴无法作为礼物/原料被跳转——正是 P0 要消灭的漏配模式）。 */
+ * 加「料理」时就被漏掉，导致菜肴无法作为礼物/原料被跳转——正是 P0 要消灭的漏配模式）。
+ * 第二轮：支持 `aka` 别名——同一件东西在站内有多个叫法时（如「苹果」↔「苹果树」），
+ * 别名也能被索引到。**别名不覆盖已有的正式名**：注册表靠前的模块优先，
+ * 这正是 R53「冲突时以已有模块为准」的落地（芒果已由 CROPS 收录，果树模块就不登记该别名）。 */
 const NAME_INDEX = (() => {
   const map = new Map();
   REGISTRY.forEach((sec) => sec.data.forEach((x) => {
     if (!map.has(x.name)) map.set(x.name, { module: sec.id, id: x.id });
+  }));
+  REGISTRY.forEach((sec) => sec.data.forEach((x) => {
+    (x.aka || []).forEach((a) => { if (!map.has(a)) map.set(a, { module: sec.id, id: x.id }); });
+  }));
+  return map;
+})();
+
+/* 别名索引：别名 → 正式名（界面上要写清「苹果 → 苹果树」，避免用户以为点错了） */
+const AKA_INDEX = (() => {
+  const map = new Map();
+  REGISTRY.forEach((sec) => sec.data.forEach((x) => {
+    (x.aka || []).forEach((a) => { if (!map.has(a)) map.set(a, x.name); });
   }));
   return map;
 })();

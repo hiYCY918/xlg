@@ -132,7 +132,8 @@ const src =
   "CRAFTING,CRAFT_CATS,CRAFTED_BY,craftedBySection,sortCrafting," +
   "ARTISAN,artisanMachines," +
   "ARTIFACTS,MUSEUM_NAMES,MUSEUM_REWARDS,isDonated,toggleDonate,museumDonatedCount,readMuseum," +
-  "SEEDS,SEED_SEASON_FILTERS,SEEDED_BY,seededBySection,seedPriceText,seedGrowthText,sortSeeds};";
+  "SEEDS,SEED_SEASON_FILTERS,SEEDED_BY,seededBySection,seedPriceText,seedGrowthText,sortSeeds," +
+  "FRUIT_TREES,TREE_SEASONS,saplingChip,sortTrees};";
 
 let data;
 try {
@@ -734,8 +735,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
   /* 8.3 礼物落点的「已知缺口表」：全部必须来自尚未收录的模块，且表不能过期。
    * 收录「料理」模块后，其中的菜肴（沙拉/披萨/粉红蛋糕…）已可跳转，从表中移除。 */
   const GIFT_GAPS = [
-    "仙子玫瑰", "冷冻泪", "可乐", "墨鱼", "夏季紫丁香", "太阳精华", "宝石", "桃子",
-    "橙子", "油炸鱿鱼", "泡菜", "海洋料理", "炖豆", "电池", "石榴", "秋季蔬菜",
+    "仙子玫瑰", "冷冻泪", "可乐", "墨鱼", "夏季紫丁香", "太阳精华", "宝石",
+    "油炸鱿鱼", "泡菜", "海洋料理", "炖豆", "电池", "秋季蔬菜",
     "罂粟", "羊奶酪", "羊毛", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华", "虚空蛋",
     "辣鳗鱼", "鸵鸟蛋",
   ];
@@ -1015,11 +1016,11 @@ console.log("\n=== 3. 渲染冒烟 ===");
     "种子季节筛选覆盖全部季节（" + sdSeasons.join("/") + "）" + (missSdSeason.length ? "：缺 " + missSdSeason.join(",") : ""));
 
   /* 结果物落点守恒：能跳转的 + 已知缺口的 == 全部有固定结果物的种子。
-   * 缺口表里的目标都属于尚未收录的模块（树木 / 果树 / 草），补上对应模块后本表会自动收缩（R31）。
+   * 缺口表里的目标都属于尚未收录的模块（树木 / 草），补上对应模块后本表会自动收缩（R31）：
+   * 第十六轮加「果树」后，本表一次收了 7 项（杏子/桃子/樱桃/橙子/石榴/苹果/香蕉）。
    * 注意「纤维」在采矿、「蘑菇树」在事件，都已收录，故**不**入表。 */
   const SD_CROP_GAPS = [
-    "杏子", "松树", "枫树", "桃子", "桃花心木树", "樱桃", "橙子", "橡树",
-    "石榴", "神秘树", "苹果", "草", "绿雨树", "香蕉",
+    "松树", "枫树", "桃花心木树", "橡树", "神秘树", "草", "绿雨树",
   ];
   const sdWithCrop = SD.filter((s) => s.crop);
   const sdHit = sdWithCrop.filter((s) => data.NAME_INDEX.has(s.crop));
@@ -1054,8 +1055,83 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(sdZero.length === 0 || data.seedPriceText(sdZero[0]) === "不可出售",
     "售价为 0 的种子渲染成「不可出售」而非 0 金（" + sdZero.length + " 条）");
 
-  /* ---------- 13. 视觉资源 ---------- */
-  console.log("\n=== 13. 视觉资源（模块图标贴图） ===");
+  /* ---------- 13. 果树（树 ↔ 树苗 ↔ 果实） ---------- */
+  console.log("\n=== 13. 果树（树 ↔ 树苗 ↔ 果实） ===");
+
+  const FT = arrays.fruittrees || [];
+  const ftIds = FT.map((t) => t.id);
+  const ftDup = [...new Set(ftIds.filter((v, i) => ftIds.indexOf(v) !== i))];
+  log(ftDup.length === 0, "果树 id 无重复（" + FT.length + " 棵）" + (ftDup.length ? "：" + ftDup.join(",") : ""));
+
+  const ownerT = new Map();
+  for (const sec of data.REGISTRY) for (const it of sec.data) if (!ownerT.has(it.id)) ownerT.set(it.id, sec.id);
+  const ftCross = FT.filter((t) => ownerT.get(t.id) !== "fruittrees").map((t) => t.id + "(属" + ownerT.get(t.id) + ")");
+  log(ftCross.length === 0, "果树 id 与其它模块无冲突" + (ftCross.length ? "：" + ftCross.join(",") : ""));
+
+  const ftNames = FT.map((t) => t.name);
+  const ftNameDup = [...new Set(ftNames.filter((v, i) => ftNames.indexOf(v) !== i))];
+  log(ftNameDup.length === 0, "果树名称无重复" + (ftNameDup.length ? "：" + ftNameDup.join(",") : ""));
+
+  const badFt = [];
+  for (const t of FT) {
+    if (!t.fruit) badFt.push(t.id + "(无果实)");
+    if (!t.sapling) badFt.push(t.id + "(无树苗)");
+    if (!(t.season || []).length) badFt.push(t.id + "(无季节)");
+    if (t.growth == null) badFt.push(t.id + "(无成熟时间)");
+    if (typeof t.fruitSell !== "number") badFt.push(t.id + "(无果实售价)");
+  }
+  log(badFt.length === 0, "果树字段齐全（果实/树苗/季节/成熟时间/果实售价）" + (badFt.length ? "：" + badFt.slice(0, 6).join(",") : ""));
+
+  /* 跨模块交叉校验：每棵树苗都必须能在**种子**模块找到，
+   * 且两边对同一个树苗的售价必须一致（否则界面会出现两个说法） */
+  const seedArr = arrays.seeds || [];
+  const saplingMiss = FT.filter((t) => !seedArr.some((s) => s.name === t.sapling)).map((t) => t.name + "→" + t.sapling);
+  log(saplingMiss.length === 0, "每棵果树的树苗都能在种子模块找到" + (saplingMiss.length ? "：" + saplingMiss.join(",") : ""));
+  const priceMismatch = FT.filter((t) => {
+    const s = seedArr.find((x) => x.name === t.sapling);
+    return s && s.sell != null && t.saplingSell != null && s.sell !== t.saplingSell;
+  }).map((t) => t.name);
+  log(priceMismatch.length === 0, "树苗售价与种子模块一致（" + FT.length + " 棵交叉核对）" +
+    (priceMismatch.length ? "：" + priceMismatch.join(",") : ""));
+
+  /* 季节筛选覆盖数据里出现过的全部季节（R17） */
+  const ftSeasons = [...new Set(FT.flatMap((t) => t.season))];
+  const missFt = ftSeasons.filter((x) => data.TREE_SEASONS.indexOf(x) < 0);
+  log(missFt.length === 0, "果树季节筛选覆盖全部季节（" + ftSeasons.join("/") + "）" + (missFt.length ? "：缺 " + missFt.join(",") : ""));
+
+  /* 别名机制（第十六轮新增）：别名让「苹果」能落到「苹果树」，
+   * 但**不得覆盖已有的正式名**——芒果已由 CROPS 收录，果树模块就不该登记该别名（R53） */
+  const akaBad = [];
+  for (const t of FT) {
+    for (const a of (t.aka || [])) {
+      const hit = data.NAME_INDEX.get(a);
+      if (!hit || hit.module !== "fruittrees" || hit.id !== t.id) {
+        akaBad.push(`${a}→${hit ? hit.module + "/" + hit.id : "无"}`);
+      }
+    }
+  }
+  log(akaBad.length === 0, "果树别名都能解析到自己" + (akaBad.length ? "：" + akaBad.join(",") : ""));
+  const akaShadow = FT.filter((t) => (t.aka || []).some((a) => {
+    const first = data.REGISTRY.find((sec) => sec.data.some((x) => x.name === a));
+    return first && first.id !== "fruittrees";
+  })).map((t) => t.name);
+  log(akaShadow.length === 0, "别名未覆盖其它模块的正式名（R53）" + (akaShadow.length ? "：" + akaShadow.join(",") : ""));
+  /* 芒果是唯一被已有模块占用的果实名：它必须**没有**别名，且仍能解析到 CROPS */
+  const mango = FT.find((t) => t.fruit === "芒果");
+  log(!mango || (mango.aka || []).indexOf("芒果") < 0,
+    "「芒果」未登记别名（该名字已由 " + (data.NAME_INDEX.get("芒果") || {}).module + " 收录，以已有为准）");
+
+  /* 种子模块的「成熟后得到」要能落到果树：这是本轮缺口表收缩的直接来源 */
+  const fruitHits = FT.filter((t) => data.NAME_INDEX.has(t.fruit)).map((t) => t.fruit);
+  log(fruitHits.length >= 7, "果树的果实可从种子模块反向命中（" + fruitHits.length + " 个：" + fruitHits.join("、") + "）");
+
+  const ftHtml = String(data.DETAIL_RENDERERS.fruittrees(FT[0].id));
+  log(ftHtml.includes("树苗") && ftHtml.includes("果树通用规则"),
+    "果树详情含「树苗」与「果树通用规则」分区（" + FT[0].name + "）");
+  log(ftHtml.includes("data-goto-id"), "果树详情中的树苗生成了跳转链接（" + FT[0].name + "）");
+
+  /* ---------- 14. 视觉资源 ---------- */
+  console.log("\n=== 14. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

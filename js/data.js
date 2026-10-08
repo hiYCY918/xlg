@@ -889,5 +889,27 @@ const SEEDS = [
   { id: "qi-bean", name: "齐豆", crop: "齐瓜", season: ["春", "夏", "秋", "冬"], growth: 4, sell: 1, buy: null, source: "种子生产器 / 谜之盒 / 金色谜之盒 / 金色椰子" },
 ];
 
+/* ============================================================
+ * 果树（中文 Wiki Category:果树 全集：8 棵树 + 1 个汇总页，本站收录 8 棵）
+ * 数据来源：{{Infobox fruit tree}} + 各果实页的售价/可食用度 + 「果树」汇总页的通用规则
+ * 条目以**树**为单位（与 Wiki 分类一致），果实名放在 aka 里作别名——
+ *   这样种子的「成熟后得到 苹果」与 NPC 礼物里的「桃子」都能落到这里（NAME_INDEX 支持别名）
+ * ⚠️「芒果」不作别名：该名字已由 CROPS 收录，按 R53 以已有模块为准（芒果树自身仍收录，id 让位为 mango-tree）
+ * 图标用**果实图**（48×48，1:1 呈现符合 R23）；树图是 96×160，缩放会得到非整数倍率
+ * ============================================================ */
+const FRUIT_TREES = [
+  /* ---------- 春季结果 ---------- */
+  { id: "apricot", name: "杏子树", fruit: "杏子", sapling: "杏子树苗", season: ["春"], growth: 28, saplingSell: 500, fruitSell: 50, edibility: 15, aka: ["杏子"] },
+  { id: "cherry", name: "樱桃树", fruit: "樱桃", sapling: "樱桃树苗", season: ["春"], growth: 28, saplingSell: 850, fruitSell: 80, edibility: 15, aka: ["樱桃"] },
+  /* ---------- 夏季结果 ---------- */
+  { id: "peach", name: "桃子树", fruit: "桃子", sapling: "桃子树苗", season: ["夏"], growth: 28, saplingSell: 1500, fruitSell: 140, edibility: 15, aka: ["桃子"] },
+  { id: "orange", name: "橙子树", fruit: "橙子", sapling: "橙子树苗", season: ["夏"], growth: 28, saplingSell: 1000, fruitSell: 100, edibility: 15, aka: ["橙子"] },
+  { id: "mango-tree", name: "芒果树", fruit: "芒果", sapling: "芒果幼苗", season: ["夏"], growth: 28, saplingSell: 850, fruitSell: 130, edibility: 40, island: true, altSource: "向姜岛商人以75个蚌交换 金色椰子" },
+  { id: "banana", name: "香蕉树", fruit: "香蕉", sapling: "香蕉树苗", season: ["夏"], growth: 28, saplingSell: 850, fruitSell: 150, edibility: 30, aka: ["香蕉"], island: true, altSource: "向姜岛商人以5个龙牙交换 金色椰子" },
+  /* ---------- 秋季结果 ---------- */
+  { id: "pomegranate", name: "石榴树", fruit: "石榴", sapling: "石榴树苗", season: ["秋"], growth: 28, saplingSell: 1500, fruitSell: 140, edibility: 15, aka: ["石榴"] },
+  { id: "apple", name: "苹果树", fruit: "苹果", sapling: "苹果树苗", season: ["秋"], growth: 28, saplingSell: 1000, fruitSell: 100, edibility: 15, aka: ["苹果"] },
+];
+
 /* 博物馆可捐赠的矿物名（与 MINERALS 同名，用于进度统计与反查） */
 const MUSEUM_MINERALS = MINERALS.map((m) => m.name);
