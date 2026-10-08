@@ -1539,13 +1539,33 @@ function restoreRoute() {
   return true;
 }
 
+/* 导航栏是单行 + 横向滚动（见 css/.nav 注释），因此激活项可能落在可视区之外
+ * ——窄屏、或直接打开 #料理 这类深链接时。
+ * 这里只改 nav.scrollLeft，**不碰页面滚动**：用 scrollIntoView 会连带滚动祖先容器，
+ * 在落地深链接时会把页面本身顶走。 */
+function ensureNavVisible(btn) {
+  const nav = $("#nav");
+  if (!nav || !btn) return;
+  /* test/check.js 的 DOM 模拟没有布局引擎，getBoundingClientRect 不存在（R2：一律判存不裸调） */
+  if (typeof nav.getBoundingClientRect !== "function") return;
+  if (typeof btn.getBoundingClientRect !== "function") return;
+  const nr = nav.getBoundingClientRect();
+  const br = btn.getBoundingClientRect();
+  if (!nr || !br || typeof nr.left !== "number") return;
+  if (br.left < nr.left) nav.scrollLeft -= (nr.left - br.left) + 8;
+  else if (br.right > nr.right) nav.scrollLeft += (br.right - nr.right) + 8;
+}
+
 function switchModule(id) {
   MODULES.forEach((m) => {
     const active = m.id === id;
     const sec = $(`#module-${m.id}`);
     if (sec) sec.hidden = !active;
     const navBtn = $(`.nav-item[data-module="${m.id}"]`);
-    if (navBtn) navBtn.classList.toggle("is-active", active);
+    if (navBtn) {
+      navBtn.classList.toggle("is-active", active);
+      if (active) ensureNavVisible(navBtn);
+    }
   });
 }
 
@@ -1726,6 +1746,12 @@ document.addEventListener("DOMContentLoaded", () => {
   switchModule(defaultModuleId());
   restoreRoute();
   initGlobalSearch();
+
+  /* 窗口变窄会让当前模块的导航按钮滑出可视区（导航是横向滚动的单行），拉回视野 */
+  window.addEventListener("resize", () => {
+    const active = $(".nav-item.is-active");
+    if (active) ensureNavVisible(active);
+  });
 
   /* 卡片 → 详情弹窗（事件委托，新渲染的卡片无需重新绑定） */
   const page = $("#page");

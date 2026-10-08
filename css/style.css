@@ -156,10 +156,17 @@ html, body {
 .nav {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
+  /* 14 个模块在 1400px 下会折成两行（第 14 个「料理」独占第二行）。
+   * 改为单行不折行：装不下时横向滚动，而不是换行——换行会顶掉内容区高度，
+   * 且"哪个模块在第二行"完全取决于视口宽度，不稳定。 */
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 4px;
   padding: 10px 16px;
+  overflow-x: auto;
+  /* 横向滚动条做成细条木质配色，作为"还有模块在右边"的可视提示 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.32) rgba(0, 0, 0, 0.16);
   /* 木板纹理：竖向拼缝 + 上下内高光/压边 */
   background:
     repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.10) 0 2px, transparent 2px 44px),
@@ -167,11 +174,19 @@ html, body {
   border-top: 1px solid rgba(0,0,0,0.12);
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.07), inset 0 -3px 0 rgba(0, 0, 0, 0.28);
 }
+/* 装得下时整组居中：首尾用 auto margin 均分剩余空间；一旦溢出，auto 会塌成 0，
+ * 内容从起始边开始、可正常滚动。**不能**用 justify-content:center + overflow——
+ * 溢出时居中会把左侧内容推到滚动区之外，那部分再也滚不到（经典裁切坑）。 */
+.nav-item:first-child { margin-left: auto; }
+.nav-item:last-child { margin-right: auto; }
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 15px;
+  /* 图标与文字间距由 8px 收到 6px：14 个模块因此能在 1366px 单行装下
+   * （实测内容宽 1345px → 收紧后约 1304px，1366px 可用 1319px） */
+  gap: 6px;
+  /* 由 15px 收到 12px：同理，为单行装下 14 个模块让出宽度 */
+  padding: 7px 12px;
   border: none;
   background: transparent;
   color: #f0e2c8;
@@ -181,6 +196,7 @@ html, body {
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
+  flex: 0 0 auto;
   transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
 .nav-item .mod-icon { width: 24px; height: 24px; }
@@ -760,8 +776,8 @@ html, body {
   .topbar-inner { flex-wrap: wrap; }
   .topbar-search { width: 100%; margin-left: 0; }
   .topbar-search input { max-width: none; }
-  .nav { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; -webkit-overflow-scrolling: touch; }
-  .nav-item { padding: 8px 14px; font-size: 14px; flex: 0 0 auto; }
+  /* 导航已改为全局单行 + 横向滚动（见 .nav），这里只调整触摸端的按钮尺寸 */
+  .nav-item { padding: 8px 14px; font-size: 14px; }
   .detail-kv { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
   .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
   .control-row { gap: 8px; }

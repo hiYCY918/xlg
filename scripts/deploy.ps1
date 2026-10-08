@@ -59,7 +59,9 @@ if (Test-Path $idxPath) {
     if ($idx -match 'v=(\d+)') {
         $newV = [int]$Matches[1] + 1
         $idx = $idx -replace ('v=' + $Matches[1]), ('v=' + $newV)
-        [System.IO.File]::WriteAllText($idxPath, $idx, (New-Object System.Text.UTF8Encoding($true)))
+        # 必须用**不带 BOM** 的 UTF8Encoding($false)：早先用 $true 会让每次部署都往
+        # index.html 里塞回 3 字节 BOM，造成「本地与线上哈希不一致」的假象（R40）。
+        [System.IO.File]::WriteAllText($idxPath, $idx, (New-Object System.Text.UTF8Encoding($false)))
         Write-Host "✓ 版本号自动升级 v=$newV" -ForegroundColor Green
     }
 }
