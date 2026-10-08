@@ -479,7 +479,7 @@ function renderNpc() {
         <h3>${esc(n.name)}</h3>
         <p class="loc">📍 ${esc(n.location)}</p>
         <div class="meta">🎂 ${esc(n.birthday)} · ${n.marriageable ? '<span class="badge green">可结婚</span>' : '<span class="badge brown">不可结婚</span>'}</div>
-        <div class="foot">最爱：${n.loves.map((g) => `<span class="chip">${esc(g)}</span>`).join("")}</div>
+        <div class="foot">最爱：${n.loves.map(giftChip).join("")}</div>
       </div>`;
   }).join("") || emptyState("没有找到匹配的 NPC");
   body.appendChild(grid);
@@ -743,6 +743,7 @@ const REGISTRY = [
         ["季节总收益", money(cropHarvests(c) * c.sell - c.seed)],
       ])) +
       detailSection("备注", `<p>${esc(c.note)}</p>`) +
+      giftUsesSection(c.name) +
       bundleUsesSection(c.name) +
       detailSection("算法说明", `<p class="muted">每日净收益 =（28 天季节内总收获额 − 种子价）÷ 末次收获日（第 ${cropLastDay(c)} 天）。多季作物按单季 28 天估算。</p>`),
   },
@@ -762,6 +763,7 @@ const REGISTRY = [
         ["售价", c.sell + " 金"],
       ])) +
       detailSection("用途", `<p>${esc(c.use)}</p>`) +
+      giftUsesSection(c.name) +
       bundleUsesSection(c.name),
   },
   {
@@ -783,6 +785,7 @@ const REGISTRY = [
       ])) +
       detailSection("经济", kvGrid([["售价", f.sell + " 金"]])) +
       detailSection("用途", `<p>${esc(f.use)}</p>`) +
+      giftUsesSection(f.name) +
       bundleUsesSection(f.name),
   },
   {
@@ -796,6 +799,7 @@ const REGISTRY = [
         ["售价", m.sell + " 金"],
       ])) +
       detailSection("用途", `<p>${esc(m.use)}</p>`) +
+      giftUsesSection(m.name) +
       bundleUsesSection(m.name),
   },
   {
@@ -813,6 +817,7 @@ const REGISTRY = [
         ["类型", m.type],
         ["出没地点", m.location],
       ])) +
+      giftUsesSection(m.name) +
       bundleUsesSection(m.name) +
       detailSection("掉落物", `<div class="chip-list">${m.drops.map(linkChip).join("")}</div>` +
         (m.drops.some((d) => NAME_INDEX.has(d)) ? `<p class="muted">带下划线的掉落物可点击跳转。</p>` : "")),
@@ -840,7 +845,8 @@ const REGISTRY = [
     ) +
       detailSection("简介", `<p>${esc(n.desc)}</p>`) +
       detailSection("生日", `<p>🎂 ${esc(n.birthday)}</p>`) +
-      detailSection("最爱的礼物", `<div class="chip-list">${n.loves.map((g) => `<span class="chip">🎁 ${esc(g)}</span>`).join("")}</div>`) +
+      detailSection("最爱的礼物", `<div class="chip-list">${n.loves.map(giftChip).join("")}</div>` +
+        (n.loves.some((g) => NAME_INDEX.has(g)) ? `<p class="muted">带下划线的礼物可点击查看该物品。</p>` : "")) +
       bundleUsesSection(n.name),
   },
   {
@@ -981,6 +987,36 @@ function bundleUsesSection(name) {
   if (!list || !list.length) return "";
   return detailSection("用于收集包", `<div class="chip-list">` +
     list.map((b) => `<span class="chip chip-link" data-goto-module="bundles" data-goto-id="${esc(b.id)}" role="button" tabindex="0" title="查看${esc(b.name)}">${esc(b.name)}</span>`).join("") +
+    `</div>`);
+}
+
+/* 礼物反向索引：物品名 → 最爱它的村民。
+ * 「不可送礼」「（无礼物）」是数据里的占位说明，不是物品名，单独列出不参与跳转。 */
+const GIFT_PLACEHOLDERS = ["不可送礼", "（无礼物）"];
+const GIFT_USES = (() => {
+  const map = new Map();
+  const npcSec = REGISTRY.find((s) => s.id === "npc");
+  if (!npcSec) return map;
+  npcSec.data.forEach((n) => (n.loves || []).forEach((g) => {
+    if (GIFT_PLACEHOLDERS.indexOf(g) >= 0) return;
+    if (!map.has(g)) map.set(g, []);
+    if (!map.get(g).some((x) => x.id === n.id)) map.get(g).push(n);
+  }));
+  return map;
+})();
+/* 村民卡片/详情里的礼物 chip：能对上条目的做成可跳转，对不上的保留纯文本 */
+function giftChip(name) {
+  if (GIFT_PLACEHOLDERS.indexOf(name) >= 0) return `<span class="chip chip-plain">${esc(name)}</span>`;
+  const hit = NAME_INDEX.get(name);
+  if (!hit) return `<span class="chip">🎁 ${esc(name)}</span>`;
+  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(name)}">🎁 ${esc(name)}</span>`;
+}
+/* 详情页附加区块：该物品能送给谁 */
+function giftUsesSection(name) {
+  const list = GIFT_USES.get(name);
+  if (!list || !list.length) return "";
+  return detailSection("送礼对象", `<div class="chip-list">` +
+    list.map((n) => `<span class="chip chip-link" data-goto-module="npc" data-goto-id="${esc(n.id)}" role="button" tabindex="0" title="查看${esc(n.name)}">💝 ${esc(n.name)}</span>`).join("") +
     `</div>`);
 }
 
@@ -1317,6 +1353,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.stopPropagation) e.stopPropagation();
       const b = BUNDLES.find((x) => x.id === box.dataset.bundle);
       if (b && toggleBundleSlot(b, Number(box.dataset.slot))) renderBundles();
+      return;
+    }
+    /* 卡片上的可跳转 chip（如 NPC 卡片里的礼物）优先于整卡点击，
+     * 否则点礼物会变成打开该 NPC 自己的详情 */
+    const chip = e.target.closest("[data-goto-id]");
+    if (chip) {
+      if (e.stopPropagation) e.stopPropagation();
+      openDetail(chip.dataset.gotoModule, chip.dataset.gotoId);
+      setRouteHash(chip.dataset.gotoModule, chip.dataset.gotoId, "push");
       return;
     }
     const card = e.target.closest("[data-id]");

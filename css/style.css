@@ -483,6 +483,16 @@ html, body {
   border-radius: 4px;
   font-size: 12px;
   color: var(--wood);
+  /* 物品名不能被拆行（「巧克力蛋糕」曾断成「巧克力／蛋糕」）；
+     chip 本身在 .chip-list 里换行，粒度已经足够 */
+  white-space: nowrap;
+}
+/* 占位说明（如「不可送礼」）：不是物品，视觉上要弱于真实条目，也不可点 */
+.chip-plain {
+  background: none;
+  border-style: dashed;
+  color: var(--muted);
+  cursor: default;
 }
 
 /* ===== 收集包（社区中心） ===== */

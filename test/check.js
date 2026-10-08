@@ -127,7 +127,8 @@ const src =
   "MODULES,REGISTRY,MODULE_DATA,buildIndex,BUNDLES,BUNDLE_ROOMS,BUNDLE_ITEM_INDEX,BUNDLE_USES," +
   "toggleBundleSlot,bundleProgress,bundleFilled,isBundleDone,bundleNeeded,bundleSlotCount," +
   "bundleItemNames,doneBundleCount,readBundleProgress,BUNDLE_PROGRESS_KEY," +
-  "parseHash,hashFor,setRouteHash,currentModuleId,defaultModuleId,restoreRoute,gotoItem,LAST_MODULE_KEY};";
+  "parseHash,hashFor,setRouteHash,currentModuleId,defaultModuleId,restoreRoute,gotoItem,LAST_MODULE_KEY," +
+  "GIFT_USES,GIFT_PLACEHOLDERS,giftChip,giftUsesSection,NAME_INDEX};";
 
 let data;
 try {
@@ -681,8 +682,111 @@ console.log("\n=== 3. 渲染冒烟 ===");
     log(searchInput.value === "", "回车跳转后清空搜索框");
   }
 
-  /* ---------- 8. 视觉资源 ---------- */
-  console.log("\n=== 8. 视觉资源（模块图标贴图） ===");
+  /* ---------- 8. 反向索引（礼物 ↔ 物品 ↔ 收集包） ---------- */
+  console.log("\n=== 8. 反向索引与搜索扩展 ===");
+
+  /* 8.1 礼物反向索引必须覆盖全部「真实礼物名」（占位说明不算物品） */
+  const NPC_DATA = data.MODULE_DATA.NPCS;
+  const PLACEHOLDERS = ["不可送礼", "（无礼物）"];
+  const giftNames = new Set();
+  for (const n of NPC_DATA) for (const g of (n.loves || [])) if (PLACEHOLDERS.indexOf(g) < 0) giftNames.add(g);
+  const giftMissing = [...giftNames].filter((g) => !data.GIFT_USES.has(g));
+  log(giftMissing.length === 0,
+    "礼物反向索引覆盖全部 " + giftNames.size + " 个真实礼物名" +
+    (giftMissing.length ? "：缺 " + giftMissing.slice(0, 6).join(",") : ""));
+
+  /* 反向索引与 NPC 数据必须互洽（索引里有的，NPC 必须真的喜欢） */
+  const giftInconsist = [];
+  for (const [g, list] of data.GIFT_USES) {
+    for (const n of list) if ((n.loves || []).indexOf(g) < 0) giftInconsist.push(g + "→" + n.name);
+  }
+  log(giftInconsist.length === 0, "反向索引与 NPC 礼物数据一致" +
+    (giftInconsist.length ? "：不符 " + giftInconsist.slice(0, 4).join(",") : ""));
+
+  /* 8.2 能对上条目的礼物，chip 必须真的可点 */
+  const clickableGifts = [...giftNames].filter((g) => data.NAME_INDEX.has(g));
+  const badChip = clickableGifts.filter((g) => {
+    const html = data.giftChip(g);
+    return !html.includes("data-goto-id") || !html.includes("chip-link");
+  });
+  log(badChip.length === 0,
+    clickableGifts.length + " 个可跳转礼物都渲染成链接" +
+    (badChip.length ? "：未成链接 " + badChip.slice(0, 5).join(",") : ""));
+
+  const placeChip = data.giftChip("不可送礼");
+  log(placeChip.includes("chip-plain") && !placeChip.includes("data-goto-id"),
+    "占位说明（不可送礼）渲染为不可点的弱化 chip");
+
+  /* 8.3 礼物落点的「已知缺口表」：全部必须来自尚未收录的模块，且表不能过期 */
+  const GIFT_GAPS = [
+    "仙子玫瑰", "全套早餐", "冷冻泪", "南瓜派", "古代玩偶", "可乐", "咖啡", "啤酒", "墨鱼",
+    "夏季紫丁香", "大米布丁", "太阳精华", "宝石", "山羊奶酪", "巧克力蛋糕", "帕尔马奶酪茄子",
+    "幸运午餐", "意大利面", "披萨", "松露油", "桃子", "橙子", "沙拉", "油炸鱿鱼", "泡菜",
+    "海洋料理", "炖豆", "烤榛子", "热带咖喱", "电池", "石榴", "秋季蔬菜", "粉红蛋糕", "绿茶",
+    "罂粟", "羊奶酪", "羊毛", "脆皮鲈鱼", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华", "虚空蛋",
+    "虚空蛋黄酱", "辣鳗鱼", "鱼卷", "鲑鱼晚餐", "鸵鸟蛋",
+  ];
+  const giftGapActual = [...giftNames].filter((g) => !data.NAME_INDEX.has(g));
+  const giftUntracked = giftGapActual.filter((g) => GIFT_GAPS.indexOf(g) < 0);
+  log(giftUntracked.length === 0,
+    "礼物落点无表外缺口（" + clickableGifts.length + " 可跳转 / " + giftGapActual.length + " 在已知缺口表内）" +
+    (giftUntracked.length ? "：新增 " + giftUntracked.join(",") : ""));
+  const giftStale = GIFT_GAPS.filter((g) => giftGapActual.indexOf(g) < 0);
+  log(giftStale.length === 0,
+    "礼物缺口表无过期项（" + GIFT_GAPS.length + " 项）" +
+    (giftStale.length ? "：已可跳转却仍在表内 " + giftStale.slice(0, 6).join(",") : ""));
+
+  /* 8.4 物品详情页要能反查「送给谁」 */
+  const giftItem = (() => {
+    for (const sec of data.REGISTRY) {
+      /* 找「本身不是 NPC、但出现在某个村民的最爱清单里」的条目 */
+      if (sec.id === "npc") continue;
+      for (const it of sec.data) if (data.GIFT_USES.has(it.name)) return { sec, it };
+    }
+    return null;
+  })();
+  if (giftItem) {
+    const html = String(data.DETAIL_RENDERERS[giftItem.sec.id](giftItem.it.id));
+    log(html.includes("送礼对象") && html.includes('data-goto-module="npc"'),
+      "物品详情含「送礼对象」反查区块（" + giftItem.sec.id + "/" + giftItem.it.id +
+      " → " + giftItem.it.name + "）");
+    log(html.includes("用于收集包") || !data.BUNDLE_USES.has(giftItem.it.name),
+      "同一详情页可同时容纳「送礼对象」与「用于收集包」两节");
+  } else {
+    log(false, "找不到可验证「送礼对象」区块的物品");
+  }
+
+  /* 8.5 卡片上的礼物 chip 必须优先于整卡点击：
+   * 否则点「紫水晶」会打开阿比盖尔自己，而不是紫水晶条目 */
+  const pageClick = (registry.get("#page").listeners.click || [])[0];
+  if (pageClick) {
+    const giftName = "紫水晶";
+    const target = data.NAME_INDEX.get(giftName);
+    const chipEl = {
+      dataset: { gotoModule: target.module, gotoId: target.id },
+      closest: (sel) => (sel === "[data-goto-id]" ? chipEl : null),
+    };
+    registry.get("#modal").hidden = true;
+    location.hash = "";
+    pageClick({ target: { closest: (sel) => (sel === "[data-goto-id]" ? chipEl : null) }, stopPropagation: () => {} });
+    const chipHtml = String(registry.get("#modalContent").innerHTML);
+    log(registry.get("#modal").hidden === false && chipHtml.includes(giftName),
+      "点卡片上的礼物 chip 打开的是礼物本身（" + giftName + "）");
+    log(location.hash === data.hashFor(target.module, target.id),
+      "点礼物 chip 同步了 URL（" + location.hash + "）");
+  } else {
+    log(false, "未找到页面点击委托处理器");
+  }
+
+  /* 8.6 搜索可「按用途/关系」找东西：礼物名要能搜到喜欢它的 NPC */
+  const idxAll = data.buildIndex();
+  const npcHits = idxAll.filter((e) => e.module === "npc" && e.kw.includes("紫水晶"));
+  log(npcHits.length > 0, "搜索索引含礼物名（搜「紫水晶」命中 " + npcHits.length + " 位村民）");
+  const bundleHits = idxAll.filter((e) => e.module === "bundles" && e.kw.includes("收集包"));
+  log(bundleHits.length > 0, "搜索索引含收集包关键词（命中 " + bundleHits.length + " 条）");
+
+  /* ---------- 9. 视觉资源 ---------- */
+  console.log("\n=== 9. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];
