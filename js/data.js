@@ -911,5 +911,26 @@ const FRUIT_TREES = [
   { id: "apple", name: "苹果树", fruit: "苹果", sapling: "苹果树苗", season: ["秋"], growth: 28, saplingSell: 1000, fruitSell: 100, edibility: 15, aka: ["苹果"] },
 ];
 
+/* ============================================================
+ * 树木（中文 Wiki Category:树 的 8 棵树）
+ * 数据来源：各页的 {{Infobox tree}}（seed / tapper / growth）+ 正文补充
+ * 排除三项并各有理由：树（汇总页）、大圆木 / 大树桩（是可砍的资源节点而非树）、
+ *   蘑菇树（名字已由 EVENTS 收录，按 R53 以已有模块为准；它的种子缺口已由事件页闭合）
+ * 图标用**种子图**（48×48，1:1 符合 R23）：树图是 96×200 的长条，塞进 48×48 格子
+ *   会得到非整数倍率；而且 check.js 与 tools/find-orphan-assets.js 都按 img/<id>.png 校验
+ * seed 字段 = 能种出它的种子（一定能在 SEEDS 里找到，自检有跨模块交叉校验）
+ * tapper = 装树液采集器的产物，没有则为空
+ * ============================================================ */
+const TREES = [
+  { id: "pine-tree", name: "松树", seed: "松果", tapper: "松焦油", growth: null, growthText: "不定" },
+  { id: "maple-tree", name: "枫树", seed: "枫树种子", tapper: "枫糖浆", growth: null, growthText: "不定" },
+  { id: "oak-tree", name: "橡树", seed: "橡子", tapper: "橡树树脂", growth: null, growthText: "不定" },
+  { id: "mahogany-tree", name: "桃花心木树", seed: "桃花心木种子", tapper: "树液", growth: null, growthText: "不定" },
+  { id: "mystic-tree", name: "神秘树", seed: "神秘树种", tapper: "神秘糖浆", growth: null, growthText: "不定" },
+  { id: "green-rain-tree", name: "绿雨树", seed: "长满苔藓的种子", growth: null, growthText: "不定", note: "绿雨天出现的三种树的统称；由长满苔藓的种子种出，不能安装树液采集器。秋季镇上的橡树与枫树也可能暂时变成绿雨树。" },
+  { id: "tea-tree", name: "茶树", seed: "茶苗", growth: 20, note: "由茶苗长成，每季可多次采摘茶叶；不需要树液采集器。" },
+  { id: "palm-tree", name: "棕榈树", growth: null, growthText: "不定", note: "只生长在沙漠与姜岛的野生树，不掉落种子、也不能安装树液采集器；摇晃或砍倒有几率掉落椰子。" },
+];
+
 /* 博物馆可捐赠的矿物名（与 MINERALS 同名，用于进度统计与反查） */
 const MUSEUM_MINERALS = MINERALS.map((m) => m.name);

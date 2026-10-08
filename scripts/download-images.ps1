@@ -379,6 +379,15 @@ $items = @{
   "mango-tree" = "Mango.png"
   "apple" = "Apple.png"
   "banana" = "Banana.png"
+  # ---------- 树木（第十八轮补；下载的是种子图，存成树自己的 id——树图 96×200 会造成非整数缩放） ----------
+  "pine-tree" = "Pine_Cone.png"
+  "maple-tree" = "Maple_Seed.png"
+  "oak-tree" = "Acorn.png"
+  "mahogany-tree" = "Mahogany_Seed.png"
+  "mystic-tree" = "Mystic_Tree_Seed.png"
+  "green-rain-tree" = "Mossy_Seed.png"
+  "tea-tree" = "Tea_Sapling.png"
+  "palm-tree" = "Coconut.png"
 }
 
 $imgDir = Join-Path $Root "img"

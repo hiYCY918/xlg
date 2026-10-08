@@ -133,7 +133,8 @@ const src =
   "ARTISAN,artisanMachines," +
   "ARTIFACTS,MUSEUM_NAMES,MUSEUM_REWARDS,isDonated,toggleDonate,museumDonatedCount,readMuseum," +
   "SEEDS,SEED_SEASON_FILTERS,SEEDED_BY,seededBySection,seedPriceText,seedGrowthText,sortSeeds," +
-  "FRUIT_TREES,TREE_SEASONS,saplingChip,sortTrees};";
+  "FRUIT_TREES,TREE_SEASONS,saplingChip,sortTrees," +
+  "TREES,TREE_FILTERS,seedChip};";
 
 let data;
 try {
@@ -1016,12 +1017,10 @@ console.log("\n=== 3. 渲染冒烟 ===");
     "种子季节筛选覆盖全部季节（" + sdSeasons.join("/") + "）" + (missSdSeason.length ? "：缺 " + missSdSeason.join(",") : ""));
 
   /* 结果物落点守恒：能跳转的 + 已知缺口的 == 全部有固定结果物的种子。
-   * 缺口表里的目标都属于尚未收录的模块（树木 / 草），补上对应模块后本表会自动收缩（R31）：
-   * 第十六轮加「果树」后，本表一次收了 7 项（杏子/桃子/樱桃/橙子/石榴/苹果/香蕉）。
+   * 缺口表随模块补齐自动收缩（R31）：第十五轮 14 项 → 第十七轮加果树后 7 项
+   * → **第十八轮加树木后只剩「草」**（草是农场杂物、不属任何已收录模块，故长期保留）。
    * 注意「纤维」在采矿、「蘑菇树」在事件，都已收录，故**不**入表。 */
-  const SD_CROP_GAPS = [
-    "松树", "枫树", "桃花心木树", "橡树", "神秘树", "草", "绿雨树",
-  ];
+  const SD_CROP_GAPS = ["草"];
   const sdWithCrop = SD.filter((s) => s.crop);
   const sdHit = sdWithCrop.filter((s) => data.NAME_INDEX.has(s.crop));
   const sdGap = [...new Set(sdWithCrop.filter((s) => !data.NAME_INDEX.has(s.crop)).map((s) => s.crop))].sort();
@@ -1130,8 +1129,59 @@ console.log("\n=== 3. 渲染冒烟 ===");
     "果树详情含「树苗」与「果树通用规则」分区（" + FT[0].name + "）");
   log(ftHtml.includes("data-goto-id"), "果树详情中的树苗生成了跳转链接（" + FT[0].name + "）");
 
-  /* ---------- 14. 视觉资源 ---------- */
-  console.log("\n=== 14. 视觉资源（模块图标贴图） ===");
+  /* ---------- 14. 树木（树 ↔ 种子 ↔ 树液产物） ---------- */
+  console.log("\n=== 14. 树木（树 ↔ 种子 ↔ 树液产物） ===");
+
+  const TR = arrays.trees || [];
+  const trIds = TR.map((t) => t.id);
+  const trDup = [...new Set(trIds.filter((v, i) => trIds.indexOf(v) !== i))];
+  log(trDup.length === 0, "树木 id 无重复（" + TR.length + " 棵）" + (trDup.length ? "：" + trDup.join(",") : ""));
+
+  const ownerR = new Map();
+  for (const sec of data.REGISTRY) for (const it of sec.data) if (!ownerR.has(it.id)) ownerR.set(it.id, sec.id);
+  const trCross = TR.filter((t) => ownerR.get(t.id) !== "trees").map((t) => t.id + "(属" + ownerR.get(t.id) + ")");
+  log(trCross.length === 0, "树木 id 与其它模块无冲突" + (trCross.length ? "：" + trCross.join(",") : ""));
+
+  const trNames = TR.map((t) => t.name);
+  const trNameDup = [...new Set(trNames.filter((v, i) => trNames.indexOf(v) !== i))];
+  log(trNameDup.length === 0, "树木名称无重复（名字同时是 SEEDED_BY 的键）" + (trNameDup.length ? "：" + trNameDup.join(",") : ""));
+
+  const badTr = [];
+  for (const t of TR) {
+    if (t.growth == null && !t.growthText) badTr.push(t.id + "(成熟时间既无天数也无文字)");
+    if (t.tapper && !/[\u4e00-\u9fff]/.test(t.tapper)) badTr.push(t.id + "(树液产物未本地化)");
+  }
+  log(badTr.length === 0, "树木字段齐全（成熟时间；树液产物有则必须本地化）" + (badTr.length ? "：" + badTr.slice(0, 5).join(",") : ""));
+
+  /* 跨模块交叉校验：每棵树的种子都要能在种子模块找到（棕榈树是野生树、本就没有种子） */
+  const trSeedMiss = TR.filter((t) => t.seed && !seedArr.some((s) => s.name === t.seed)).map((t) => t.name + "→" + t.seed);
+  log(trSeedMiss.length === 0, "每棵树的种子都能在种子模块找到（" +
+    TR.filter((t) => t.seed).length + "/" + TR.length + " 棵有种子）" + (trSeedMiss.length ? "：" + trSeedMiss.join(",") : ""));
+  log(TR.filter((t) => !t.seed).length === 1 && TR.find((t) => !t.seed).name === "棕榈树",
+    "唯一没有种子的是棕榈树（野生、不能种植，与 Wiki 一致）");
+
+  /* 反向索引：种子模块里 crop 指向本树的种子，必须能在「由这些种子种出」里查到 */
+  const trRevMiss = TR.filter((t) => t.seed).filter((t) => {
+    const s = seedArr.find((x) => x.name === t.seed);
+    return s && (data.SEEDED_BY.get(s.crop) || []).indexOf(s) < 0;
+  }).map((t) => t.name);
+  log(trRevMiss.length === 0, "树木的种子在反向索引（由这些种子种出）中可达" + (trRevMiss.length ? "：" + trRevMiss.join(",") : ""));
+
+  /* 本轮目标：种子结果物缺口表应当只剩「草」（草是农场杂物、不属任何模块） */
+  const sdGapNow = [...new Set(seedArr.filter((s) => s.crop && !data.NAME_INDEX.has(s.crop)).map((s) => s.crop))].sort();
+  log(sdGapNow.length === 1 && sdGapNow[0] === "草",
+    "加完树木后，种子结果物缺口表只剩「草」（" + sdGapNow.join("、") + "）");
+
+  const trHtml = String(data.DETAIL_RENDERERS.trees(TR[0].id));
+  log(trHtml.includes("砍伐产出") && trHtml.includes("树液采集器"),
+    "树木详情含「砍伐产出」与「树液采集器」分区（" + TR[0].name + "）");
+  const trWithSeed = TR.find((t) => t.seed && data.NAME_INDEX.has(t.seed));
+  const trSeedHtml = trWithSeed ? String(data.DETAIL_RENDERERS.trees(trWithSeed.id)) : "";
+  log(trSeedHtml.includes("data-goto-module=\"seeds\""),
+    "树木详情中的种子生成了跳转链接（" + (trWithSeed ? trWithSeed.name : "—") + "）");
+
+  /* ---------- 15. 视觉资源 ---------- */
+  console.log("\n=== 15. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

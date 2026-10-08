@@ -47,11 +47,12 @@ const UNIVERSE = [
   ["节日", ["春季节日", "夏季节日", "秋季节日", "冬季节日"], [], "FESTIVALS"],
   ["种子", ["种子"], [], "SEEDS"],
   ["果树", ["果树"], [], "FRUIT_TREES"],
+  ["树木", ["树"], [], "TREES"],
 ];
 
 /* 分类/导航页而非内容条目，比对时排除 */
 const HUB_PAGES = new Set(["鱼", "怪物", "矿石", "晶球", "采集", "矿物", "节日", "NPC",
-  "古物", "资源", "种子", "工具", "建筑", "树木", "果树", "动物", "武器", "工匠物品", "打造"].map(norm));
+  "古物", "资源", "种子", "工具", "建筑", "树木", "树", "果树", "动物", "武器", "工匠物品", "打造"].map(norm));
 
 /* 有意不收录：经核对后判定不属于对应模块范围。明确记录，避免每次审计重复排查。 */
 const EXCLUDED = new Map(Object.entries({
@@ -62,12 +63,13 @@ const EXCLUDED = new Map(Object.entries({
   "史莱姆（怪物）": "Wiki 的消歧义页，不是独立怪物",
   "孩子": "泛指分类，不是具体 NPC",
   "居民": "泛指分类，不是具体 NPC",
+  "大圆木": "可砍伐的资源节点，不是树本身（属「树木」分类但不产出种子/树液）",
+  "大树桩": "可砍伐的资源节点，不是树本身（同上）",
 }));
 
 /* 整块系统盘点：**只列本站还没有对应模块的系统**（已收录的从本表移除，
  * 否则报告会永远显示「本站均无对应模块」，与事实不符）。 */
 const SYSTEMS = [
-  ["树", "树木（松树 / 枫树 / 橡树 / 桃花心木 / 神秘树 / 绿雨树）"],
   ["动物", "牧场动物"],
   ["武器", "武器"],
   ["建筑", "农场建筑"],
@@ -77,7 +79,7 @@ const SYSTEMS = [
 (async () => {
   const data = new Function(
     fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES};"
+    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES};"
   )();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */

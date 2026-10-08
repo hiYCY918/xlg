@@ -202,6 +202,7 @@ function moduleIconHtml(m) {
   artisan: "全部",
   seeds: "全部", seedSort: "default",
   fruittrees: "全部", treeSort: "default",
+  trees: "全部",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -888,6 +889,48 @@ function saplingChip(t) {
   return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(t.sapling)}">🌱 ${esc(t.sapling)}</span>`;
 }
 
+/* ---- 树木 ---- */
+/* 筛选维度：能不能装树液采集器（玩家最常问的就是「哪种树出糖浆」）。
+ * 由数据派生，不写死条数——以后新增树自动进入对应分组。 */
+const TREE_FILTERS = [
+  { value: "全部", label: "全部" },
+  { value: "有产物", label: "可装采集器" },
+  { value: "无产物", label: "不可装" },
+];
+function renderTrees() {
+  const body = $("#body-trees");
+  body.innerHTML = "";
+  const list = TREES.filter((t) =>
+    state.trees === "全部" ? true : (state.trees === "有产物" ? !!t.tapper : !t.tapper));
+  const total = updateModuleCount(SECTION.trees);
+  setShown("trees", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(TREE_FILTERS, state.trees, (v) => { state.trees = v; renderTrees(); }));
+  toolbar.appendChild(controlRow(hintNode("树木全年生长，用树液采集器可产出对应产物")));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((t) => `
+    <div ${cardAttrs(t.id)}>
+      ${itemIconHtml(t.id, t.name, GENERIC_ICON)}
+      <h3>${esc(t.name)}</h3>
+      <div class="meta">成熟 ${esc(t.growth == null ? (t.growthText || "不定") : t.growth + " 天")}</div>
+      <div class="meta">🧷 采集器 ${t.tapper ? "产出 " + esc(t.tapper) : "不可安装"}</div>
+      <div class="meta">${t.seed ? "🌱 由 " + seedChip(t.seed) + " 种出" : "🌲 野生，无法种植"}</div>
+      <div class="foot"><span class="muted">${esc(t.note || "砍倒可得木材，装采集器可稳定产出")}</span></div>
+    </div>`).join("") || emptyState("没有符合条件的树木");
+  body.appendChild(grid);
+}
+/* 种子 chip：落在种子模块（收口断言保证每棵树的 seed 都能在 SEEDS 里找到） */
+function seedChip(name) {
+  const hit = NAME_INDEX.get(name);
+  if (!hit) return `<span class="chip chip-plain">${esc(name)}</span>`;
+  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(name)}">🌱 ${esc(name)}</span>`;
+}
+
 /* ---- 事件 ---- */
 /* ---- 打造（制造配方） ---- */
 const CRAFT_SORTS = [
@@ -1453,12 +1496,30 @@ const REGISTRY = [
       cookedBySection(t.fruit) +
       craftedBySection(t.fruit),
   },
+  {
+    id: "trees", stateKey: ["trees"], spriteFor: "", sprite: "pine-tree", icon: "🌲", label: "树木",
+    sub: "野生树木的种子、树液产物与砍伐掉落", data: "TREES", render: renderTrees,
+    resetFilter: (s) => { s.trees = "全部"; },
+    indexExtra: (t) => [t.seed, t.tapper, t.growthText],
+    detail: (t) => detailHead(itemIconHtml(t.id, t.name, GENERIC_ICON), t.name,
+      (t.seed ? "由 " + t.seed + " 种出" : "野生树木，无法种植") + " · 成熟 " +
+      (t.growth == null ? (t.growthText || "不定") : t.growth + " 天")) +
+      detailSection("数值", kvGrid([
+        ["成熟时间", t.growth == null ? (t.growthText || "不定") : t.growth + " 天"],
+        ["树液采集器", t.tapper || "不可安装"],
+        ["种子", t.seed || "无（野生）"],
+      ])) +
+      /* 种子链路复用种子模块的反向索引（SEEDED_BY 按 seed.crop 建表，早已指向本树） */
+      seededBySection(t.name) +
+      (t.note ? detailSection("说明", `<p>${esc(t.note)}</p>`) : "") +
+      detailSection("砍伐产出", `<p>${esc("砍倒树木可获得木材；桃花心木额外掉落硬木。树木全年生长，冬季不会枯死。")}</p>`),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
-  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES,
+  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
