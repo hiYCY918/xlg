@@ -70,6 +70,7 @@ game-guide/
 ├── test/             测试与审计工具（离线 1 个 + 联网 2 个）
 │   ├── check.js      一键全量自检（16 节 228 处断言）· 离线
 │   ├── verify-wiki.js 存在性核对 · 双轮（防编造/错名）· 联网
+│   ├── scroll-shot.js 滚动截图 / 几何量测 · headless Chrome + CDP（sticky、独立滚动类问题必用）
 │   └── audit-completeness.js  完备性审计（防遗漏）· 联网
 ├── docs/
 │   └── PROBLEMS.md   开发问题记录与规避清单（必读）
