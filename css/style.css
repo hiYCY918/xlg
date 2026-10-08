@@ -250,9 +250,12 @@ html, body {
   flex: 0 0 auto;
   line-height: 1;
 }
-/* 模块图标同样「贴图在上、emoji 垫底」：加载失败时 img 自移除，露出 emoji */
-.mod-icon img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; display: block; }
-.mod-icon-fallback { position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; justify-content: center; font-size: 1.05em; line-height: 1; }
+/* 模块图标同样「贴图在上、emoji 兜底」，但**兜底默认收起**：
+ * 导航图标只有 24px，贴图的透明区会把 emoji 透出来（与物品图标同一个问题，见 #80）。 */
+.mod-icon img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.mod-icon-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.05em; line-height: 1; }
+.has-img .mod-icon-fallback { display: none; }
+.has-img.icon-failed .mod-icon-fallback { display: flex; }
 
 /* ===== 工具栏（筛选/搜索） ===== */
 .toolbar { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
@@ -342,13 +345,18 @@ html, body {
     inset -2px -2px 0 var(--slot-lo),
     0 0 0 2px var(--frame);
 }
-/* 贴图与兜底的层叠关系（关键）：
- * 贴图在前、兜底在后，用 z-index 把兜底压到贴图下层。
- * 这样贴图加载成功就自然可见，失败时 img 自己 remove() 露出兜底——
- * 不再依赖 onload（缓存命中时可能不触发，会导致兜底永远盖住贴图）。 */
+/* 贴图与兜底：**兜底默认收起，只有贴图真的加载失败时才展开**
+ * （js/main.js 的 onerror 给容器加 .icon-failed）。判据用显式的 .has-img 标记，
+ * 因为纯 emoji 图标（.emoji-icon）没有贴图，兜底就是它的内容，必须照常显示。
+ *
+ * 为什么不能像早先那样「兜底常驻、压在贴图下层」：官方贴图是带 alpha 通道的 PNG，
+ * object-fit:contain 还会给长条物体留白，于是**兜底的每个像素都会从贴图的透明区透出来**
+ * ——实测 617 张贴图在格子内平均有 48.5% 的面积在露兜底图，一半贴图超过 50%，
+ * 最严重的 copper.png / skeletal-tail.png 达 88.7%（见 docs/PROBLEMS.md #80）。 */
+.has-img .icon-fallback { display: none; }
+.has-img.icon-failed .icon-fallback { display: flex; }
+
 .icon-img {
-  position: relative;
-  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -357,7 +365,6 @@ html, body {
 .icon-fallback {
   position: absolute;
   inset: 0;
-  z-index: 0;
   display: flex;
   align-items: center;
   justify-content: center;

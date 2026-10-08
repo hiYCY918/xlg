@@ -987,6 +987,36 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(modIconFails.length === 0,
     data.MODULES.length + " 个模块图标贴图齐备" + (modIconFails.length ? ": " + modIconFails.join("; ") : ""));
 
+  /* 图标兜底的**渲染时机**（#80）：兜底必须「默认收起、只在贴图加载失败时展开」。
+   * 判据是结构标记——容器带 .has-img 时 CSS 收起兜底，onerror 打上 .icon-failed 才展开。
+   * 为什么必须守住：早先的写法是「兜底常驻、压在贴图下层」，而官方贴图带 alpha 通道，
+   * 兜底会从每个透明像素透出来（实测格子内平均 48.5% 面积、一半贴图超过 50%），
+   * 界面上只是"有一点脏"，肉眼很难判定——正是那种只能靠断言守住的缺陷。
+   * 同时要保证纯 emoji 图标**不带** .has-img，否则它自己的内容会被 CSS 收起。 */
+  const iconFails = [];
+  const iconProbes = [
+    ["crops", "物品图标", false],
+    ["npc", "NPC 头像", false],
+    ["quests", "emoji 图标", true],
+  ];
+  for (const [mod, label, isEmoji] of iconProbes) {
+    const arr = arrays[mod] || [];
+    const render = data.DETAIL_RENDERERS[mod];
+    if (typeof render !== "function" || !arr.length) { iconFails.push(label + "(缺渲染器/数据)"); continue; }
+    const html = String((registry.get("#modalContent").innerHTML = render(arr[0].id)));
+    const cls = (html.match(/class="item-icon[^"]*"/) || [""])[0];
+    if (!cls) { iconFails.push(label + "(未生成图标容器)"); continue; }
+    const hasImg = cls.includes("has-img");
+    if (isEmoji && hasImg) iconFails.push(label + "(emoji 图标不该带 .has-img，会被 CSS 收起)");
+    if (!isEmoji && !hasImg) iconFails.push(label + "(缺 .has-img，兜底会常驻并从透明区透出)");
+    if (!isEmoji && !html.includes("icon-failed")) {
+      iconFails.push(label + "(onerror 未标记 .icon-failed，缺图时兜底不会出现)");
+    }
+  }
+  log(iconFails.length === 0,
+    "图标兜底时机正确（贴图容器带 .has-img + onerror 标记 .icon-failed；emoji 图标不带）" +
+    (iconFails.length ? "：" + iconFails.join("; ") : ""));
+
   /* 搜索索引：必须覆盖全部条目（漏一条就等于该条目搜不到），且关键词非空 */
   const idx = data.buildIndex();
   const idxFails = [];

@@ -152,33 +152,37 @@ function sortSelect(options, active, onChange, focusKey) {
 }
 
 /* 物品图标：真实贴图 + 备用 SVG。
- * 结构上是「贴图在前、兜底垫在后」，靠 CSS 把兜底绝对定位压在贴图下层：
- * 贴图加载成功就自然盖住兜底，失败则 remove() 自己、露出兜底。
- * 注意**不能**靠「加载成功再 remove 兜底」——那条路径依赖 onload，
- * 缓存命中时可能不触发，兜底就会一直盖住贴图（本项目曾因此全站只显示兜底图标）。 */
+ * **兜底默认收起，只在贴图真的加载失败时才展开**（onerror 给容器加 .icon-failed）。
+ * 为什么不能像早先那样「兜底常驻在下层」：官方贴图是带 alpha 通道的，object-fit:contain
+ * 还会给长条物体留白，于是**兜底的每一个像素都会从贴图的透明区透出来**——实测格子内平均
+ * 48.5% 的面积在露兜底图，一半贴图超过 50%（见 PROBLEMS #80）。
+ * 也不能反过来「加载成功再隐藏兜底」：那条路径依赖 onload，缓存命中时可能不触发，
+ * 兜底就会一直盖住贴图（本项目曾因此全站只显示兜底图标）。
+ * 用 onerror 驱动最稳：它只在失败时触发，不受缓存影响。 */
 function itemIconHtml(id, name, svgFallback) {
   return `
-      <span class="item-icon">
+      <span class="item-icon has-img">
         <img class="icon-img" src="img/${esc(id)}.png" alt="${esc(name)}" loading="lazy" decoding="async"
-             onerror="this.remove()">
+             onerror="this.parentNode.classList.add('icon-failed'); this.remove()">
         <span class="icon-fallback">${svgFallback}</span>
       </span>`;
 }
 
-/* NPC 头像：真实立绘 + emoji 兜底（同样以「立绘在上、兜底在下」保证两者只显示其一） */
+/* NPC 头像：真实立绘 + emoji 兜底（同样由 onerror 决定是否露出兜底） */
 function npcIconHtml(id, name, emoji) {
   return `
-    <span class="item-icon npc-icon">
+    <span class="item-icon npc-icon has-img">
       <img class="icon-img" src="img/npc-${esc(id)}.png" alt="${esc(name)}" loading="lazy" decoding="async"
-           onerror="this.remove()">
+           onerror="this.parentNode.classList.add('icon-failed'); this.remove()">
       <span class="icon-fallback npc-fallback">${emoji}</span>
     </span>`;
 }
 
-/* 模块图标：真实游戏贴图 + emoji 兜底 */
+/* 模块图标：真实游戏贴图 + emoji 兜底（同上；导航栏图标只有 24px，透出更明显） */
 function moduleIconHtml(m) {
-  return `<span class="mod-icon">` +
-    `<img src="img/${esc(m.sprite)}.png" alt="" decoding="async" onerror="this.remove()">` +
+  return `<span class="mod-icon has-img">` +
+    `<img src="img/${esc(m.sprite)}.png" alt="" decoding="async" ` +
+    `onerror="this.parentNode.classList.add('icon-failed'); this.remove()">` +
     `<span class="mod-icon-fallback">${m.icon}</span>` +
     `</span>`;
 }
