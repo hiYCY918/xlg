@@ -14,7 +14,12 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 
 let failures = 0;
+/* 断言计数：README/PROBLEMS 里的「N 节 M 处断言」是**数据**，必须能从输出里核对（R60）。
+ * 这里数的是**运行时真正执行的** log() 次数——循环里的断言会按执行次数计，
+ * 与「调用点数」不同，两者差 50 上下，凭印象写必错。 */
+let assertions = 0;
 const log = (ok, msg) => {
+  assertions++;
   console.log((ok ? "[OK] " : "[FAIL] ") + msg);
   if (!ok) failures++;
 };
@@ -1750,6 +1755,104 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(strayTmp.length === 0,
     "仓库根目录无临时文件残留" + (strayTmp.length ? ": " + strayTmp.join(", ") : ""));
 
+  /* ---------- 23. 文档自一致性（R60 的执行手段） ----------
+   * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
+   * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
+   * （第三十轮一次查出 8 处：模块列表里「树木」重复、工匠制品 26→30 项、11→15 类机器、
+   * 贴图 893→897、断言 301→309、礼物 49→54、「17/14 个模块」、全 960→964 条）。
+   * 判据：一条规则若只写在文档里，它就会按固定节奏腐化（R97 的同一种病）。
+   *
+   * 只查**能机器核对**的那几类，且正则一律锚定「描述现状」的句式——
+   * README 里有历史叙述（如「项目还只有 17 个模块时就已需 ~1700px」），全文扫数字必然误报（R90）。 */
+  console.log("\n=== 23. 文档自一致性（R60） ===");
+
+  const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+  const readmeLines = readme.split("\n");
+  const countByLabel = new Map(groups.map(([, label, arr]) => [label, arr.length]));
+  const totalItems = groups.reduce((n, [, , arr]) => n + arr.length, 0);
+  const imgOnDisk = fs.readdirSync(path.join(root, "img")).filter((f) => f.endsWith(".png")).length;
+  const arMachineList = [];
+  for (const a of (data.MODULE_DATA.ARTISAN || [])) {
+    for (const m of (a.machines || [])) if (arMachineList.indexOf(m) < 0) arMachineList.push(m);
+  }
+
+  /* 23.1 开头的模块列表行：数量 / 重复项 / 与 REGISTRY 是否一一对应 */
+  const listLine = readmeLines.reduce((best, l) => (l.split("·").length > best.split("·").length ? l : best), "");
+  const listNames = listLine.split("·").map((s) => s.trim().replace(/^\S+\s*/, "")).filter(Boolean);
+  const modLabels = groups.map(([, label]) => label);
+  log(listNames.length === modLabels.length,
+    "README 模块列表数量 == 模块数（" + listNames.length + "/" + modLabels.length + "）");
+  const listDup = [...new Set(listNames.filter((v, i) => listNames.indexOf(v) !== i))];
+  log(listDup.length === 0,
+    "README 模块列表无重复项" + (listDup.length ? "：重复 " + listDup.join(",") : ""));
+  const listDiff = [...new Set(
+    modLabels.filter((m) => listNames.indexOf(m) < 0).concat(listNames.filter((n) => modLabels.indexOf(n) < 0)))];
+  log(listDiff.length === 0,
+    "README 模块列表与 REGISTRY 一致" + (listDiff.length ? "：差异 " + listDiff.join(",") : ""));
+
+  /* 23.2 通用句式比对：把「某句式里的数字」与真实值逐个比。
+   * 必须要求**命中数 > 0**：句式被删掉时若不报错，这条断言就等于被静默关掉了（R94 的判据）。 */
+  const docNum = (name, re, real, unit) => {
+    const hits = [...readme.matchAll(re)];
+    const bad = hits.filter((h) => Number(h[1]) !== real);
+    log(hits.length > 0 && bad.length === 0,
+      name + " == " + real + unit +
+      (hits.length ? "（文档 " + hits.map((h) => h[1]).join(" / ") + "）" : "：**句式已不存在，断言失效**") +
+      (bad.length ? "：写错 " + bad.map((h) => h[1]).join(",") : ""));
+  };
+  docNum("README 模块数（N 个模块 / N 大模块）", /(\d+)\s*(?:个|大)?模块/g, modLabels.length, " 个");
+  docNum("README 条目总数（全 N 条）", /全\s*(\d+)\s*条/g, totalItems, " 条");
+  docNum("README 贴图张数（真实游戏贴图 N 张）", /真实游戏贴图\s*(\d+)\s*张/g, imgOnDisk, " 张");
+  docNum("README 礼物可跳转数（N 个礼物可直接跳转）", /(\d+)\s*个礼物可直接跳转/g, clickableGifts.length, " 个");
+  docNum("README 工匠产出机器数（N 类产出机器）", /(\d+)\s*类产出机器/g, arMachineList.length, " 类");
+
+  /* 23.3 每个模块的条目数：README 写成 `**<标签>（N 量词）**` 的逐个比对。
+   * 没有这种写法的模块跳过而不是判失败——少写一处不是错，写错才是（R90）。 */
+  const docCountBad = [];
+  for (const [label, n] of countByLabel) {
+    const hit = new RegExp("\\*\\*" + label + "（(\\d+)\\s*[^）]*）\\*\\*").exec(readme);
+    if (hit && Number(hit[1]) !== n) docCountBad.push(label + " 写 " + hit[1] + " 应为 " + n);
+  }
+  log(docCountBad.length === 0,
+    "README 各模块条目数与数据一致（" + countByLabel.size + " 个模块）" +
+    (docCountBad.length ? "：" + docCountBad.join("；") : ""));
+
+  /* 23.4 版权与来源声明（第一版上线时全站 0 处归属，属发布安全隐患） */
+  const htmlSrc = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const dataSrc = fs.readFileSync(path.join(root, "js", "data.js"), "utf8");
+  const credit = (src) => /ConcernedApe/.test(src) && /非官方粉丝攻略/.test(src);
+  log(credit(htmlSrc) && credit(dataSrc),
+    "归属与免责声明齐全（页脚 + data.js 头注释都写明 ConcernedApe / 非官方粉丝攻略）");
+  log(/1\.6/.test(htmlSrc) && /最后更新\s*<?\s*(time|strong|\d)/.test(htmlSrc),
+    "页脚写明数据对应的游戏版本与最后更新日期");
+
+  /* 23.5 R5 / R40 的机械化守卫（这两条以前只写在文档里，靠人记得）
+   * R40：index.html 带 UTF-8 BOM 会让本地与线上哈希差 3 字节，排查时极易误判成「部署没生效」。
+   * R5 ：.ps1 丢了 BOM，Windows PowerShell 5.1 按 ANSI 读中文注释 → 满屏假语法错误。
+   * 两条都真实发生过，且**通用文本编辑器会静默剥离 BOM**，所以必须断言而不是靠自觉。 */
+  const hasBom = (p) => {
+    const b = fs.readFileSync(path.join(root, p));
+    return b.length >= 3 && b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF;
+  };
+  log(!hasBom("index.html"), "index.html 无 BOM（R40）");
+  const bomMiss = ["scripts/deploy.ps1", "scripts/download-images.ps1"].filter((f) => !hasBom(f));
+  log(bomMiss.length === 0, "运维脚本保留 UTF-8 BOM（R5）" + (bomMiss.length ? "：丢失 " + bomMiss.join(",") : ""));
+
+  /* 23.6 自检规模：本条**就是** R60 对「N 节 M 处断言」的执行手段。
+   * 因为数的是运行时 log() 次数，而本条自己也占一次，所以期望值 = assertions + 1；
+   * 本条是全文件最后一条 log()，若日后再往后追加断言，这里会立刻报错要求同步文档（这正是想要的行为）。 */
+  const secCount = (fs.readFileSync(__filename, "utf8").match(/console\.log\("(?:\\n)?=== \d+\./g) || []).length;
+  const expectedAssertions = assertions + 1;
+  const scaleHits = [...readme.matchAll(/(\d+)\s*节\s*(\d+)\s*处断言/g)];
+  const scaleBad = scaleHits.filter((h) => Number(h[1]) !== secCount || Number(h[2]) !== expectedAssertions);
+  log(scaleHits.length > 0 && scaleBad.length === 0,
+    "README 自检规模 == " + secCount + " 节 / " + expectedAssertions + " 处断言" +
+    (scaleHits.length ? "（文档 " + scaleHits.map((h) => h[1] + " 节 " + h[2] + " 处").join(" / ") + "）"
+      : "：**句式已不存在，断言失效**") +
+    (scaleBad.length ? "：写错 " + scaleBad.map((h) => h[1] + " 节 " + h[2] + " 处").join(",") : ""));
+
+  /* 自检规模：README 与接手说明都引用这两个数字，一律从这一行读，不要凭印象写（R60） */
+  console.log(`[INFO] 自检规模：${secCount} 节 / ${assertions} 处断言`);
   console.log(failures ? `\n结果：失败 ${failures} 项` : "\n结果：全部通过");
   process.exit(failures ? 1 : 0);
 })();
