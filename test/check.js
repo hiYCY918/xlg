@@ -138,6 +138,7 @@ const src =
   "TOOLS,TOOL_CATS,TOOL_FILTERS,toolCostText,tierRows," +
   "BUILDINGS,BUILDING_FILTERS,buildingCostText,renderBuildings," +
   "WEAPONS,WEAPON_FILTERS,critText,weaponStatText,renderWeapons," +
+  "RINGS,ringEffectText,renderRings," +
   "TREES,TREE_FILTERS,seedChip,ensureNavVisible};";
 
 let data;
@@ -1468,8 +1469,46 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(!WP.some((w) => /镰刀/.test(w.name)),
     "镰刀类不在武器模块（已归「工具」，避免同名两处）");
 
-  /* ---------- 20. 侧栏导航（模块可达性） ---------- */
-  console.log("\n=== 20. 侧栏导航（模块可达性） ===");
+  /* ---------- 20. 戒指（效果 ↔ 获取） ---------- */
+  console.log("\n=== 20. 戒指（效果 ↔ 获取） ===");
+
+  const RG = arrays.rings || [];
+  const rgDup = [...new Set(RG.map((r) => r.id).filter((v, i, arr) => arr.indexOf(v) !== i))];
+  log(rgDup.length === 0, "戒指 id 无重复（" + RG.length + " 枚）" + (rgDup.length ? "：" + rgDup.join(",") : ""));
+  const rgCross = RG.filter((r) => ownerR.get(r.id) !== "rings").map((r) => r.id + "(属" + ownerR.get(r.id) + ")");
+  log(rgCross.length === 0, "戒指 id 与其它模块无冲突" + (rgCross.length ? "：" + rgCross.join(",") : ""));
+
+  const rgNames = RG.map((r) => r.name);
+  const rgNameDup = [...new Set(rgNames.filter((v, i) => rgNames.indexOf(v) !== i))];
+  log(rgNameDup.length === 0, "戒指名称无重复（名字是搜索与跳转的键）" + (rgNameDup.length ? "：" + rgNameDup.join(",") : ""));
+
+  const badRg = [];
+  for (const r of RG) {
+    if (!r.source) badRg.push(r.id + "(无获取方式)");
+    if (r.value == null) badRg.push(r.id + "(无售价)");
+    /* 效果有两个来源：infobox 的 stats 或正文首句，两者都没有才是问题 */
+    if (!(r.stats || []).length && !r.effect) badRg.push(r.id + "(既无属性也无说明)");
+    for (const s of (r.stats || [])) if (!/[\u4e00-\u9fff]/.test(s.name)) badRg.push(r.id + "(属性名未本地化：" + s.name + ")");
+    if (/\{\{/.test(r.effect || "") || /\{\{/.test(r.source || "")) badRg.push(r.id + "(残留模板)");
+  }
+  log(badRg.length === 0, "戒指字段齐全（获取方式 / 售价 / 效果）" + (badRg.length ? "：" + badRg.slice(0, 6).join(",") : ""));
+
+  /* 可打造的戒指归「打造」模块，戒指这边不该再出现（R53：一个名字只属于一个模块） */
+  const craftRing = data.MODULE_DATA.CRAFTING.filter((c) => /戒指|铱环/.test(c.name)).map((c) => c.name);
+  const dupRing = RG.filter((r) => craftRing.indexOf(r.name) >= 0).map((r) => r.name);
+  log(dupRing.length === 0,
+    "可打造的戒指不在戒指模块（" + craftRing.length + " 枚归「打造」：" + craftRing.join("、") + "）" +
+    (dupRing.length ? "：重复 " + dupRing.join(",") : ""));
+
+  const rgHtml = String(data.DETAIL_RENDERERS.rings(RG[0].id));
+  log(rgHtml.includes("佩戴建议") && rgHtml.includes("获取方式"),
+    "戒指详情含「获取方式」与「佩戴建议」（" + RG[0].name + "）");
+  log(data.ringEffectText({ stats: [{ name: "防御", mod: "+1" }] }) === "防御 +1" &&
+      data.ringEffectText({ effect: "散文说明" }) === "散文说明",
+    "两种效果来源都能渲染（结构化属性 / 正文说明）");
+
+  /* ---------- 21. 侧栏导航（模块可达性） ---------- */
+  console.log("\n=== 21. 侧栏导航（模块可达性） ===");
 
   /* 导航从横向标签栏改成左侧竖栏（第十八轮）：横排 17 个模块需要约 1700px，
    * 只有 ≥1920 的屏幕能一眼看全。这里守住"每个模块都有一条导航入口"这件事——
@@ -1555,8 +1594,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(/background-attachment: local/.test(cssSrc),
     "木板缝那层用 background-attachment: local（侧栏自身滚动时缝跟着内容走）");
 
-  /* ---------- 21. 视觉资源 ---------- */
-  console.log("\n=== 21. 视觉资源（模块图标贴图） ===");
+  /* ---------- 22. 视觉资源 ---------- */
+  console.log("\n=== 22. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

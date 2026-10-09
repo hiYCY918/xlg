@@ -912,6 +912,42 @@ const FRUIT_TREES = [
 ];
 
 /* ============================================================
+ * 戒指（中文 Wiki Category:戒指 的 23 件）
+ * 数据形态统一：{{Infobox clothing}} 的 image / source / value / gprice / stats
+ * 排除七项：戒指（汇总页）；战士戒指 / 由巴的戒指 / 结实戒指 / 荆棘戒指 / 铱环 / 辉石戒指
+ *   —— 这 6 个是**可打造的戒指**，已由「打造」模块收录（那边有配方与材料），
+ *   按 R53 已有模块优先让位（站内名字是名称索引的键，同名两处会让搜索与跳转产生二义）
+ * 效果有两个来源：infobox 的 stats（结构化，如「防御 +1」）与**正文首句**（散文式，
+ *   如光辉戒指、吸血戒指）——取正文时用**配平剥离**去掉 infobox，
+ *   不能用非贪婪的 \{\{[\s\S]*?\}\}（内层模板的 }} 会让它提前收手）
+ * ============================================================ */
+const RINGS = [
+  { id: "small-glow-ring", name: "小型光辉戒指", value: 50, gpriceText: "不出售", effect: "小型光辉戒指是一种戒指，可以通过在矿井 1-39 层中打破木箱和木桶或通过杀死怪物后的掉落物获得，也能在达到 钓鱼等级 2 后在钓鱼宝箱中发现。", source: "矿井1-39层 • 釣魚宝箱" },
+  { id: "glow-ring", name: "光辉戒指", value: 100, gpriceText: "不出售", effect: "光辉戒指是一种戒指，可以通过打破木箱和木桶获得，或通过在矿井 40+ 层或骷髅洞穴 1-39 层中杀死怪物后的掉落物获得。光辉戒指也可能作为重新混合后的矿井的 ", source: "矿井/骷髅洞穴 • 钓鱼宝箱 • Night Fish 收集包 • 冬日星盛宴" },
+  { id: "slime-charmer-ring", name: "史莱姆克星戒指", value: 350, gprice: 25000, effect: "史莱姆克星戒指是一種戒指，完成杀死1000只史莱姆的目标后可前往探险家公会向吉尔领取，此后可以以25000的价格从探险家公会购买。", source: "探险家公会" },
+  { id: "vampire-ring", name: "吸血戒指", value: 750, gprice: 15000, effect: "玩家佩戴吸血戒指时，每杀死一个怪物会使玩家回复 2 点 生命值（该回复效果不会跳出绿色数字和回血音效）。", source: "探险家公会" },
+  { id: "protection-ring", name: "保护戒指", value: 200, gpriceText: "不出售", effect: "保护戒指是一种戒指，可以通过打开火山地牢的普通宝箱获得。", source: "火山地牢" },
+  { id: "soul-sapper-ring", name: "吸魂戒指", value: 200, gpriceText: "不出售", effect: "吸魂戒指是一种戒指，可以通过打开火山地牢的普通宝箱获得。", source: "火山地牢" },
+  { id: "phoenix-ring", name: "凤凰戒指", value: 200, gpriceText: "不出售", effect: "凤凰戒指是一种戒指，可以通过打开火山地牢的稀有宝箱获得。", source: "火山地牢" },
+  { id: "immunity-band", name: "免疫指环", value: 500, gpriceText: "不出售", stats: [{ name: "免疫", mod: "+4" }], effect: "免疫指环是一种戒指，可以作为矿井100+ 层、骷髅洞穴和采石场矿井中的特殊物品随机掉落。", source: "矿井100+层 • 骷髅洞穴 • 采石场矿井" },
+  { id: "small-magnet-ring", name: "小型磁铁戒指", value: 50, gpriceText: "不出售", stats: [{ name: "磁力", mod: "class=inline" }], effect: "小型磁铁戒指是一种戒指，可以通过在矿井 1-39 层中打破木箱和木桶或通过杀死怪物后的掉落物获得，也能在达到 钓鱼等级 2 后在钓鱼宝箱中发现。它也是完成 Ad", source: "矿井1-39层 •  • 釣魚宝箱" },
+  { id: "magnet-ring", name: "磁铁戒指", value: 100, gpriceText: "不出售", stats: [{ name: "磁力", mod: "class=inline" }], effect: "磁铁戒指是一种戒指，可以通过在矿井 40+ 层或在骷髅洞穴 1-39 层中打破木箱和木桶或通过杀死怪物后的掉落物获得。磁铁戒指也可能作为重新混合后的矿井的 20", source: "矿井40+层 • 骷髅洞穴1-39层 • 钓鱼宝箱" },
+  { id: "aquamarine-ring", name: "海蓝宝石戒指", value: 200, gprice: 2500, stats: [{ name: "暴击率", mod: "+10%" }], effect: "海蓝宝石戒指是戒指的一种，可以在完成任务\"矿场深处\"（到达矿井 40 层）后在探险家公会以2500购买，也能在达到 钓鱼等级 2 后在钓鱼宝箱中发现。击杀怪物幽", source: "探险家公会 • Fishing Treasure Chest • Haunted Skull" },
+  { id: "burglar-s-ring", name: "窃贼戒指", value: 750, gprice: 20000, effect: "窃贼戒指是一种戒指，完成杀死500只灰尘精灵的目标后可前往探险家公会向吉尔领取，此后可以以20000的价格从探险家公会购买。", source: "探险家公会" },
+  { id: "jukebox-ring", name: "点唱机戒指", value: 100, gpriceText: "不出售", effect: "点唱机戒指是一种无法获得的戒指。看起来，它的作用是允许玩家随时随地播放游戏中的音乐。", source: "无法获得" },
+  { id: "napalm-ring", name: "燃烧弹戒指", value: 1000, gprice: 30000, effect: "燃烧弹戒指是一种戒指，完成杀死250只飞蛇的目标后可前往探险家公会向吉尔领取，此后可以以30000的价格从探险家公会购买。", source: "探险家公会" },
+  { id: "lucky-ring", name: "幸运戒指", value: 200, gpriceText: "不出售", stats: [{ name: "运气", mod: "+1" }], effect: "幸运戒指是一种戒指，以特殊物品的形式掉落在骷髅洞穴和采石场矿井，或是淘盘的稀有产物。", source: "骷髅洞穴，采石场矿井，淘盘" },
+  { id: "hot-java-ring", name: "热咖啡戒指", value: 100, gpriceText: "不出售", effect: "热咖啡戒指是一种戒指，可以在火山地牢的宝箱中发现。佩戴它击杀怪物会有25%的几率掉落咖啡，如不掉落咖啡则有10%的几率掉落三倍浓缩咖啡。", source: "火山地牢" },
+  { id: "ruby-ring", name: "红宝石戒指", value: 300, gprice: 5000, stats: [{ name: "攻击", mod: "+10%" }], effect: "红宝石戒指是一种戒指，到达矿井 80 层后可在探险家公会以5000的价格购买，也能在达到 钓鱼等级 2 后在钓鱼宝箱中发现。击杀怪物幽灵头骨也有概率掉落。打开谜", source: "探险家公会 • Fishing Treasure Chest • Haunted Skull" },
+  { id: "emerald-ring", name: "绿宝石戒指", value: 300, gprice: 5000, effect: "绿宝石戒指是一种戒指，到达矿井 80 层后可在探险家公会以5000的价格购买，也能在达到 钓鱼等级 2 后在钓鱼宝箱中发现。打开谜之盒或金色谜之盒也有概率获得。", source: "探险家公会 • Fishing Treasure Chest" },
+  { id: "jade-ring", name: "翡翠戒指", value: 200, gprice: 2500, stats: [{ name: "暴击威力", mod: "+10%" }], effect: "翡翠戒指是一种戒指，到达矿井 40 层后可在探险家公会以2500的价格购买，也能在达到 钓鱼等级 2 后在钓鱼宝箱中发现。打开谜之盒也有概率获得。", source: "探险家公会 • Fishing Treasure Chest" },
+  { id: "topaz-ring", name: "黄水晶戒指", value: 100, gprice: 1000, stats: [{ name: "防御", mod: "+1" }], effect: "黄水晶戒指是一种戒指，可以在完成任务“入门”后在探险家公会以1000购买，也能在达到 钓鱼等级 2 后在钓鱼宝箱中发现。", source: "探险家公会 • Fishing Treasure Chest" },
+  { id: "amethyst-ring", name: "紫水晶戒指", value: 100, gprice: 1000, stats: [{ name: "重量", mod: "class=inline" }], effect: "紫水晶戒指是一种戒指，可以在完成任务“入门”后在探险家公会以1000购买，也能在达到 钓鱼等级 2 后在钓鱼宝箱中发现。打开谜之盒也有概率获得。", source: "探险家公会 • Fishing Treasure Chest" },
+  { id: "savage-ring", name: "野蛮人戒指", value: 750, gprice: 25000, stats: [{ name: "速度", mod: "class=inline" }], effect: "野蛮人戒指是一种戒指，完成杀死150只虚空怪的目标（包括暗影萨满、暗影狂徒以及暗影狙击手）后可前往探险家公会向吉尔领取，此后可以以25000的价格从探险家公会购", source: "探险家公会" },
+  { id: "crabshell-ring", name: "蟹壳戒指", value: 1000, gprice: 15000, stats: [{ name: "防御", mod: "+5" }], effect: "蟹壳戒指是一种戒指，完成杀死60只岩石蟹的目标（包括熔岩蟹和铱蟹）后可前往探险家公会向吉尔领取，此后可以以15000的价格从探险家公会购买。", source: "探险家公会" },
+];
+
+/* ============================================================
  * 武器（中文 Wiki Category:武器 的 64 件）
  * 数据形态高度统一：{{Infobox weapon}} 的 type / level / damage / csc / value / gprice / stats / source
  * 排除五项：武器（汇总页）；爆炸弹丸（是弹弓的弹药而非武器，且名字已由「打造」收录）；

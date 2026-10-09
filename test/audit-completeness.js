@@ -53,11 +53,12 @@ const UNIVERSE = [
   ["工具", ["工具"], [], "TOOLS"],
   ["建筑", ["建筑"], [], "BUILDINGS"],
   ["武器", ["武器"], [], "WEAPONS"],
+  ["戒指", ["戒指"], [], "RINGS"],
 ];
 
 /* 分类/导航页而非内容条目，比对时排除 */
 const HUB_PAGES = new Set(["鱼", "怪物", "矿石", "晶球", "采集", "矿物", "节日", "NPC",
-  "古物", "资源", "种子", "工具", "建筑", "树木", "树", "果树", "动物", "武器", "工匠物品", "打造"].map(norm));
+  "古物", "资源", "种子", "工具", "建筑", "树木", "树", "果树", "动物", "武器", "戒指", "工匠物品", "打造"].map(norm));
 
 /* 有意不收录：经核对后判定不属于对应模块范围。明确记录，避免每次审计重复排查。 */
 const EXCLUDED = new Map(Object.entries({
@@ -79,6 +80,12 @@ const EXCLUDED = new Map(Object.entries({
   "镰刀": "已由「工具」收录（R53 已有模块优先）",
   "金色的镰刀": "同上",
   "铱镰刀": "同上",
+  "战士戒指": "可打造的戒指，已由「打造」收录（那边有配方与材料）",
+  "由巴的戒指": "同上",
+  "结实戒指": "同上",
+  "荆棘戒指": "同上",
+  "铱环": "同上",
+  "辉石戒指": "同上",
 }));
 
 /* 整块系统盘点：**只列本站还没有对应模块的系统**（已收录的从本表移除，
@@ -90,7 +97,7 @@ const SYSTEMS = [];
 (async () => {
   const data = new Function(
     fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS};"
+    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS,RINGS};"
   )();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */

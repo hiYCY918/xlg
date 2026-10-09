@@ -1202,6 +1202,37 @@ function renderWeapons() {
   body.appendChild(grid);
 }
 
+/* ---- 戒指 ---- */
+function ringEffectText(r) {
+  if (r.stats && r.stats.length) return r.stats.map((s) => s.name + " " + s.mod).join("、");
+  return r.effect || "见说明";
+}
+function renderRings() {
+  const body = $("#body-rings");
+  body.innerHTML = "";
+  const list = RINGS;
+  const total = updateModuleCount(SECTION.rings);
+  setShown("rings", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(controlRow(hintNode("同时只能戴两枚戒指；效果可以叠加，按需搭配")));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((r) => `
+    <div ${cardAttrs(r.id)}>
+      ${itemIconHtml(r.id, r.name, GENERIC_ICON)}
+      <h3>${esc(r.name)}</h3>
+      <div class="meta">✨ ${esc(ringEffectText(r))}</div>
+      <div class="meta">💰 ${r.gprice != null ? "售价 " + r.gprice + " 金" : esc(r.gpriceText || "不可购买")}</div>
+      <div class="meta">💎 回收价 ${r.value != null ? r.value + " 金" : "—"}</div>
+      <div class="foot"><span class="muted">${esc(r.source || "—")}</span></div>
+    </div>`).join("") || emptyState("没有戒指");
+  body.appendChild(grid);
+}
+
 /* ---- 事件 ---- */
 /* ---- 打造（制造配方） ---- */
 const CRAFT_SORTS = [
@@ -1908,13 +1939,29 @@ const REGISTRY = [
       detailSection("说明", `<p>${esc("伤害是最小-最大区间，实际伤害受攻击力与暴击影响；" +
         "剑攻守均衡、匕首攻速快且暴击率高、棍棒伤害高但攻速慢、弹弓是远程武器需要弹药。")}</p>`),
   },
+  {
+    id: "rings", stateKey: [], spriteFor: "", sprite: "iridium-band", icon: "💍", label: "戒指",
+    sub: "戒指的效果、价格与获取方式", data: "RINGS", render: renderRings,
+    indexExtra: (r) => [r.effect, r.gpriceText].concat((r.stats || []).map((s) => s.name)),
+    detail: (r) => detailHead(itemIconHtml(r.id, r.name, GENERIC_ICON), r.name,
+      (r.stats && r.stats.length ? r.stats.map((s) => s.name + " " + s.mod).join("、") : "特殊效果")) +
+      detailSection("数值", kvGrid([
+        ["效果", ringEffectText(r)],
+        ["购买价", r.gprice != null ? r.gprice + " 金" : (r.gpriceText || "不可购买")],
+        ["回收价", r.value != null ? r.value + " 金" : "—"],
+      ])) +
+      (r.effect && r.stats && r.stats.length ? detailSection("说明", `<p>${esc(r.effect)}</p>`) : "") +
+      (r.source ? detailSection("获取方式", `<p>${esc(r.source)}</p>`) : "") +
+      detailSection("佩戴建议", `<p>${esc("同时只能佩戴两枚戒指，效果可以叠加；" +
+        "可打造的戒指在「打造」模块里有配方与材料。")}</p>`),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
   BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES, ANIMALS,
-  ANIMAL_PRODUCTS, TOOLS, BUILDINGS, WEAPONS,
+  ANIMAL_PRODUCTS, TOOLS, BUILDINGS, WEAPONS, RINGS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
