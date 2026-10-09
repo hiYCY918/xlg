@@ -750,7 +750,11 @@ const ARTISAN = [
   { id: "green-tea", name: "绿茶", machines: ["小桶"], sell: 100, mats: ["茶叶"] },
   { id: "coffee", name: "咖啡", machines: ["小桶"], sell: 150, mats: ["咖啡豆"] },
   { id: "cloth", name: "布料", machines: ["织布机"], sell: 470, mats: ["动物毛"] },
-  { id: "mystic-syrup", name: "神秘糖浆", machines: ["神秘树"], sell: 1000, mats: ["神秘树"], priceNote: "由神秘树产出" },
+  { id: "mystic-syrup", name: "神秘糖浆", machines: ["神秘树"], sell: 1000, mats: ["神秘树"], producedBy: "由神秘树上的树液采集器产出" },
+  { id: "pine-tar", name: "松焦油", machines: ["松树"], mats: ["松树"], sell: 100, producedBy: "由松树上的树液采集器产出", source: "打造" },
+  { id: "maple-syrup", name: "枫糖浆", machines: ["枫树"], mats: ["枫树"], sell: 200, producedBy: "由枫树上的树液采集器产出", source: "打造" },
+  { id: "oak-resin", name: "橡树树脂", machines: ["橡树"], mats: ["橡树"], sell: 150, producedBy: "由橡树上的树液采集器产出", source: "打造 • 幽灵头骨" },
+  { id: "sap", name: "树液", machines: ["桃花心木树"], mats: ["桃花心木树"], sell: 2, producedBy: "由桃花心木树上的树液采集器产出", source: "树 • 史莱姆" },
 ];
 
 /* ---------- 古物（博物馆收藏） ----------

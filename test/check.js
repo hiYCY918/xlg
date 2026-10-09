@@ -421,20 +421,16 @@ console.log("\n=== 3. 渲染冒烟 ===");
    * 要么必须落在这张**已知缺口表**里并写明理由；出现表外的新悬空引用即失败。 */
   /* 第二十二轮加「动物制品」模块后，兔子的脚 / 动物毛 / 史莱姆泥 / 大壶牛奶 /
    * 大瓶羊奶 / 大鸡蛋 / 鸭毛 / 鸭蛋 共 8 项已可跳转并从本表移除（R31 的收缩）。 */
+  /* 第二十七轮：BUNDLE_ITEM_INDEX 补上"查别名"这一遍后，
+   * 杏子 / 桃子 / 樱桃 / 橙子 / 石榴 / 苹果 共 6 项由别名命中（果树模块），从本表移除。
+   * 它们此前是**假缺口**：站内早有落点，却因索引不查别名而被当成悬空引用。 */
+  /* 第二十八轮：松焦油 / 枫糖浆 / 橡树树脂 补进「工匠制品」后由本表移除
+   * （它们由树液采集器插在对应树上产出，此前站内没有任何条目）。 */
   const BUNDLE_ITEM_GAPS = {
     "太阳精华": "待建：后续模块",
     "干草": "待建：后续模块",
-    "杏子": "待建：后续模块",
-    "松焦油": "待建：后续模块",
     "果酱": "待建：后续模块",
-    "枫糖浆": "待建：后续模块",
-    "桃子": "待建：后续模块",
     "棕色大鸡蛋": "待建：后续模块",
-    "樱桃": "待建：后续模块",
-    "橙子": "待建：后续模块",
-    "橡树树脂": "待建：后续模块",
-    "石榴": "待建：后续模块",
-    "苹果": "待建：后续模块",
     "虚空精华": "待建：后续模块",
     "蝙蝠翅膀": "待建：后续模块",
   };
@@ -450,6 +446,23 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(staleGaps.length === 0,
     "已知缺口表无过期项（缺口表 " + Object.keys(BUNDLE_ITEM_GAPS).length + " 项）" +
     (staleGaps.length ? "：已可跳转却仍在表内 " + staleGaps.slice(0, 6).join(",") : ""));
+
+  /* 索引口径一致（第二十七轮补）：BUNDLE_ITEM_INDEX 与 NAME_INDEX 面向的是同一批"物品名"，
+   * 只要模块条目（正式名 + 别名）在 NAME_INDEX 里能命中，BUNDLE_ITEM_INDEX 也必须能命中。
+   * 这条断言直接守住本轮修掉的 bug：BUNDLE_ITEM_INDEX 少查了一遍别名，
+   * 于是「苹果」「桃子」等**以别名为准**的名字在收集包里成了假缺口——
+   * 缺口表挂着、界面渲染成不可点的灰 chip，而站内其实早有落点。 */
+  const idxMismatch = [];
+  for (const sec of data.REGISTRY) {
+    for (const it of sec.data) {
+      for (const n of [it.name].concat(it.aka || [])) {
+        if (data.NAME_INDEX.has(n) && !data.BUNDLE_ITEM_INDEX.has(n)) idxMismatch.push(sec.id + "/" + n);
+      }
+    }
+  }
+  log(idxMismatch.length === 0,
+    "BUNDLE_ITEM_INDEX 与 NAME_INDEX 口径一致（含别名）" +
+    (idxMismatch.length ? "：查不到 " + idxMismatch.slice(0, 6).join(",") : "（" + data.BUNDLE_ITEM_INDEX.size + " 项）"));
 
   /* 反向索引：有需求就必有「用于收集包」，两表必须互洽 */
   const noReverse = [];
@@ -833,9 +846,10 @@ console.log("\n=== 3. 渲染冒烟 ===");
    * 第十四轮加「种子」模块后，本表自动收了 7 项（夏季亮片种子/松果/枫树种子/橡子/
    * 蓝爵士种子/虞美人种子/郁金香球茎）——这正是这套「可解释归零」机制的设计意图：
    * 模块补齐后表会自己变小，过期项没删则会直接失败（R31）。 */
+  /* 第二十八轮：松焦油 / 枫糖浆 / 树液 / 橡树树脂 补进「工匠制品」后由本表移除。 */
   const CR_GAPS = [
-    "太阳精华", "松焦油", "枫糖浆", "树液",
-    "橡树树脂", "河凝胶", "洞穴凝胶", "海凝胶", "虚空精华",
+    "太阳精华",
+    "河凝胶", "洞穴凝胶", "海凝胶", "虚空精华",
     "虫肉", "蝙蝠翅膀", "鱼", "鱼饵（物品）|鱼饵", "齐钻", "龙牙",
   ];
   const craftMats = new Set(CR.flatMap((r) => (r.ingredients || []).map((i) => i.name)));
@@ -923,6 +937,33 @@ console.log("\n=== 3. 渲染冒烟 ===");
   } else {
     log(false, "找不到「产出机器能对上打造配方」的工匠条目");
   }
+
+  /* 树液产物 ↔ 树木的**双向一致**（第二十八轮）：
+   * 树木模块写了 tapper（哪棵树出什么），工匠制品就得有对应的条目——
+   * 只查一边会让"树上写着产物名、点进去却没有这个物品"这种断链长期存在。
+   * 反过来，树液产物条目的 machines 写的必须是**真实存在的树**。 */
+  const tapperTrees = (arrays.trees || []).filter((x) => x.tapper);
+  const tapperMissing = tapperTrees.filter((x) => !AR.some((a) => a.name === x.tapper)).map((x) => x.name + "→" + x.tapper);
+  log(tapperMissing.length === 0,
+    "树木声明的树液产物都有工匠制品条目（" + tapperTrees.length + " 棵树：" +
+    tapperTrees.map((x) => x.tapper).join("、") + "）" + (tapperMissing.length ? "：缺 " + tapperMissing.join(",") : ""));
+
+  const tapperRows = AR.filter((a) => (a.producedBy || "").indexOf("树液采集器") >= 0);
+  const badTapper = [];
+  for (const a of tapperRows) {
+    if (!(a.machines || []).length) badTapper.push(a.name + "(无机器/树)");
+    for (const m of (a.machines || [])) {
+      if (!(arrays.trees || []).some((x) => x.name === m)) badTapper.push(a.name + "→" + m + "(不是已知的树)");
+    }
+  }
+  log(tapperRows.length >= 4 && badTapper.length === 0,
+    tapperRows.length + " 件树液产物的产出树都可跳转" + (badTapper.length ? "：" + badTapper.join(",") : ""));
+
+  /* 语义不能复用：有固定售价的条目不该带"浮动价"说明。
+   * 这条断言守的是"字段被借用"这类问题——priceNote 本来是给果酒那类变价品写的。 */
+  const badNote = AR.filter((a) => a.sell != null && a.priceNote).map((a) => a.name);
+  log(badNote.length === 0,
+    "有固定售价的工匠制品不带浮动价说明" + (badNote.length ? "：" + badNote.join(",") : "（" + AR.filter((a) => a.sell != null).length + " 条固定售价）"));
 
   /* 变价品必须写明规则（界面不能只显示「浮动」） */
   const varItems = AR.filter((a) => !a.sell);

@@ -1685,11 +1685,16 @@ const REGISTRY = [
       (a.machines || []).join(" / ") + " 产出") +
       detailSection("数值", kvGrid([
         ["基础售价", a.sell ? a.sell + " 金" : "随原料浮动"],
-        ["计价规则", a.priceNote || "—"],
+        ["计价规则", a.priceNote || (a.producedBy ? "固定售价" : "—")],
         ["产出机器", (a.machines || []).join("、") || "—"],
         ["所需原料", (a.mats || []).join("、") || "—"],
       ])) +
-      (a.priceNote ? detailSection("为什么是浮动价", `<p>${esc("这类加工品的售价取决于投入原料的价值，因此没有固定售价：" + a.priceNote + "。选贵的原料产出更值钱。")}</p>`) : "") +
+      /* ⚠️ 这一节必须配 !a.sell 守卫：曾经只要 priceNote 存在就渲染，
+       * 而"树液产物"这类**有固定售价**的条目也带说明文字，于是详情里
+       * 出现了"为什么是浮动价：…150 金"这种自相矛盾的内容（第二十八轮踩到）。
+       * 判据：文案是写给某一类数据的，就必须把"哪一类"写成条件，不能只看字段在不在。 */
+      (!a.sell && a.priceNote ? detailSection("为什么是浮动价", `<p>${esc("这类加工品的售价取决于投入原料的价值，因此没有固定售价：" + a.priceNote + "。选贵的原料产出更值钱。")}</p>`) : "") +
+      (a.producedBy ? detailSection("产出方式", `<p>${esc(a.producedBy)}`) : "") +
       detailSection("用途", `<p>${esc("可用于送礼、完成收集包，或直接出售换取金币。")}</p>`) +
       giftUsesSection(a.name) +
       bundleUsesSection(a.name) +
@@ -2009,6 +2014,14 @@ const DETAIL_RENDERERS = Object.fromEntries(REGISTRY.map((s) => [s.id, (id) => r
 const BUNDLE_ITEM_INDEX = (() => {
   const map = new Map();
   REGISTRY.forEach((s) => s.data.forEach((it) => { if (!map.has(it.name)) map.set(it.name, { module: s.id, id: it.id }); }));
+  /* ⚠️ 别名也要进表，且必须与 NAME_INDEX 的口径一致（后置、不覆盖正式名）。
+   * 少了这一遍，「苹果」「桃子」这类**以别名为准**的名字在收集包里就成了"假缺口"：
+   * 缺口表里挂着、界面上渲染成不可点的灰 chip，而站内其实早就有落点（果树模块）。
+   * 判据：站内只要有一个索引查别名，其它面向"物品名"的索引就必须一起查——
+   * 两套口径并存，出问题的永远是查得少的那一套。 */
+  REGISTRY.forEach((s) => s.data.forEach((it) => {
+    (it.aka || []).forEach((a) => { if (!map.has(a)) map.set(a, { module: s.id, id: it.id }); });
+  }));
   BUNDLES.forEach((b) => (b.items || []).forEach((it) => {
     const names = bundleItemNames(it);
     names.forEach((n) => {
