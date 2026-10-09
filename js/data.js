@@ -270,30 +270,30 @@ const MINERALS = [
 
 /* ---------- 战斗 ---------- */
 const MONSTERS = [
-  { id: "green-slime",  name: "绿史莱姆", hp: 24,  damage: 5,  location: "矿井 1-39 层",  drops: ["史莱姆黏液"],   type: "史莱姆" },
-  { id: "blue-slime",   name: "蓝史莱姆", hp: 106, damage: 8,  location: "矿井 40-79 层", drops: ["史莱姆黏液"],   type: "史莱姆" },
+  { id: "green-slime",  name: "绿史莱姆", hp: 24,  damage: 5,  location: "矿井 1-39 层",  drops: ["史莱姆泥"],   type: "史莱姆" },
+  { id: "blue-slime",   name: "蓝史莱姆", hp: 106, damage: 8,  location: "矿井 40-79 层", drops: ["史莱姆泥"],   type: "史莱姆" },
   { id: "rock-crab",    name: "岩石蟹",   hp: 30,  damage: 5,  location: "矿井 1-29 层",  drops: ["蟹壳"],         type: "甲壳" },
   { id: "cave-fly",     name: "苍蝇",   hp: 22,  damage: 6,  location: "矿井 1-39 层",  drops: ["虫肉"],         type: "飞行" },
   { id: "bat",          name: "蝙蝠",     hp: 24,  damage: 6,  location: "矿井 30-119 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
   { id: "duggy",        name: "掘地虫",   hp: 40,  damage: 5,  location: "矿井 6-29 层",  drops: ["粘土"],         type: "地底" },
-  { id: "skeleton",     name: "骷髅",     hp: 72,  damage: 10, location: "矿井 70-119 层", drops: ["骨头"],        type: "不死" },
-  { id: "ghost",        name: "幽灵",     hp: 96,  damage: 12, location: "矿井 50-89 层", drops: ["日光精华","虚空精华"], type: "幽灵" },
+  { id: "skeleton",     name: "骷髅",     hp: 72,  damage: 10, location: "矿井 70-119 层", drops: ["骨头碎片"],        type: "不死" },
+  { id: "ghost",        name: "幽灵",     hp: 96,  damage: 12, location: "矿井 50-89 层", drops: ["太阳精华","虚空精华"], type: "幽灵" },
   { id: "shadow-brute", name: "暗影狂徒", hp: 160, damage: 18, location: "矿井 80-119 层", drops: ["虚空精华"],    type: "暗影" },
   { id: "purple-slime", name: "紫色史莱姆", hp: 240, damage: 15, location: "沙漠矿洞",   drops: ["铱矿石"],      type: "史莱姆" },
   { id: "serpent",      name: "飞蛇",     hp: 150, damage: 23, location: "沙漠矿洞",     drops: ["虚空精华"],    type: "飞行" },
   { id: "mummy",        name: "木乃伊",   hp: 260, damage: 30, location: "沙漠矿洞",     drops: ["布料"],        type: "不死" },
   /* ---- 矿井补充 ---- */
   { id: "lava-crab",     name: "熔岩蟹",   hp: 130, damage: 15, location: "矿井 80-119 层", drops: ["蟹壳"],         type: "甲壳" },
-  { id: "grub",          name: "蛆", hp: 20,  damage: 4,  location: "矿井 15-29 层",  drops: ["虫肉", "古代种子", "白色藻类", "稻芽"], type: "虫类" },
+  { id: "grub",          name: "蛆", hp: 20,  damage: 4,  location: "矿井 15-29 层",  drops: ["虫肉", "古代种子", "白藻", "稻苗"], type: "虫类" },
   { id: "dust-sprite",   name: "灰尘精灵", hp: 50,  damage: 5,  location: "矿井 40-79 层", drops: ["煤炭"],         type: "暗影" },
   { id: "frost-bat",     name: "霜冻蝙蝠", hp: 80,  damage: 11, location: "矿井 40-79 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
   { id: "lava-bat",      name: "熔岩蝙蝠", hp: 90,  damage: 17, location: "矿井 80-119 层", drops: ["蝙蝠翅膀"],    type: "飞行" },
   { id: "shadow-shaman", name: "暗影萨满", hp: 80,  damage: 13, location: "矿井 80-119 层", drops: ["虚空精华"],    type: "暗影" },
-  { id: "red-slime",     name: "红史莱姆", hp: 200, damage: 8,  location: "矿井 120 层+",  drops: ["史莱姆黏液"],   type: "史莱姆" },
+  { id: "red-slime",     name: "红史莱姆", hp: 200, damage: 8,  location: "矿井 120 层+",  drops: ["史莱姆泥"],   type: "史莱姆" },
   { id: "copper-slime",  name: "铜史莱姆", hp: 300, damage: 8,  location: "矿井（矿脉）",  drops: ["铜矿石"],      type: "史莱姆" },
   { id: "iron-slime",    name: "铁史莱姆", hp: 400, damage: 8,  location: "矿井（矿脉）",  drops: ["铁矿石"],      type: "史莱姆" },
   /* 金史莱姆：0.1% 概率替换任意史莱姆，继承本体全部属性，额外必掉金币 */
-  { id: "gold-slime",    name: "金史莱姆", hp: 0,   damage: 0,  location: "所有矿井与秘密森林（0.1% 变异）", drops: ["金币（250 起）", "史莱姆黏液"], type: "史莱姆" },
+  { id: "gold-slime",    name: "金史莱姆", hp: 0,   damage: 0,  location: "所有矿井与秘密森林（0.1% 变异）", drops: ["史莱姆泥"], type: "史莱姆" },
   /* ---- 沙漠矿洞补充 ---- */
   { id: "metal-head",    name: "金属大头",   hp: 100, damage: 20, location: "沙漠矿洞",     drops: ["铜矿石","铁矿石","黄金矿石"], type: "机械" },
   { id: "magma-sprite",  name: "熔岩精灵", hp: 90,  damage: 12, location: "沙漠矿洞",     drops: ["火水晶"],      type: "精灵" },
@@ -302,7 +302,7 @@ const MONSTERS = [
   { id: "mutant-grub",     name: "突变蛆",   hp: 55,  damage: 5,  location: "下水道",      drops: ["虫肉"],         type: "虫类" },
   { id: "mutant-fly",      name: "突变苍蝇",   hp: 66,  damage: 8,  location: "下水道",      drops: ["虫肉"],         type: "飞行" },
   /* ---- 姜岛 ---- */
-  { id: "tiger-slime",  name: "虎纹史莱姆", hp: 500, damage: 12, location: "姜岛",       drops: ["史莱姆黏液"],   type: "史莱姆" },
+  { id: "tiger-slime",  name: "虎纹史莱姆", hp: 500, damage: 12, location: "姜岛",       drops: ["史莱姆泥"],   type: "史莱姆" },
   { id: "iridium-bat",  name: "铱蝙蝠",     hp: 300, damage: 24, location: "姜岛矿洞",   drops: ["铱矿石"],      type: "飞行" },
   { id: "iridium-crab", name: "铱蟹",       hp: 300, damage: 20, location: "姜岛矿洞",   drops: ["蟹壳"],         type: "甲壳" },
   { id: "truffle-crab",   name: "松露蟹",     hp: 30,  damage: 5,  location: "矿井（稀有）", drops: ["蟹壳"],            type: "甲壳" },
@@ -313,26 +313,26 @@ const MONSTERS = [
   { id: "spider",         name: "蜘蛛",       hp: 200, damage: 15, location: "矿井 40 层+",  drops: ["纤维"],            type: "虫类" },
   { id: "blue-squid",     name: "蓝鱿鱼",     hp: 310, damage: 18, location: "海滩",         drops: ["鱿鱼墨汁"],        type: "海洋" },
   { id: "squid-kid",      name: "鱿鱼娃",     hp: 1,   damage: 18, location: "矿井 80 层+",  drops: ["鱿鱼墨汁"],        type: "海洋" },
-  { id: "skeleton-mage",  name: "骷髅法师",   hp: 355, damage: 20, location: "姜岛矿洞",     drops: ["骨头"],            type: "不死" },
+  { id: "skeleton-mage",  name: "骷髅法师",   hp: 355, damage: 20, location: "姜岛矿洞",     drops: ["骨头碎片"],            type: "不死" },
   { id: "iridium-golem",  name: "铱石魔",     hp: 430, damage: 15, location: "姜岛火山",     drops: ["铱矿石"],          type: "傀儡" },
   { id: "false-magma-cap",name: "假熔岩菇",   hp: 290, damage: 15, location: "姜岛火山",     drops: ["岩浆晶球"],        type: "真菌" },
   /* 正名：Magma Sparker 的官方中文名是「熔岩火球」，原条目误用了 Lava Lurk 的译名 */
   { id: "lava-lurk",     name: "熔岩潜伏怪", hp: 220, damage: 15, location: "火山地牢",     drops: ["骨头碎片", "龙牙"],  type: "虫类" },
   { id: "magma-sparker", name: "熔岩火球",   hp: 310, damage: 15, location: "火山地牢 6-9 层", drops: ["火山晶石"],        type: "精灵" },
   /* ---- 补全：矿井/骷髅洞穴/危险的矿井（依中文 Wiki 信息框，2026-10-07） ---- */
-  { id: "bug",             name: "臭虫",       hp: 1,   damage: 8,  location: "矿井 1-29 层",       drops: ["虫肉", "白色藻类", "古代种子"], type: "虫类" },
-  { id: "armored-bug",     name: "甲虫",       hp: 1,   damage: 8,  location: "骷髅洞穴",           drops: ["虫肉", "白色藻类", "古代种子"], type: "虫类" },
-  { id: "haunted-skull",   name: "幽灵头骨",   hp: 160, damage: 15, location: "采石场矿井 · 矿井地牢层", drops: ["地晶", "海蓝宝石戒指", "暗黑剑"], type: "不死" },
+  { id: "bug",             name: "臭虫",       hp: 1,   damage: 8,  location: "矿井 1-29 层",       drops: ["虫肉", "白藻", "古代种子"], type: "虫类" },
+  { id: "armored-bug",     name: "甲虫",       hp: 1,   damage: 8,  location: "骷髅洞穴",           drops: ["虫肉", "白藻", "古代种子"], type: "虫类" },
+  { id: "haunted-skull",   name: "幽灵头骨",   hp: 160, damage: 15, location: "采石场矿井 · 矿井地牢层", drops: ["地晶", "海蓝宝石戒指", "黑暗剑"], type: "不死" },
   { id: "carbon-ghost",    name: "石碳幽灵",   hp: 190, damage: 25, location: "骷髅洞穴（木乃伊层）",  drops: ["万象晶球", "精炼石英"],        type: "不死" },
   { id: "pepper-rex",      name: "霸王喷火龙", hp: 300, damage: 15, location: "骷髅洞穴史前层",      drops: ["恐龙蛋", "史前胫骨", "史前肋骨"], type: "恐龙" },
   { id: "hot-head",        name: "熔岩大头",   hp: 215, damage: 18, location: "火山地牢",           drops: ["太阳精华", "煤炭", "铜矿石"],   type: "机械" },
   { id: "shadow-sniper",   name: "暗影狙击手", hp: 300, damage: 18, location: "危险的矿井 81-119 层", drops: ["虚空精华", "金锭", "铁锭"],    type: "暗影" },
-  { id: "stick-bug",       name: "竹节虫",     hp: 700, damage: 20, location: "危险的矿井 41-79 层",  drops: ["齐氏宝石", "姜"],             type: "虫类" },
+  { id: "stick-bug",       name: "竹节虫",     hp: 700, damage: 20, location: "危险的矿井 41-79 层",  drops: ["齐钻", "姜"],             type: "虫类" },
   { id: "putrid-ghost",    name: "腐臭幽灵",   hp: 500, damage: 25, location: "危险的矿井 51-79 层",  drops: ["万象晶球"],                   type: "不死" },
   /* ---- 补全：危险变体（挑战之神庙激活后出现；伤害取区间上限） ---- */
-  { id: "haunted-skull-dangerous", name: "幽灵头骨（危险）", hp: 310, damage: 26, location: "危险的矿井 71-79 层与地牢层", drops: ["海蓝宝石戒指", "巨型炸弹", "炸弹"], type: "危险变体" },
-  { id: "armored-bug-dangerous",   name: "甲虫（危险）",     hp: 250, damage: 27, location: "危险的骷髅洞穴",             drops: ["虫肉", "白色藻类"],               type: "危险变体" },
-  { id: "bug-dangerous",           name: "臭虫（危险）",     hp: 250, damage: 16, location: "危险的矿井 1-39 层",          drops: ["虫肉", "白色藻类"],               type: "危险变体" },
+  { id: "haunted-skull-dangerous", name: "幽灵头骨（危险）", hp: 310, damage: 26, location: "危险的矿井 71-79 层与地牢层", drops: ["海蓝宝石戒指", "超级炸弹", "炸弹"], type: "危险变体" },
+  { id: "armored-bug-dangerous",   name: "甲虫（危险）",     hp: 250, damage: 27, location: "危险的骷髅洞穴",             drops: ["虫肉", "白藻"],               type: "危险变体" },
+  { id: "bug-dangerous",           name: "臭虫（危险）",     hp: 250, damage: 16, location: "危险的矿井 1-39 层",          drops: ["虫肉", "白藻"],               type: "危险变体" },
 ];
 
 /* ---------- 任务 ---------- */

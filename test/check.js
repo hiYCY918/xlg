@@ -357,6 +357,29 @@ console.log("\n=== 3. 渲染冒烟 ===");
     log(registry.get("#modal").hidden === true, "未知模块 id 不触发弹窗");
   }
 
+  /* 怪物掉落物的落点守恒（第二十九轮补）：
+   * 此前**没有任何断言**看这件事，于是掉落物名里混着的**非官方译名**
+   * （史莱姆黏液 / 骨头 / 暗黑剑 / 巨型炸弹 / 稻芽 / 日光精华 / 齐氏宝石 / 白色藻类，
+   * 它们在中文 Wiki 上根本没有页面）长期无人发现——16 种掉落物没有落点。
+   * 改名后有 9 种仍是真缺口，登记如下（R31 口径：可跳转 + 已知缺口 == 全部）。 */
+  const MONSTER_DROP_GAPS = [
+    "太阳精华", "虚空精华", "虫肉", "蝙蝠翅膀", "齐钻", "龙牙",   // 打造材料的同批缺口
+    "白藻", "蟹壳", "鱿鱼墨汁",                                   // 尚未被任何模块收录
+  ];
+  {
+    const dropSet = new Set();
+    for (const m of data.MODULES.length ? data.MODULE_DATA.MONSTERS : []) for (const d of (m.drops || [])) dropSet.add(d);
+    const dropMiss = [...dropSet].filter((d) => !data.NAME_INDEX.has(d)).sort();
+    const dropUntracked = dropMiss.filter((d) => MONSTER_DROP_GAPS.indexOf(d) < 0);
+    log(dropUntracked.length === 0,
+      "怪物掉落物无表外缺口（" + (dropSet.size - dropMiss.length) + " 可跳转 / " + dropMiss.length + " 在缺口表内）" +
+      (dropUntracked.length ? "：新增 " + dropUntracked.join(",") : ""));
+    const dropStale = MONSTER_DROP_GAPS.filter((d) => dropMiss.indexOf(d) < 0);
+    log(dropStale.length === 0,
+      "怪物掉落物缺口表无过期项（" + MONSTER_DROP_GAPS.length + " 项）" +
+      (dropStale.length ? "：已可跳转却仍在表内 " + dropStale.join(",") : ""));
+  }
+
   /* 弹窗内交叉跳转（怪物掉落物 → 对应条目） */
   const crossHandlers = (modalContentEl && modalContentEl.listeners && modalContentEl.listeners.click) || [];
   log(crossHandlers.length > 0, "已注册弹窗内交叉跳转处理器");
