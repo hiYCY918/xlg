@@ -54,11 +54,13 @@ const UNIVERSE = [
   ["建筑", ["建筑"], [], "BUILDINGS"],
   ["武器", ["武器"], [], "WEAPONS"],
   ["戒指", ["戒指"], [], "RINGS"],
+  /* 第二十八轮补：ARTISAN 一直有数据，但这个分类从未进过审计（碰巧才发现） */
+  ["工匠物品", ["工匠物品"], [], "ARTISAN"],
 ];
 
 /* 分类/导航页而非内容条目，比对时排除 */
 const HUB_PAGES = new Set(["鱼", "怪物", "矿石", "晶球", "采集", "矿物", "节日", "NPC",
-  "古物", "资源", "种子", "工具", "建筑", "树木", "树", "果树", "动物", "武器", "戒指", "工匠物品", "打造"].map(norm));
+  "古物", "资源", "种子", "工具", "建筑", "树木", "树", "果树", "动物", "武器", "戒指", "工匠物品", "打造", "地点", "资源"].map(norm));
 
 /* 有意不收录：经核对后判定不属于对应模块范围。明确记录，避免每次审计重复排查。 */
 const EXCLUDED = new Map(Object.entries({
@@ -73,6 +75,10 @@ const EXCLUDED = new Map(Object.entries({
   "大树桩": "可砍伐的资源节点，不是树本身（同上）",
   "鸭子": "重定向页（#重定向 → 鸭），不是独立动物",
   "加工动物制品的收益": "攻略页而非物品",
+  /* 工匠物品分类里的"生产力"页：讲的是收益计算公式，不是物品 */
+  "小桶生产力": "攻略页而非物品", "小桶生产力 - 农耕人": "同上", "小桶生产力 - 工匠": "同上",
+  "罐头瓶生产力": "攻略页而非物品", "罐头瓶生产力 - 农耕人": "同上", "罐头瓶生产力 - 工匠": "同上",
+  "矿石": "汇总页而非具体资源",
   "蟹笼": "已由「工匠制品」收录（R53 已有模块优先）",
   "鸵鸟孵化器": "已由「打造」收录（R53 已有模块优先）",
   "社区中心": "名字已由「任务」收录（id=community），站内名字不能重复（R53/R57）",
@@ -92,12 +98,27 @@ const EXCLUDED = new Map(Object.entries({
  * 否则报告会永远显示「本站均无对应模块」，与事实不符）。 */
 /* 整块未覆盖的游戏系统：全部收录完毕。
  * 保留空数组而不是删掉这个机制 —— 将来发现新的整块系统（如"技能""成就"）时直接往里加即可。 */
+/* 观察清单：这些分类**没有对应的数据模块**，或只有一部分有落点。
+ * 第二十八轮系统性排查过一次（此前只碰巧发现过「工匠物品」）——写进代码里，
+ * 让"还差什么"每次审计都自动报出来，而不是依赖某次会话的记忆。
+ * 只报告、不断言：它们是**待办内容**，不是缺陷（未收录不等于错误）。 */
+const WATCH_CATS = [
+  ["家具", "整块未覆盖"],
+  ["帽子", "整块未覆盖"],
+  ["成就", "整块未覆盖"],
+  ["肥料", "整块未覆盖"],
+  ["技能", "整块未覆盖"],
+  ["鱼饵", "整块未覆盖"],
+  ["秘密", "整块未覆盖"],
+  ["地点", "部分覆盖（地名与区域）"],
+];
+
 const SYSTEMS = [];
 
 (async () => {
   const data = new Function(
     fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS,RINGS};"
+    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS,RINGS,ARTISAN};"
   )();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */
@@ -160,4 +181,18 @@ const SYSTEMS = [];
     await sleep(110);
   }
   console.log("\n整块系统条目合计：" + sysTotal + " 项（本站均无对应模块）");
+  console.log("\n=== 观察清单：未覆盖 / 部分覆盖的分类（待办内容，非缺陷） ===");
+  {
+    let watchTotal = 0;
+    for (const [c, kind] of WATCH_CATS) {
+      const pages = await catMembers(c, "page");
+      if (!pages.length) { console.log("  " + c.padEnd(10) + "（分类不存在，跳过）"); continue; }
+      const miss = pages.filter((n) => !ALL_NAMES.has(norm(n)) && !HUB_PAGES.has(norm(n)) && !EXCLUDED.has(n));
+      watchTotal += miss.length;
+      console.log("  " + c.padEnd(10) + String(miss.length).padStart(4) + " / " + String(pages.length).padEnd(4) +
+        "  " + kind + (miss.length && miss.length <= 12 ? "：" + miss.join("、") : ""));
+    }
+    console.log("  合计待补条目：" + watchTotal + " 条");
+  }
+
   console.log("\n提示：种子与农作物、工匠制品与农作物存在重叠，合计值有重复计数，仅用于衡量量级。");})();
