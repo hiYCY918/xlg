@@ -144,7 +144,9 @@ const src =
   "BUILDINGS,BUILDING_FILTERS,buildingCostText,renderBuildings," +
   "WEAPONS,WEAPON_FILTERS,critText,weaponStatText,renderWeapons," +
   "RINGS,ringEffectText,renderRings," +
-  "TREES,TREE_FILTERS,seedChip,ensureNavVisible};";
+  "TREES,TREE_FILTERS,seedChip,ensureNavVisible," +
+  "progressSnapshot,progressToJson,normalizeImported,mergeProgress,applyProgressText," +
+  "downloadProgressFile,copyProgressToClipboard,progressActions,PROGRESS_VERSION,MUSEUM_KEY};";
 
 let data;
 try {
@@ -1877,7 +1879,112 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(spaBad.length === 0,
     "静态页里的深链接回落都指向真实条目" + (spaBad.length ? "：死链 " + spaBad.slice(0, 4).join(",") : ""));
 
-  /* ---------- 24. 文档自一致性（R60 的执行手段） ----------
+  /* ---------- 24. 进度导出 / 导入（收集包 + 博物馆） ----------
+   * 这一节守的是「用户唯一的资产不能被弄丢」：
+   * round-trip 必须无损、非法输入必须不崩、**失败时必须一个字节都不写**。
+   * 第三条最容易漏——半截写入比拒绝导入糟糕得多，而且用户当场看不出来。 */
+  console.log("\n=== 24. 进度导出 / 导入 ===");
+
+  /* 24.1 导出结构：带版本号才能安全演进，带时间戳才能让用户分辨文件新旧 */
+  store.clear();
+  const seedBundles = data.BUNDLES.filter((b) => !b.price && (b.items || []).length >= 3).slice(0, 2);
+  const seedBundleMap = {};
+  /* 故意写成乱序（2 在前）：导入要归一化并排序，round-trip 才有意义 */
+  seedBundles.forEach((b) => { seedBundleMap[b.id] = [2, 0]; });
+  localStorage.setItem(data.BUNDLE_PROGRESS_KEY, JSON.stringify(seedBundleMap));
+  const seedDonated = data.MUSEUM_NAMES.slice(0, 3);
+  seedDonated.forEach((n) => data.toggleDonate(n));
+
+  const exported = data.progressToJson();
+  let expObj = null;
+  try { expObj = JSON.parse(exported); } catch (e) { /* 下面判空 */ }
+  log(!!expObj && expObj.version === data.PROGRESS_VERSION &&
+    typeof expObj.exportedAt === "string" && !!expObj.bundle && !!expObj.museum,
+    "导出结构含 version / exportedAt / bundle / museum（v" + data.PROGRESS_VERSION + "）");
+
+  /* 24.2 round-trip：导出 → 全清 → 导入 → 与归一化后的导出前状态一致 */
+  const expectBundle = {};
+  seedBundles.forEach((b) => { expectBundle[b.id] = [0, 2]; });
+  store.clear();
+  const rtRes = data.applyProgressText(exported);
+  const rtSnap = data.progressSnapshot();
+  const sameBundle = JSON.stringify(rtSnap.bundle) === JSON.stringify(expectBundle);
+  const sameMuseum = JSON.stringify(Object.keys(rtSnap.museum).sort()) ===
+    JSON.stringify(seedDonated.slice().sort());
+  log(rtRes.ok && sameBundle && sameMuseum,
+    "round-trip：导出 → 清空 → 导入后进度完全一致" +
+    (!sameBundle ? "（收集包不符：" + JSON.stringify(rtSnap.bundle) + "）" : "") +
+    (!sameMuseum ? "（博物馆不符）" : ""));
+
+  /* 24.3 并集合并：本机已有而文件里没有的，必须保留下来。
+   * 覆盖式导入会在这里悄悄删掉用户的进度，而用户只会觉得"数据丢了"。 */
+  const keepBundle = seedBundles[0];
+  const unionFile = JSON.stringify({
+    version: data.PROGRESS_VERSION,
+    bundle: (() => { const o = {}; o[seedBundles[1].id] = [1]; return o; })(),
+    museum: (() => { const o = {}; o[data.MUSEUM_NAMES[9]] = true; return o; })(),
+  });
+  const uRes = data.applyProgressText(unionFile);
+  const uSnap = data.progressSnapshot();
+  const keptLocal = JSON.stringify(uSnap.bundle[keepBundle.id]) === JSON.stringify([0, 2]);
+  const tookFile = JSON.stringify(uSnap.bundle[seedBundles[1].id]) === JSON.stringify([0, 1, 2]);
+  const tookDonation = uSnap.museum[data.MUSEUM_NAMES[9]] === true;
+  log(uRes.ok && keptLocal && tookFile && tookDonation,
+    "导入按并集合并（本机已有保留 + 文件新增并入）" +
+    (!keptLocal ? "：本机已有被覆盖" : "") + (!tookFile ? "：文件里的格未并入" : "") + (!tookDonation ? "：捐赠未并入" : ""));
+
+  /* 24.4 非法输入：既不抛异常，也**不改动**本机进度（逐条比存储快照） */
+  const snapshotStore = () => JSON.stringify([
+    localStorage.getItem(data.BUNDLE_PROGRESS_KEY), localStorage.getItem(data.MUSEUM_KEY),
+  ]);
+  const beforeBad = snapshotStore();
+  const badInputs = [
+    "", "   ", "不是 JSON", "{", "[]", "null", "123", '"字符串"',
+    "{}", '{"version":0}', '{"version":"x"}', '{"version":99,"bundle":{}}',
+    '{"version":1}', '{"version":1,"bundle":[]}', '{"version":1,"museum":"x"}',
+  ];
+  const badThrew = [];
+  const badAccepted = [];
+  for (const t of badInputs) {
+    try {
+      const r = data.applyProgressText(t);
+      if (r && r.ok) badAccepted.push(t);
+    } catch (e) { badThrew.push(t + "→" + e.message); }
+  }
+  log(badThrew.length === 0, "非法输入不抛异常（" + badInputs.length + " 种）" +
+    (badThrew.length ? "：" + badThrew.slice(0, 3).join("；") : ""));
+  log(badAccepted.length === 0, "非法输入一律被拒绝" +
+    (badAccepted.length ? "：误收 " + badAccepted.slice(0, 3).join(",") : ""));
+  log(snapshotStore() === beforeBad, "导入失败时本机进度一个字节都没变");
+
+  /* 24.5 容错：本机没有已有进度时，字段类型不合规的部分丢弃而不是整份拒绝 */
+  store.clear();
+  const partial = data.applyProgressText('{"version":1,"bundle":{"x":[1,"2",-5,1.5,3]},"museum":{"甲":true,"乙":false}}');
+  const pSnap = data.progressSnapshot();
+  log(partial.ok && JSON.stringify(pSnap.bundle.x) === JSON.stringify([1, 2, 3]) && pSnap.museum["甲"] === true && !pSnap.museum["乙"],
+    "脏数据被归一化（字符串下标/负数/小数/重复项清理，非 true 的捐赠丢弃）");
+
+  /* 24.6 环境缺 API 时也不能把页面搞崩（隐私模式 / 沙箱里 Blob、剪贴板可能都没有） */
+  let dlThrew = null;
+  let dlRet = null;
+  try { dlRet = data.downloadProgressFile(); } catch (e) { dlThrew = e.message; }
+  log(dlThrew === null && typeof dlRet === "boolean",
+    "下载导出在缺少浏览器 API 时不抛异常（返回 " + dlRet + "）" + (dlThrew ? "：" + dlThrew : ""));
+  let copyOk = false;
+  try {
+    const cp = data.copyProgressToClipboard();
+    copyOk = !!cp && typeof cp.then === "function";
+    if (copyOk) await cp;   /* 必须 resolve——reject 会变成调用方没接住的未处理错误 */
+  } catch (e) { copyOk = false; }
+  log(copyOk, "复制到剪贴板返回可 resolve 的 Promise（无剪贴板 API 时也如此）");
+
+  /* 24.7 控件本身能构造出来（两个模块共用同一套 DOM 构造，构造失败会让整个模块白屏） */
+  let actThrew = null;
+  try { const pa = data.progressActions(() => {}); actThrew = (pa && pa.buttons && pa.panel) ? null : "返回结构不对"; } catch (e) { actThrew = e.message; }
+  log(actThrew === null, "导出/导入控件可构造" + (actThrew ? "：" + actThrew : ""));
+  store.clear();
+
+  /* ---------- 25. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
    * （第三十轮一次查出 8 处：模块列表里「树木」重复、工匠制品 26→30 项、11→15 类机器、
@@ -1886,7 +1993,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
    *
    * 只查**能机器核对**的那几类，且正则一律锚定「描述现状」的句式——
    * README 里有历史叙述（如「模块数只有 17 个时就已需 ~1700px」），全文扫数字必然误报（R90）。 */
-  console.log("\n=== 24. 文档自一致性（R60） ===");
+  console.log("\n=== 25. 文档自一致性（R60） ===");
 
   const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
   const readmeLines = readme.split("\n");

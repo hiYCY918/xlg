@@ -663,7 +663,13 @@ function renderBundles() {
   const row = document.createElement("div");
   row.className = "bundle-actions";
   row.appendChild(hint);
-  row.appendChild(resetBtn);
+  const pa = progressActions(renderBundles);
+  const bundleBtns = document.createElement("span");
+  bundleBtns.className = "bundle-btn-group";
+  bundleBtns.appendChild(pa.buttons);
+  bundleBtns.appendChild(resetBtn);
+  row.appendChild(bundleBtns);
+  row.appendChild(pa.panel);
   body.appendChild(row);
 
   const grid = document.createElement("div");
@@ -1371,6 +1377,240 @@ const MUSEUM_REWARDS = [
   { need: 95,  reward: "冈瑟给生锈的钥匙（进入女巫小屋）" },
 ];
 
+/* ============================================================
+ * 进度导出 / 导入（收集包 + 博物馆）
+ *
+ * 为什么必须有：这两项勾选是本站最有黏性的功能，而进度只活在本机 localStorage 里——
+ * 换设备、清缓存、换浏览器就全没了。等于把用户留在站上的唯一资产锁在一个浏览器里。
+ *
+ * 三个刻意的取舍：
+ *   1. 导出给**两条通道**：下载文件 + 复制到剪贴板。手机上粘贴比下载文件顺手，
+ *      桌面上文件更稳妥，只给一条就会有一半人用不了。
+ *   2. 导入是**并集**合并，不做覆盖。覆盖会在用户没意识到的情况下删掉本机已有进度。
+ *   3. 校验失败一律**返回说明、不抛异常、不写存储**（R2）。半截写入比拒绝导入糟糕得多。
+ * ============================================================ */
+const PROGRESS_VERSION = 1;
+
+function progressSnapshot() {
+  return {
+    version: PROGRESS_VERSION,
+    exportedAt: new Date().toISOString(),
+    bundle: readBundleProgress(),
+    museum: readMuseum(),
+  };
+}
+function progressToJson() {
+  return JSON.stringify(progressSnapshot(), null, 2);
+}
+
+/* 校验并归一化外部数据。bundle 只收「包 id → 非负整数下标数组」，
+ * museum 只收「名字 → true」；其余一律丢弃而不是报错——
+ * 多出来的字段是别人版本的东西，没必要因此拒绝整份进度。
+ * 复用 slotIndexList：它已经把字符串下标、"3.5"、负数、重复项一次性归一化干净。 */
+function normalizeImported(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, reason: "内容不是一个 JSON 对象" };
+  }
+  const v = Number(raw.version);
+  if (!Number.isInteger(v) || v < 1) {
+    return { ok: false, reason: "缺少有效的 version 字段（这多半不是本站导出的进度文件）" };
+  }
+  if (v > PROGRESS_VERSION) {
+    return { ok: false, reason: "文件来自更新的版本（v" + v + "），当前站点只认到 v" + PROGRESS_VERSION };
+  }
+  const hasBundle = !!raw.bundle && typeof raw.bundle === "object" && !Array.isArray(raw.bundle);
+  const hasMuseum = !!raw.museum && typeof raw.museum === "object" && !Array.isArray(raw.museum);
+  if (!hasBundle && !hasMuseum) {
+    return { ok: false, reason: "既没有 bundle 也没有 museum 字段" };
+  }
+  const bundle = {};
+  if (hasBundle) {
+    for (const k of Object.keys(raw.bundle)) {
+      const list = slotIndexList(raw.bundle[k]);
+      if (list.length) bundle[k] = list;
+    }
+  }
+  const museum = {};
+  if (hasMuseum) {
+    for (const k of Object.keys(raw.museum)) if (raw.museum[k] === true) museum[k] = true;
+  }
+  return { ok: true, reason: "", bundle: bundle, museum: museum };
+}
+
+/* 并集合并并落盘。返回新增加了多少，便于给用户一句确切的回执。 */
+function mergeProgress(bundle, museum) {
+  const cur = readBundleProgress();
+  let addedSlots = 0;
+  for (const id of Object.keys(bundle)) {
+    const merged = slotIndexList(cur[id]);
+    for (const i of bundle[id]) if (merged.indexOf(i) < 0) { merged.push(i); addedSlots++; }
+    merged.sort((a, b) => a - b);
+    cur[id] = merged;
+  }
+  writeBundleProgress(cur);
+
+  const m = readMuseum();
+  let addedDonations = 0;
+  for (const name of Object.keys(museum)) {
+    if (m[name] !== true) { m[name] = true; addedDonations++; }
+  }
+  writeMuseum(m);
+  return { addedSlots: addedSlots, addedDonations: addedDonations };
+}
+
+/* 从文本导入。**任何**输入都只返回 {ok, reason}，不抛异常、失败时不碰存储。 */
+function applyProgressText(text) {
+  if (typeof text !== "string" || !text.trim()) {
+    return { ok: false, reason: "没有内容可导入" };
+  }
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch (err) {
+    return { ok: false, reason: "不是合法的 JSON 文本" };
+  }
+  const norm = normalizeImported(raw);
+  if (!norm.ok) return norm;
+  const added = mergeProgress(norm.bundle, norm.museum);
+  return { ok: true, reason: "", added: added };
+}
+
+/* 下载通道。沙箱 / 隐私模式下 Blob 或 URL 可能不存在，所以逐项判存再调（R2）。 */
+function downloadProgressFile() {
+  const text = progressToJson();
+  try {
+    if (typeof Blob === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") return false;
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "xlg-progress-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    if (typeof a.click === "function") a.click();
+    document.body.removeChild(a);
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (err) { /* 忽略 */ } }, 1000);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+/* 剪贴板通道。返回 Promise<boolean>：一定要 resolve 而不是 reject，
+ * 否则调用方一个没接住的 rejection 就会变成控制台里的未处理错误。 */
+function copyProgressToClipboard() {
+  const text = progressToJson();
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      return navigator.clipboard.writeText(text).then(() => true, () => false);
+    }
+  } catch (err) { /* 落到下面的 false */ }
+  return Promise.resolve(false);
+}
+
+/* 上一次操作的回执。存成模块级变量是为了**跨重渲染保留**：
+ * 导入成功要重渲染整个模块，就地写在 DOM 里的话那句回执会跟着被清掉。 */
+let progressNotice = "";
+
+/* 「导出 / 导入」控件。收集包与博物馆共用一份（进度本来就是一份文件里的两半），
+ * 但两个模块各挂一套，用户在哪个模块里都能直接导。
+ * 导入面板**就地展开**、不弹窗：弹窗会盖住进度本身，用户没法核对到底导入了什么。
+ * 返回 { buttons, panel } 两块由调用方分别摆放——面板要独占整行，交给 appendChild
+ * 的先后顺序去凑位置太脆（第一版就把面板排到了按钮上面）。 */
+function progressActions(onDone) {
+  const wrap = document.createElement("span");
+  wrap.className = "progress-actions";
+
+  const status = document.createElement("span");
+  status.className = "progress-status";
+  status.textContent = progressNotice;
+  const say = (msg) => { progressNotice = msg; status.textContent = msg; };
+
+  const mkBtn = (label, title) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "progress-btn";
+    b.textContent = label;
+    if (title) b.title = title;
+    return b;
+  };
+
+  const exportBtn = mkBtn("导出进度", "下载一份 JSON，含收集包与博物馆进度");
+  exportBtn.addEventListener("click", () => {
+    say(downloadProgressFile() ? "已下载进度文件" : "当前环境不支持下载，请改用「复制进度」");
+  });
+
+  const copyBtn = mkBtn("复制进度", "把进度 JSON 复制到剪贴板（手机上比下载文件顺手）");
+  copyBtn.addEventListener("click", () => {
+    copyProgressToClipboard().then((ok) => {
+      say(ok ? "已复制到剪贴板" : "复制失败，请改用「导出进度」下载文件");
+    });
+  });
+
+  const importBtn = mkBtn("导入进度", "从文件或粘贴的文本恢复进度（并集合并）");
+
+  const panel = document.createElement("div");
+  panel.className = "progress-import";
+  panel.hidden = true;
+
+  const file = document.createElement("input");
+  file.type = "file";
+  file.accept = ".json,application/json";
+  file.className = "progress-file";
+
+  const ta = document.createElement("textarea");
+  ta.className = "progress-text";
+  ta.rows = 3;
+  ta.placeholder = "或把导出的 JSON 粘贴到这里";
+
+  const note = document.createElement("p");
+  note.className = "progress-note";
+  note.textContent = "导入按「并集」合并：两边已勾选的都保留，不会覆盖本机已有进度。";
+
+  const confirmBtn = mkBtn("确认导入");
+  confirmBtn.addEventListener("click", () => doImport(ta.value));
+
+  file.addEventListener("change", () => {
+    const f = file.files && file.files[0];
+    if (!f) return;
+    if (typeof FileReader === "undefined") { say("当前环境不支持读取文件，请改用粘贴"); return; }
+    try {
+      const fr = new FileReader();
+      fr.onload = () => doImport(String(fr.result));
+      fr.onerror = () => say("文件读取失败");
+      fr.readAsText(f);
+    } catch (err) {
+      say("文件读取失败");
+    }
+  });
+
+  function doImport(text) {
+    const res = applyProgressText(text);
+    if (!res.ok) {
+      /* 关键：失败时本机进度一个字节都没动，这句要写清楚，否则用户会以为数据被弄坏了 */
+      say("导入失败：" + res.reason + "（本机进度未改动）");
+      return;
+    }
+    ta.value = "";
+    say("导入完成：新增 " + res.added.addedSlots + " 个收集包格、" + res.added.addedDonations + " 件捐赠");
+    if (typeof onDone === "function") onDone();
+  }
+
+  importBtn.addEventListener("click", () => {
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden && typeof ta.focus === "function") ta.focus();
+  });
+
+  panel.appendChild(file);
+  panel.appendChild(ta);
+  panel.appendChild(confirmBtn);
+  panel.appendChild(note);
+  wrap.appendChild(exportBtn);
+  wrap.appendChild(copyBtn);
+  wrap.appendChild(importBtn);
+  wrap.appendChild(status);
+  return { buttons: wrap, panel: panel };
+}
+
 function renderArtifacts() {
   const body = $("#body-artifacts");
   body.innerHTML = "";
@@ -1404,7 +1644,13 @@ function renderArtifacts() {
   hint.className = "bundle-hint";
   hint.textContent = "勾选表示已捐赠给博物馆。进度保存在本机浏览器。";
   row.appendChild(hint);
-  row.appendChild(resetBtn);
+  const pa = progressActions(renderArtifacts);
+  const museumBtns = document.createElement("span");
+  museumBtns.className = "bundle-btn-group";
+  museumBtns.appendChild(pa.buttons);
+  museumBtns.appendChild(resetBtn);
+  row.appendChild(museumBtns);
+  row.appendChild(pa.panel);
   body.appendChild(row);
 
   const grid = document.createElement("div");

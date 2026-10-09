@@ -631,7 +631,8 @@ html, body {
   margin: 0 0 14px;
 }
 .bundle-hint { margin: 0; font-size: 13px; color: var(--muted); }
-.bundle-reset {
+.bundle-reset,
+.progress-btn {
   font: inherit;
   font-size: 13px;
   color: var(--wood);
@@ -643,6 +644,40 @@ html, body {
 }
 .bundle-reset:hover { border-color: var(--danger); color: var(--danger); }
 .bundle-reset.is-armed { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 700; }
+
+/* ===== 进度导出 / 导入 =====
+ * 控件挂在模块工具栏的操作行里（就地展开的导入面板），刻意不做弹窗：
+ * 弹窗会盖住进度本身，用户没法核对导入了什么。 */
+.bundle-btn-group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.progress-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; position: relative; }
+.progress-btn:hover { border-color: var(--accent); color: var(--accent); }
+.progress-status { font-size: 12px; color: var(--muted); max-width: 320px; }
+.progress-import {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+.progress-import[hidden] { display: none; }
+.progress-file { font-size: 13px; max-width: 100%; }
+.progress-text {
+  flex: 1 1 260px;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.progress-note { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }
 
 /* 进度条 */
 .bundle-progress { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
