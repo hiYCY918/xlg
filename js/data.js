@@ -912,6 +912,78 @@ const FRUIT_TREES = [
 ];
 
 /* ============================================================
+ * 工具（中文 Wiki Category:工具 的 18 件）
+ * 三种数据形态，都是各页自己的组织结构：
+ *   ① {{Infobox tool}} ×12 —— cost / soldby / source / eng（剪刀、挤奶桶、鱼竿类…）
+ *   ② 无信息框的 6 个基础工具 —— 正文里的**等级表**（tiers：名称 / 花费 / 材料 / 提升说明）
+ *   ③ 建筑自带设施（喂料斗、孵化器）—— 无价格，取正文首句作 source
+ * 等级表的列名有 4 种写法（花费|费用|所需金币、材料|所需材料、提升功能|提升|工具特点|改造内容），
+ *   所以解析是**按关键词识别列**、不按字面匹配表头
+ * 排除六项：工具（汇总页）；镰刀 / 金色的镰刀 / 铱镰刀（它们的 infobox 是 Infobox weapon，
+ *   按 Wiki 自己的归类归「武器」模块）；蟹笼（已由工匠制品收录）、鸵鸟孵化器（已由打造收录）
+ *   —— 后两项按 R53「已有模块优先」让位
+ * 6 个基础工具的英文页名是复数（Axes / Pickaxes …），id 用显式单数表，逐个可核对
+ * ============================================================ */
+const TOOLS = [
+  { id: "axe", name: "斧头", eng: "Axes", costText: "初始工具", tiers: [
+      { name: "斧头", cost: "初始工具", effect: "挥斧 10 次砍倒一棵树，5 次切开砍倒树留下的树桩。" },
+      { name: "铜斧头", cost: "2000", materials: [{ name: "铜锭", qty: 5 }], effect: "可以砍伐大树桩。挥斧 8 次砍倒一棵成长完全的树，4 次切开树桩，7 次切开大树桩。" },
+      { name: "钢斧头", cost: "5000", materials: [{ name: "铁锭", qty: 5 }], effect: "可以砍伐大圆木。挥斧 6 次砍倒一棵成长完全的树，3 次切开树桩，5 次切开大树桩，9 次切开大圆木。" },
+      { name: "金斧头", cost: "10000", materials: [{ name: "金锭", qty: 5 }], effect: "挥斧 4 次砍倒一棵完全成长的树，2 次切开树桩，4 次切开大树桩，7 次切开大圆木。" },
+      { name: "铱斧头", cost: "25000", materials: [{ name: "铱锭", qty: 5 }], effect: "挥斧 2 次砍倒一棵完全成长的树，1 次切开树桩，3 次切开大树桩，6 次切开大圆木。" },
+    ] },
+  { id: "pickaxe", name: "十字镐", eng: "Pickaxes", costText: "初始工具", tiers: [
+      { name: "十字镐", cost: "初始工具", effect: "可以敲碎小石头。 敲碎矿井1-39层中较硬的石头需要两次敲击，多次敲击可以破坏矿井圆石。敲碎铜矿需要三次敲击。 注意：无法破坏农场中的圆石。" },
+      { name: "铜十字镐", cost: "2000", materials: [{ name: "铜锭", qty: 5 }], effect: "可以一击敲碎矿井1-39层中的所有石头，敲碎铜矿与40-79层中的石头需要两次敲击。" },
+      { name: "钢十字镐", cost: "5000", materials: [{ name: "铁锭", qty: 5 }], effect: "农场中的圆石只有钢十字镐能够破坏。 可以一击敲碎矿井40-79层中的石头，两击敲碎采石场矿井中的石头。 敲碎铜矿需要一次敲击，铁矿需要两次，金矿需要三次，铱矿需要六次。破坏圆石需要四次敲击。 可以破坏矿井中阻碍与矮人交谈的障碍物。" },
+      { name: "金十字镐", cost: "10000", materials: [{ name: "金锭", qty: 5 }], effect: "可以敲碎陨石。 可以一击敲碎矿井80-120层中的石头。 敲碎铁矿需要一次敲击，金矿需要两次，铱矿需要四次。破坏采石场矿井中的圆石需要四次敲击。" },
+      { name: "铱十字镐", cost: "25000", materials: [{ name: "铱锭", qty: 5 }], effect: "可以一击敲碎采石场矿井与骷髅洞穴中的石头。 敲碎钻石矿需要两次敲击，其他宝石矿则只需一次。破坏采石场矿井中的圆石只需要三次敲击。" },
+    ] },
+  { id: "watering-can", name: "喷壶", eng: "Watering Cans", costText: "起始工具", tiers: [
+      { name: "喷壶", cost: "起始工具", effect: "灌满的喷壶一次可以浇灌40次。" },
+      { name: "铜喷壶", cost: "2000", materials: [{ name: "铜锭", qty: 5 }], effect: "容量提高到55次。 增大最大浇水面积到直线3格。" },
+      { name: "钢喷壶", cost: "5000", materials: [{ name: "铁锭", qty: 5 }], effect: "容量提高到70次。 增大最大浇水面积到直线5格。" },
+      { name: "金喷壶", cost: "10000", materials: [{ name: "金锭", qty: 5 }], effect: "容量提高到85次。 增大最大浇水面积到3*3（相当于9格）。" },
+      { name: "铱喷壶", cost: "25000", materials: [{ name: "铱锭", qty: 5 }], effect: "容量提高到100次。 增大最大浇水面积到3*6（相当于18格）。" },
+    ] },
+  { id: "hoe", name: "锄头", eng: "Hoes", costText: "初始工具", tiers: [
+      { name: "锄头", cost: "初始工具", effect: "玩家面朝方向1格" },
+      { name: "铜锄头", cost: "2000", materials: [{ name: "铜锭", qty: 5 }], effect: "最大范围为玩家面朝方向直线3格" },
+      { name: "钢锄头", cost: "5000", materials: [{ name: "铁锭", qty: 5 }], effect: "最大范围为玩家面朝方向直线5格" },
+      { name: "金锄头", cost: "10000", materials: [{ name: "金锭", qty: 5 }], effect: "最大范围为3x3格" },
+      { name: "铱锄头", cost: "25000", materials: [{ name: "铱锭", qty: 5 }], effect: "最大范围为6x3格" },
+    ] },
+  { id: "trash-can", name: "垃圾桶（工具）", eng: "Trash Cans", costText: "初始工具", tiers: [
+      { name: "垃圾桶", cost: "初始工具", effect: "用于在物品栏中丢弃物品" },
+      { name: "铜垃圾桶", cost: "1000", materials: [{ name: "铜锭", qty: 5 }], effect: "回收物品价值的15%" },
+      { name: "钢垃圾桶", cost: "2500", materials: [{ name: "铁锭", qty: 5 }], effect: "回收物品价值的30%" },
+      { name: "金垃圾桶", cost: "5000", materials: [{ name: "金锭", qty: 5 }], effect: "回收物品价值的45%" },
+      { name: "铱垃圾桶", cost: "12500", materials: [{ name: "铱锭", qty: 5 }], effect: "回收物品价值的60%" },
+    ] },
+  { id: "pan", name: "淘盘", eng: "Pans", costText: "2500", tiers: [
+      { name: "淘盘", cost: "2500", effect: "每次淘金可获得3~9个矿石与至多一个特殊物品。" },
+      { name: "钢淘盘", cost: "5000", materials: [{ name: "铁锭", qty: 5 }], effect: "每次淘金可获得4~10个矿石与至多两个特殊物品。有小概率立即引出另一个淘金地点。" },
+      { name: "金淘盘", cost: "10000", materials: [{ name: "金锭", qty: 5 }], effect: "每次淘金可获得5~11个矿石与至多三个特殊物品。有较高概率立即引出另一个淘金地点。" },
+      { name: "铱淘盘", cost: "25000", materials: [{ name: "铱锭", qty: 5 }], effect: "每次淘金可获得6~12个矿石与至多四个特殊物品。有高概率立即引出另一个淘金地点。" },
+    ] },
+  { id: "scythe", name: "镰刀", eng: "Scythe", source: "初始道具" },
+  { id: "golden-scythe", name: "金色的镰刀", eng: "Golden Scythe", source: "采石场矿井尽头的雕像" },
+  { id: "iridium-scythe", name: "铱镰刀", eng: "Iridium Scythe", source: "精通山洞" },
+  { id: "shears", name: "剪刀", eng: "Shears", cost: 1000, soldby: "玛妮的牧场" },
+  { id: "milk-pail", name: "挤奶桶", eng: "Milk Pail", cost: 1000, soldby: "玛妮的牧场" },
+  { id: "heater", name: "加热器", eng: "Heater", cost: 2000, soldby: "玛妮的牧场" },
+  { id: "hay-hopper", name: "喂料斗", eng: "Hay Hopper", source: "当饲料槽中有空位置时，玩家用鼠标右键点击喂料斗，便可以获得筒仓内的干草。将干草放在饲料槽上，动物便可以进食。要想把干草放进筒仓，可以先将物品栏中的干草举在手中，然后右键单击喂料斗。" },
+  { id: "incubator", name: "孵化器", eng: "Incubator", source: "拿着蛋的时候使用孵化器就可以将蛋放进孵化器中。一旦孵化器开始孵化，蛋就无法再次取出，孵化过程也无法取消。" },
+  { id: "auto-petter", name: "自动抚摸机", eng: "Auto-Petter", cost: 50000, soldby: "Joja超市" },
+  { id: "auto-grabber", name: "自动采集器", eng: "Auto-Grabber", cost: 25000, soldby: "玛妮的牧场" },
+  { id: "bamboo-pole", name: "竹鱼竿", eng: "Bamboo Pole", cost: 500, soldby: "鱼店" },
+  { id: "training-rod", name: "训练用鱼竿", eng: "Training Rod", cost: 25, soldby: "鱼店" },
+  { id: "fiberglass-rod", name: "玻璃纤维鱼竿", eng: "Fiberglass Rod", cost: 1800, soldby: "鱼店" },
+  { id: "iridium-rod", name: "铱金鱼竿", eng: "Iridium Rod", cost: 7500, soldby: "鱼店" },
+  { id: "advanced-iridium-rod", name: "高级铱金鱼竿", eng: "Advanced Iridium Rod", cost: 25000, soldby: "鱼店" },
+];
+
+/* ============================================================
  * 动物制品（中文 Wiki Category:动物制品 的 16 件）
  * 数据来源：各页的 {{Infobox}}（eng / source / sellprice / edibility / quality）
  * 排除三项：「加工动物制品的收益」（攻略页不是物品）、松露与恐龙蛋（已由收集物收录，R53 已有模块优先）

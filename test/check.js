@@ -135,6 +135,7 @@ const src =
   "SEEDS,SEED_SEASON_FILTERS,SEEDED_BY,seededBySection,seedPriceText,seedGrowthText,sortSeeds," +
   "FRUIT_TREES,TREE_SEASONS,saplingChip,sortTrees,ANIMALS,ANIMAL_FILTERS,nameChip," +
   "ANIMAL_PRODUCTS,PRODUCT_BY,PRODUCT_FILTERS,productKinds,renderProducts," +
+  "TOOLS,TOOL_CATS,TOOL_FILTERS,toolCostText,tierRows," +
   "TREES,TREE_FILTERS,seedChip,ensureNavVisible};";
 
 let data;
@@ -1261,8 +1262,74 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(stillGap.length === 0,
     "动物的全部产物都有了落点（缺口表已清零）" + (stillGap.length ? "：仍缺 " + stillGap.join(",") : ""));
 
-  /* ---------- 17. 侧栏导航（模块可达性） ---------- */
-  console.log("\n=== 17. 侧栏导航（模块可达性） ===");
+  /* ---------- 17. 工具（工具 ↔ 升级链 ↔ 商店） ---------- */
+  console.log("\n=== 17. 工具（工具 ↔ 升级链 ↔ 商店） ===");
+
+  const TL = arrays.tools || [];
+  const tlDup = [...new Set(TL.map((t) => t.id).filter((v, i, arr) => arr.indexOf(v) !== i))];
+  log(tlDup.length === 0, "工具 id 无重复（" + TL.length + " 件）" + (tlDup.length ? "：" + tlDup.join(",") : ""));
+  const tlCross = TL.filter((t) => ownerR.get(t.id) !== "tools").map((t) => t.id + "(属" + ownerR.get(t.id) + ")");
+  log(tlCross.length === 0, "工具 id 与其它模块无冲突" + (tlCross.length ? "：" + tlCross.join(",") : ""));
+
+  const tlNames = TL.map((t) => t.name);
+  const tlNameDup = [...new Set(tlNames.filter((v, i) => tlNames.indexOf(v) !== i))];
+  log(tlNameDup.length === 0, "工具名称无重复" + (tlNameDup.length ? "：" + tlNameDup.join(",") : ""));
+
+  const badTl = [];
+  for (const t of TL) {
+    if (!t.eng) badTl.push(t.id + "(无英文名)");
+    if (t.cost == null && !t.costText && !t.soldby && !t.source) badTl.push(t.id + "(既无价格也无获取方式)");
+    if (t.soldby && !/[\u4e00-\u9fff]/.test(t.soldby)) badTl.push(t.id + "(购买地点未本地化)");
+  }
+  log(badTl.length === 0, "工具字段齐全（英文名 / 价格或来源）" + (badTl.length ? "：" + badTl.join(",") : ""));
+
+  /* 分组完整性（R17）：每个工具**恰好**落在一个筛选分组里。
+   * 用显式 id 清单归组，就必须断言"清单覆盖了全部工具"——
+   * 否则将来加一件工具，它会既不在任何分组里、也不报错（内容存在但筛不出来）。 */
+  const catAll = Object.values(data.TOOL_CATS).flat();
+  const catDup = [...new Set(catAll.filter((v, i) => catAll.indexOf(v) !== i))];
+  log(catDup.length === 0, "工具分组清单无重复 id" + (catDup.length ? "：" + catDup.join(",") : ""));
+  const catMiss = TL.filter((t) => catAll.indexOf(t.id) < 0).map((t) => t.id);
+  const catGhost = catAll.filter((id) => !TL.some((t) => t.id === id));
+  log(catMiss.length === 0 && catGhost.length === 0,
+    "工具分组覆盖全部 " + TL.length + " 件且无幽灵项" +
+    (catMiss.length ? "：漏 " + catMiss.join(",") : "") + (catGhost.length ? "：多 " + catGhost.join(",") : ""));
+
+  /* 等级表：有就必须完整——缺一格在界面上就是一行空白，不报错 */
+  const tlTiered = TL.filter((t) => t.tiers && t.tiers.length);
+  const badTier = [];
+  for (const t of tlTiered) {
+    if (t.tiers.length < 2) badTier.push(t.id + "(等级数 " + t.tiers.length + ")");
+    for (const x of t.tiers) {
+      if (!x.name) badTier.push(t.id + "(等级缺名称)");
+      if (!x.cost) badTier.push(t.id + "/" + x.name + "(缺花费)");
+      if (!x.effect) badTier.push(t.id + "/" + x.name + "(缺提升说明)");
+      for (const m of (x.materials || [])) {
+        if (!/[\u4e00-\u9fff]/.test(m.name)) badTier.push(t.id + "/" + x.name + "(材料未本地化：" + m.name + ")");
+      }
+    }
+  }
+  log(badTier.length === 0, tlTiered.length + " 件带等级表的工具条目完整" +
+    (badTier.length ? "：" + badTier.slice(0, 6).join(",") : ""));
+
+  /* 等级表的材料应当是站内可跳转的物品（可跳转 + 已知缺口守恒） */
+  const tierMats = [...new Set(tlTiered.flatMap((t) => t.tiers.flatMap((x) => (x.materials || []).map((m) => m.name))))];
+  const tierMatHit = tierMats.filter((n) => data.NAME_INDEX.has(n));
+  log(tierMatHit.length === tierMats.length,
+    "升级材料全部可跳转（" + tierMatHit.length + " / " + tierMats.length + "）" +
+    (tierMatHit.length < tierMats.length ? "：未命中 " + tierMats.filter((n) => !data.NAME_INDEX.has(n)).join(",") : ""));
+
+  const tiered = tlTiered[0];
+  const tlHtml = tiered ? String(data.DETAIL_RENDERERS.tools(tiered.id)) : "";
+  log(tlHtml.includes("升级链") && tlHtml.includes("数值"),
+    "带等级表的工具详情含「升级链」与「数值」分区（" + (tiered ? tiered.name : "—") + "）");
+  const plainTool = TL.find((t) => !t.tiers || !t.tiers.length);
+  const plainHtml = plainTool ? String(data.DETAIL_RENDERERS.tools(plainTool.id)) : "";
+  log(plainHtml.includes("数值") && !plainHtml.includes("升级链"),
+    "不可升级的工具不显示「升级链」（" + (plainTool ? plainTool.name : "—") + "）");
+
+  /* ---------- 18. 侧栏导航（模块可达性） ---------- */
+  console.log("\n=== 18. 侧栏导航（模块可达性） ===");
 
   /* 导航从横向标签栏改成左侧竖栏（第十八轮）：横排 17 个模块需要约 1700px，
    * 只有 ≥1920 的屏幕能一眼看全。这里守住"每个模块都有一条导航入口"这件事——
@@ -1348,8 +1415,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(/background-attachment: local/.test(cssSrc),
     "木板缝那层用 background-attachment: local（侧栏自身滚动时缝跟着内容走）");
 
-  /* ---------- 18. 视觉资源 ---------- */
-  console.log("\n=== 18. 视觉资源（模块图标贴图） ===");
+  /* ---------- 19. 视觉资源 ---------- */
+  console.log("\n=== 19. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

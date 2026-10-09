@@ -205,6 +205,7 @@ function moduleIconHtml(m) {
   trees: "全部",
   animals: "全部",
   products: "全部",
+  tools: "全部",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -1029,6 +1030,70 @@ function cardSellLine(p) {
   return `💰 不可出售`;
 }
 
+/* ---- 工具 ---- */
+/* 工具分组：数据里没有"用途"这个维度，是呈现层的归类。
+ * 用**显式 id 清单**而不是命名规则（`-rod` 之类）——规则会随命名漂移，清单不会；
+ * 并配断言：每个工具 id 必须恰好出现在一组里（R17：筛选必须覆盖全部数据值）。 */
+const TOOL_CATS = {
+  "可升级工具": ["axe", "pickaxe", "watering-can", "hoe", "trash-can", "pan"],
+  "镰刀": ["scythe", "golden-scythe", "iridium-scythe"],
+  "鱼竿": ["bamboo-pole", "training-rod", "fiberglass-rod", "iridium-rod", "advanced-iridium-rod"],
+  "畜牧用品": ["shears", "milk-pail", "heater", "auto-petter", "auto-grabber"],
+  "建筑设施": ["hay-hopper", "incubator"],
+};
+const TOOL_CAT_OF = (() => {
+  const m = new Map();
+  for (const [cat, ids] of Object.entries(TOOL_CATS)) ids.forEach((id) => m.set(id, cat));
+  return m;
+})();
+const TOOL_FILTERS = [{ value: "全部", label: "全部" }]
+  .concat(Object.keys(TOOL_CATS).map((c) => ({ value: c, label: c })));
+function toolCostText(t) {
+  if (t.cost != null) return t.cost + " 金";
+  return t.costText || "不可购买";
+}
+function renderTools() {
+  const body = $("#body-tools");
+  body.innerHTML = "";
+  const list = TOOLS.filter((t) => state.tools === "全部" || TOOL_CAT_OF.get(t.id) === state.tools);
+  const total = updateModuleCount(SECTION.tools);
+  setShown("tools", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(TOOL_FILTERS, state.tools, (v) => { state.tools = v; renderTools(); }));
+  toolbar.appendChild(controlRow(hintNode("基础工具在铁匠铺升级；畜牧用品与鱼竿在对应商店购买")));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((t) => {
+    const top = t.tiers && t.tiers.length ? t.tiers[t.tiers.length - 1] : null;
+    return `
+    <div ${cardAttrs(t.id)}>
+      ${itemIconHtml(t.id, t.name, GENERIC_ICON)}
+      <h3>${esc(t.name)}</h3>
+      <div class="meta"><span class="chip chip-plain">${esc(TOOL_CAT_OF.get(t.id) || "其它")}</span></div>
+      <div class="meta">💰 ${esc(toolCostText(t))}</div>
+      <div class="meta">${t.soldby ? "🏪 " + nameChip(t.soldby) : "🛠️ " + esc(t.source || "—")}</div>
+      <div class="foot"><span class="muted">${esc(t.tiers && t.tiers.length
+        ? "共 " + t.tiers.length + " 级，最高：" + (top ? top.name : "")
+        : (t.source || "建筑自带设施"))}</span></div>
+    </div>`;
+  }).join("") || emptyState("没有符合条件的工具");
+  body.appendChild(grid);
+}
+/* 等级表：名称 / 花费 / 材料 / 提升说明 */
+function tierRows(t) {
+  return (t.tiers || []).map((x, i) => `
+    <div class="list-item">
+      <div class="list-head"><b>${esc(x.name)}</b>${i === 0 ? ' <span class="chip chip-plain">初始</span>' : ""}</div>
+      <div class="meta">💰 ${esc(x.cost || "—")}${x.materials && x.materials.length
+        ? " · 🧱 " + x.materials.map((m) => nameChip(m.name) + " ×" + m.qty).join("、") : ""}</div>
+      <div class="muted">${esc(x.effect || "")}</div>
+    </div>`).join("");
+}
+
 /* ---- 事件 ---- */
 /* ---- 打造（制造配方） ---- */
 const CRAFT_SORTS = [
@@ -1655,13 +1720,35 @@ const REGISTRY = [
           : "可直接出售，或作为其它配方的材料。")}</p>`);
     },
   },
+  {
+    id: "tools", stateKey: ["tools"], spriteFor: "", sprite: "axe", icon: "🪓", label: "工具",
+    sub: "工具与升级、畜牧用品、鱼竿", data: "TOOLS", render: renderTools,
+    resetFilter: (s) => { s.tools = "全部"; },
+    indexExtra: (t) => [t.eng, t.soldby, t.source]
+      .concat((t.tiers || []).map((x) => x.name))
+      .concat((t.tiers || []).flatMap((x) => (x.materials || []).map((m) => m.name))),
+    detail: (t) => detailHead(itemIconHtml(t.id, t.name, GENERIC_ICON), t.name,
+      (TOOL_CAT_OF.get(t.id) || "其它") +
+      (t.tiers && t.tiers.length ? " · 共 " + t.tiers.length + " 级" : "")) +
+      detailSection("数值", kvGrid([
+        ["类别", TOOL_CAT_OF.get(t.id) || "其它"],
+        ["价格", toolCostText(t)],
+        ["购买地点", t.soldby || "—"],
+        ["升级档数", t.tiers && t.tiers.length ? t.tiers.length + " 级" : "不可升级"],
+      ])) +
+      (t.tiers && t.tiers.length ? detailSection("升级链", tierRows(t)) : "") +
+      (t.source ? detailSection("获取方式", `<p>${esc(t.source)}</p>`) : "") +
+      detailSection("说明", `<p>${esc(t.tiers && t.tiers.length
+        ? "基础工具在游戏开始时获得，可在铁匠铺用金币与金属锭逐级升级；升级同时提升效率与可破坏的对象范围。"
+        : "在对应商店购买后即可使用；畜牧用品放在畜棚 / 鸡舍内生效。")}</p>`),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
   BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES, ANIMALS,
-  ANIMAL_PRODUCTS,
+  ANIMAL_PRODUCTS, TOOLS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
