@@ -1842,6 +1842,21 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(listDiff.length === 0,
     "README 模块列表与 REGISTRY 一致" + (listDiff.length ? "：差异 " + listDiff.join(",") : ""));
 
+  /* 23.2「文档里写的深链接示例必须真的能落地」。
+   * 起因：README 一直拿 `#fish/legend` 当例子，而钓鱼模块的 id 是 `fishing`——
+   * `fish` 会静默降级回默认模块（"非法链接不白屏"是设计内的特性，所以谁都没发现示例是假的）。
+   * 这条把「文档承诺的链接」与「站点真有的条目」绑在一起。 */
+  const hashExamples = [...readme.matchAll(/#([a-z][a-z-]*)\/([a-z0-9-]+)/g)];
+  const hashBad = hashExamples.filter((m) => {
+    const sec = data.REGISTRY.find((x) => x.id === m[1]);
+    if (!sec) return true;
+    return !(data.MODULE_DATA[sec.dataRef] || []).some((x) => x.id === m[2]);
+  });
+  log(hashExamples.length > 0 && hashBad.length === 0,
+    "README 的深链接示例都指向真实条目（" + hashExamples.length + " 处：" +
+    [...new Set(hashExamples.map((m) => m[0]))].join(" ") + "）" +
+    (hashBad.length ? "：打不开 " + hashBad.map((m) => m[0]).join(",") : ""));
+
   /* 23.2 通用句式比对：把「某句式里的数字」与真实值逐个比。
    * 必须要求**命中数 > 0**：句式被删掉时若不报错，这条断言就等于被静默关掉了（R94 的判据）。 */
   const docNum = (name, re, real, unit) => {
