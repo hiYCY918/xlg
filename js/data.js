@@ -912,6 +912,83 @@ const FRUIT_TREES = [
 ];
 
 /* ============================================================
+ * 武器（中文 Wiki Category:武器 的 64 件）
+ * 数据形态高度统一：{{Infobox weapon}} 的 type / level / damage / csc / value / gprice / stats / source
+ * 排除五项：武器（汇总页）；爆炸弹丸（是弹弓的弹药而非武器，且名字已由「打造」收录）；
+ *   镰刀 / 金色的镰刀 / 铱镰刀（已由「工具」收录）—— 后四项按 R53 已有模块优先
+ * 少数条目的 type 写的是英文（Sword / Club），统一映射成中文
+ * 解析上要处理的模板形态：{{Price|N|Calico}}（沙漠节的"卡利科三花蛋"计价）、
+ *   {{Name|Fishing Treasure Chest}}（英文 Wiki 上重定向到 Fishing，但此处指"钓鱼宝箱"）
+ *   —— 末尾还有一道兜底：剩余未识别的 {{...}} 整体去掉，并配断言"界面无残留模板"
+ * ============================================================ */
+const WEAPONS = [
+  { id: "templar-s-blade", name: "圣堂之刃", type: "剑", level: 5, damage: "22-29", csc: 0, value: 250, gprice: 4000, stats: [{ name: "防御", mod: "+1" }], source: "探险家公会 • 重新混合后的矿井80层" },
+  { id: "claymore", name: "双刃大剑", type: "剑", level: 5, damage: "20-32", csc: 0.02, value: 250, gprice: 2000, stats: [{ name: "速度", mod: "-4" }, { name: "防御", mod: "+2" }, { name: "重量", mod: "+3" }], source: "探险家公会 • 重新混合后的矿井80层" },
+  { id: "carving-knife", name: "刻刀", type: "匕首", level: 1, damage: "1-3", csc: 0.04, value: 50, source: "矿井1-19层" },
+  { id: "alex-s-bat", name: "亚历克斯的棒球棍", type: "棍棒", level: 7, damage: "40-55", csc: 0.02, value: 350, stats: [{ name: "速度", mod: "-2" }], source: "沙漠节亚历克斯的商店 70 卡利科三花蛋" },
+  { id: "sam-s-old-guitar", name: "山姆的旧吉他", type: "棍棒", level: 7, damage: "40-55", csc: 0.02, value: 350, stats: [{ name: "速度", mod: "-2" }], source: "沙漠节山姆的商店 70 卡利科三花蛋" },
+  { id: "holy-blade", name: "圣剑", type: "剑", level: 7, damage: "20-27", csc: 0.02, value: 350, stats: [{ name: "速度", mod: "+4" }, { name: "防御", mod: "+2" }], source: "矿井里的史莱姆掉落(80层以上)" },
+  { id: "harvey-s-mallet", name: "哈维的锤子", type: "棍棒", level: 7, damage: "40-55", csc: 0.02, value: 350, stats: [{ name: "速度", mod: "-2" }], source: "沙漠节哈维的商店 70 卡利科三花蛋" },
+  { id: "seb-s-lost-mace", name: "塞巴斯蒂安的遗失之锤", type: "棍棒", level: 7, damage: "40-55", csc: 0.02, value: 350, stats: [{ name: "速度", mod: "-2" }], source: "沙漠节70 卡利科三花蛋" },
+  { id: "slingshot", name: "弹弓", type: "弹弓", damage: "取决于使用的弹药", csc: 0.02, gprice: 500, source: "矿井40层宝箱" },
+  { id: "infinity-blade", name: "无限之刃", type: "剑", level: 17, damage: "80-100", csc: 0.02, value: 850, stats: [{ name: "速度", mod: "+4" }, { name: "防御", mod: "+2" }], source: "锻造" },
+  { id: "the-slammer", name: "巨锤", type: "棍棒", level: 7, damage: "40-55", csc: 0.02, value: 350, stats: [{ name: "速度", mod: "&minus;2" }], source: "骷髅洞穴40+层 • 重新混合后的矿井110层" },
+  { id: "infinity-gavel", name: "无限之锤", type: "棍棒", level: 17, damage: "100-120", csc: 0.02, value: 850, stats: [{ name: "速度", mod: "+2" }, { name: "防御", mod: "+1" }, { name: "重量", mod: "+5" }], source: "锻造" },
+  { id: "infinity-dagger", name: "无限匕首", type: "匕首", level: 16, damage: "50-70", csc: 0.06, value: 800, stats: [{ name: "速度", mod: "+1" }, { name: "防御", mod: "+3" }, { name: "暴击率", mod: "+4" }, { name: "重量", mod: "+5" }], source: "锻造" },
+  { id: "cutlass", name: "弯刀", type: "剑", level: 3, damage: "9-17", csc: 0.02, value: 150, gprice: 1500, stats: [{ name: "速度", mod: "+2" }], source: "探险家公会 • 重新混合后的矿井60层" },
+  { id: "insect-head", name: "昆虫头部", type: "剑", level: 6, damage: "20-30", csc: 0.04, value: 300, gprice: 10000, stats: [{ name: "速度", mod: "+2" }, { name: "暴击率", mod: "+2" }], source: "探险家公会" },
+  { id: "meowmere", name: "彩虹猫之刃", type: "剑", level: 4, damage: "20-20", value: 200, stats: [{ name: "速度", mod: "+4" }, { name: "重量", mod: "+2" }], source: "法师塔" },
+  { id: "neptune-s-glaive", name: "海王星大剑", type: "剑", level: 5, damage: "18-35", csc: 0.02, value: 250, stats: [{ name: "速度", mod: "&minus;1" }, { name: "防御", mod: "+2" }, { name: "重量", mod: "+4" }], source: "钓鱼宝箱 (0.6%)" },
+  { id: "wood-club", name: "木棒", type: "棍棒", level: 2, damage: "9-16", csc: 0.02, value: 100, source: "矿井1-39层 • 重新混合后的矿井20层" },
+  { id: "wood-mallet", name: "木锤", type: "棍棒", level: 3, damage: "15-24", csc: 0.02, value: 150, gprice: 2000, stats: [{ name: "速度", mod: "+2" }, { name: "重量", mod: "+2" }], source: "探险家公会 • 矿井41-59 层 • 重新混合后的矿井60层" },
+  { id: "wooden-blade", name: "木剑", type: "剑", level: 1, damage: "3-7", csc: 0.02, value: 50, gprice: 250, source: "探险家公会 • 重新混合后的矿井10层" },
+  { id: "forest-sword", name: "森林剑", type: "剑", level: 3, damage: "8-18", csc: 0.02, value: 150, stats: [{ name: "速度", mod: "+2" }, { name: "防御", mod: "+1" }], source: "矿井 (20-59层)" },
+  { id: "crystal-dagger", name: "水晶匕首", type: "匕首", level: 4, damage: "4-10", csc: 0.03, value: 200, gprice: 4500, stats: [{ name: "暴击威力", mod: "+50" }, { name: "重量", mod: "+5" }], source: "矿井60层" },
+  { id: "shadow-dagger", name: "暗影匕首", type: "匕首", level: 4, damage: "10-20", csc: 0.04, value: 200, source: "矿井61-79或100+层 • 重新混合后的矿井80层" },
+  { id: "broken-trident", name: "残破的三叉戟", type: "匕首", level: 5, damage: "15-26", csc: 0.02, value: 250, stats: [{ name: "暴击率", mod: "+1" }], source: "钓鱼宝箱 (0.6%)" },
+  { id: "lava-katana", name: "熔岩武士刀", type: "剑", level: 10, damage: "55-64", csc: 0.015, value: 500, gprice: 25000, stats: [{ name: "防御", mod: "+3" }, { name: "暴击威力", mod: "+25" }, { name: "重量", mod: "+3" }], source: "探险家公会" },
+  { id: "rusty-sword", name: "生锈的剑", type: "剑", level: 1, damage: "2-5", csc: 0.02, value: 50, gprice: 250, source: "第一次进入矿井时由马龙赠送 • 探险家公会" },
+  { id: "pirate-s-sword", name: "海盗剑", type: "剑", level: 2, damage: "8-14", csc: 0.02, value: 100, gprice: 850, stats: [{ name: "速度", mod: "+2" }], source: "探险家公会 • 重新混合后的矿井50层" },
+  { id: "tempered-broadsword", name: "淬火阔剑", type: "剑", level: 7, damage: "29-44", csc: 0.02, value: 350, stats: [{ name: "速度", mod: "&minus;3" }, { name: "防御", mod: "+3" }, { name: "重量", mod: "+3" }], source: "骷髅洞穴40层+ • 重新混合后的矿井90层" },
+  { id: "wind-spire", name: "疾风利剑", type: "匕首", level: 1, damage: "1-5", csc: 0.02, value: 50, stats: [{ name: "暴击威力", mod: "+10" }, { name: "重量", mod: "+5" }], source: "矿井21-39层 • 重新混合后的矿井10层" },
+  { id: "maru-s-wrench", name: "玛鲁的扳手", type: "棍棒", level: 7, damage: "40-55", csc: 0.02, value: 350, stats: [{ name: "速度", mod: "-2" }], source: "沙漠节玛鲁的商店 70 卡利科三花蛋" },
+  { id: "penny-s-fryer", name: "潘妮的煎锅", type: "棍棒", level: 7, damage: "40-55", csc: 0.02, value: 350, stats: [{ name: "速度", mod: "-2" }], source: "潘妮在沙漠节以 70 个卡利科三花蛋出售。" },
+  { id: "haley-s-iron", name: "海莉的烫发棒", type: "剑", level: 6, damage: "30-45", csc: 0.02, value: 300, stats: [{ name: "速度", mod: "-1" }, { name: "暴击威力", mod: "+10" }], source: "沙漠节 海莉的商铺 70 卡利科三花蛋" },
+  { id: "femur", name: "股骨", type: "棍棒", level: 2, damage: "6-11", csc: 0.02, value: 100, gprice: 350, stats: [{ name: "速度", mod: "+2" }], source: "重新混合后的矿井10层" },
+  { id: "dwarf-hammer", name: "矮人锤", type: "棍棒", level: 13, damage: "75-85", csc: 0.02, value: 650, stats: [{ name: "防御", mod: "+2" }, { name: "重量", mod: "+5" }], source: "火山地牢" },
+  { id: "dwarf-sword", name: "矮人剑", type: "剑", level: 13, damage: "65-75", csc: 0.02, value: 650, stats: [{ name: "速度", mod: "+2" }, { name: "防御", mod: "+4" }], source: "火山地牢" },
+  { id: "elf-blade", name: "精灵之刃", type: "匕首", level: 2, damage: "3-5", csc: 0.04, value: 100, gprice: 750, source: "重新混合后的矿井20层" },
+  { id: "dwarf-dagger", name: "矮人匕首", type: "匕首", level: 11, damage: "32-38", csc: 0.03, value: 550, stats: [{ name: "速度", mod: "+1" }, { name: "防御", mod: "+6" }, { name: "暴击率", mod: "+2" }, { name: "重量", mod: "+5" }], source: "火山地牢" },
+  { id: "rapier", name: "细剑", type: "剑", level: 4, damage: "15-25", csc: 0.02, value: 200, stats: [{ name: "速度", mod: "+2" }], source: "不可获得" },
+  { id: "elliott-s-pencil", name: "艾利欧特的铅笔", type: "匕首", level: 8, damage: "24-30", csc: 0.06, value: 400, stats: [{ name: "暴击率", mod: "+4" }], source: "沙漠节艾利欧特的商店 70 卡利科三花蛋" },
+  { id: "leah-s-whittler", name: "莉亚的削木刀", type: "剑", level: 6, damage: "30-45", csc: 0.02, value: 300, stats: [{ name: "速度", mod: "-1" }, { name: "暴击威力", mod: "+10" }], source: "沙漠节 莉亚的商铺 70 卡利科三花蛋" },
+  { id: "lead-rod", name: "铅棒", type: "棍棒", level: 4, damage: "18-27", csc: 0.02, value: 200, stats: [{ name: "速度", mod: "&minus;4" }], source: "矿井41-120层 • 骷髅洞穴1-39层" },
+  { id: "galaxy-hammer", name: "银河之锤", type: "棍棒", level: 12, damage: "70-90", csc: 0.02, value: 600, gprice: 75000, stats: [{ name: "速度", mod: "+2" }, { name: "重量", mod: "+5" }], source: "探险家公会" },
+  { id: "steel-smallsword", name: "钢制轻剑", type: "剑", level: 1, damage: "4-8", csc: 0.02, value: 50, gprice: 750, stats: [{ name: "速度", mod: "+2" }], source: "矿井20层的箱子" },
+  { id: "iron-edge", name: "铁刃", type: "剑", level: 3, damage: "12-25", csc: 0.02, value: 150, stats: [{ name: "速度", mod: "&minus;2" }, { name: "防御", mod: "+1" }, { name: "重量", mod: "+3" }], source: "矿井41-59层 • 重新混合后的矿井60层" },
+  { id: "steel-falchion", name: "钢刀", type: "剑", level: 8, damage: "28-46", csc: 0.02, value: 400, gprice: 9000, stats: [{ name: "速度", mod: "+4" }, { name: "暴击威力", mod: "+20" }], source: "探险家公会 • 骷髅洞穴40+层 • 重新混合后的矿井110层" },
+  { id: "iron-dirk", name: "铁制短剑", type: "匕首", level: 1, damage: "2-4", csc: 0.03, value: 50, gprice: 500, source: "探险家公会 • 重新混合后的矿井10层" },
+  { id: "wicked-kris", name: "蛇形邪剑", type: "匕首", level: 8, damage: "24-30", csc: 0.06, value: 400, stats: [{ name: "暴击率", mod: "+4" }], source: "骷髅洞穴40+层 • 幽灵头骨 掉落物 • 重新混合后的矿井90层" },
+  { id: "iridium-needle", name: "铱针", type: "匕首", level: 12, damage: "20-35", csc: 0.1, value: 600, stats: [{ name: "暴击率", mod: "+6" }, { name: "暴击威力", mod: "+200" }], source: "矿井 (特殊史莱姆)" },
+  { id: "galaxy-slingshot", name: "银河弹弓", type: "弹弓", damage: "取决于使用的弹丸威力", csc: 0.02, source: "不可获得" },
+  { id: "galaxy-sword", name: "银河剑", type: "剑", level: 13, damage: "60-80", csc: 0.02, value: 650, gprice: 50000, stats: [{ name: "速度", mod: "+4" }], source: "秘密 • 探险家公会" },
+  { id: "yeti-tooth", name: "雪怪之牙", type: "剑", level: 7, damage: "26-42", csc: 0.02, value: 350, stats: [{ name: "防御", mod: "+4" }, { name: "暴击威力", mod: "+10" }], source: "矿井81-99层" },
+  { id: "kudgel", name: "长柄锤", type: "棍棒", level: 5, damage: "27-40", csc: 0.02, value: 250, stats: [{ name: "速度", mod: "&minus;1" }, { name: "暴击威力", mod: "+50" }, { name: "重量", mod: "+2" }], source: "重新混合后的矿井80层" },
+  { id: "silver-saber", name: "镀银军刀", type: "剑", level: 2, damage: "8-15", csc: 0.02, value: 100, gprice: 750, stats: [{ name: "防御", mod: "+1" }], source: "探险家公会 • 重新混合后的矿井50层" },
+  { id: "burglar-s-shank", name: "飞贼之胫", type: "匕首", level: 4, damage: "7-12", csc: 0.04, value: 200, stats: [{ name: "暴击威力", mod: "+25" }], source: "矿井/骷髅洞穴 • 重新混合后的矿井60层" },
+  { id: "galaxy-dagger", name: "银河匕首", type: "匕首", level: 8, damage: "30-40", csc: 0.02, value: 400, gprice: 35000, stats: [{ name: "速度", mod: "+1" }, { name: "暴击率", mod: "+1" }, { name: "重量", mod: "+5" }], source: "探险家公会" },
+  { id: "abby-s-planchette", name: "阿比盖尔的占卜写板", type: "匕首", level: 8, damage: "24-30", csc: 0.06, value: 400, stats: [{ name: "暴击率", mod: "+4" }], source: "沙漠节阿比盖尔的商店 70 卡利科三花蛋" },
+  { id: "obsidian-edge", name: "黑曜石之刃", type: "剑", level: 6, damage: "30-45", csc: 0.02, value: 300, gprice: 9000, stats: [{ name: "速度", mod: "&minus;1" }, { name: "暴击威力", mod: "+10" }], source: "矿井90层" },
+  { id: "master-slingshot", name: "高级弹弓", type: "弹弓", damage: "取决于使用的弹药", csc: 0.02, gprice: 1000, source: "矿井70层宝箱" },
+  { id: "dragontooth-club", name: "龙牙棒", type: "棍棒", level: 14, damage: "80-100", csc: 0.02, value: 700, stats: [{ name: "暴击威力", mod: "+50" }, { name: "重量", mod: "+3" }], source: "火山地牢" },
+  { id: "bone-sword", name: "骨剑", type: "剑", level: 5, damage: "20-30", csc: 0.02, value: 250, gprice: 6000, stats: [{ name: "速度", mod: "+4" }, { name: "重量", mod: "+2" }], source: "探险家公会 • 骷髅 4% 概率掉落 • 重新混合后的矿井90层" },
+  { id: "dark-sword", name: "黑暗剑", type: "剑", level: 9, damage: "30-45", csc: 0.04, value: 450, stats: [{ name: "速度", mod: "-5" }, { name: "暴击率", mod: "+2" }, { name: "重量", mod: "+5" }], source: "幽灵头骨 掉落物" },
+  { id: "dragontooth-cutlass", name: "龙牙弯刀", type: "剑", level: 13, damage: "75-90", csc: 0.02, value: 650, stats: [{ name: "暴击威力", mod: "+50" }], source: "火山地牢" },
+  { id: "dragontooth-shiv", name: "龙牙小刀", type: "匕首", level: 12, damage: "40-50", csc: 0.05, value: 600, stats: [{ name: "暴击率", mod: "+3" }, { name: "暴击威力", mod: "+100" }, { name: "重量", mod: "+5" }], source: "火山地牢" },
+  { id: "ossified-blade", name: "骨化剑", type: "剑", level: 6, damage: "26-42", csc: 0.02, value: 300, stats: [{ name: "速度", mod: "&minus;2" }, { name: "防御", mod: "+1" }, { name: "重量", mod: "+2" }], source: "重新混合后的矿井90层 • 谜之盒" },
+];
+
+/* ============================================================
  * 建筑（中文 Wiki Category:建筑 的 56 条）
  * 三种形态：
  *   ① {{Infobox location}} ×36 —— 城镇地点：openhours / closed / address / occupants

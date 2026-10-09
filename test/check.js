@@ -137,6 +137,7 @@ const src =
   "ANIMAL_PRODUCTS,PRODUCT_BY,PRODUCT_FILTERS,productKinds,renderProducts," +
   "TOOLS,TOOL_CATS,TOOL_FILTERS,toolCostText,tierRows," +
   "BUILDINGS,BUILDING_FILTERS,buildingCostText,renderBuildings," +
+  "WEAPONS,WEAPON_FILTERS,critText,weaponStatText,renderWeapons," +
   "TREES,TREE_FILTERS,seedChip,ensureNavVisible};";
 
 let data;
@@ -1417,8 +1418,58 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(/icon-lg/.test(String(data.DETAIL_RENDERERS.buildings(BD[0].id))),
     "建筑详情使用 96px 大图标位（图源是截图而非 48×48 精灵）");
 
-  /* ---------- 19. 侧栏导航（模块可达性） ---------- */
-  console.log("\n=== 19. 侧栏导航（模块可达性） ===");
+  /* ---------- 19. 武器（类型 ↔ 伤害 ↔ 附加属性） ---------- */
+  console.log("\n=== 19. 武器（类型 ↔ 伤害 ↔ 附加属性） ===");
+
+  const WP = arrays.weapons || [];
+  const wpDup = [...new Set(WP.map((w) => w.id).filter((v, i, arr) => arr.indexOf(v) !== i))];
+  log(wpDup.length === 0, "武器 id 无重复（" + WP.length + " 件）" + (wpDup.length ? "：" + wpDup.join(",") : ""));
+  const wpCross = WP.filter((w) => ownerR.get(w.id) !== "weapons").map((w) => w.id + "(属" + ownerR.get(w.id) + ")");
+  log(wpCross.length === 0, "武器 id 与其它模块无冲突" + (wpCross.length ? "：" + wpCross.join(",") : ""));
+
+  const wpNames = WP.map((w) => w.name);
+  const wpNameDup = [...new Set(wpNames.filter((v, i) => wpNames.indexOf(v) !== i))];
+  log(wpNameDup.length === 0, "武器名称无重复" + (wpNameDup.length ? "：" + wpNameDup.join(",") : ""));
+
+  const badWp = [];
+  for (const w of WP) {
+    if (!w.type) badWp.push(w.id + "(无类型)");
+    if (!w.damage) badWp.push(w.id + "(无伤害)");
+    if (!w.source) badWp.push(w.id + "(无获取方式)");
+    /* 伤害是「N」或「N-M」两种写法，别的一律是解析出错 */
+    /* 伤害是「N」或「N-M」；**弹弓例外**——它的伤害取决于装填的弹药，Wiki 写的是说明文字 */
+    if (w.damage && w.type !== "弹弓" && !/^\d+(-\d+)?$/.test(w.damage)) badWp.push(w.id + "(伤害格式异常：" + w.damage + ")");
+    if (w.csc != null && !(w.csc >= 0 && w.csc <= 1)) badWp.push(w.id + "(暴击率越界：" + w.csc + ")");
+    for (const s of (w.stats || [])) if (!/[\u4e00-\u9fff]/.test(s.name)) badWp.push(w.id + "(属性名未本地化：" + s.name + ")");
+    if (/\{\{/.test(w.source || "")) badWp.push(w.id + "(来源残留模板)");
+  }
+  log(badWp.length === 0, "武器字段齐全且格式正确（类型/伤害/来源/暴击率/属性）" +
+    (badWp.length ? "：" + badWp.slice(0, 6).join(",") : ""));
+
+  /* 筛选覆盖（R17）：数据里出现过的类型必须有对应按钮，否则那类武器筛不出来 */
+  const wpTypes = [...new Set(WP.map((w) => w.type))];
+  const missWpType = wpTypes.filter((x) => !data.WEAPON_FILTERS.some((f) => f.value === x));
+  log(missWpType.length === 0, "武器筛选覆盖全部 " + wpTypes.length + " 个类型（" + wpTypes.join("/") + "）" +
+    (missWpType.length ? "：缺 " + missWpType.join(",") : ""));
+
+  /* 暴击率是小数、界面按百分比显示：0.04 → 4%（写成 0.04% 就错了 100 倍） */
+  log(data.critText(0.04) === "4%" && data.critText(0) === "0%" && data.critText(null) === "—",
+    "暴击率渲染成百分比（0.04 → " + data.critText(0.04) + "）");
+
+  const wpHtml = String(data.DETAIL_RENDERERS.weapons(WP[0].id));
+  log(wpHtml.includes("战斗数值") && wpHtml.includes("获取方式"),
+    "武器详情含「战斗数值」与「获取方式」（" + WP[0].name + "）");
+  const statW = WP.find((w) => w.stats && w.stats.length);
+  const statHtml = statW ? String(data.DETAIL_RENDERERS.weapons(statW.id)) : "";
+  log(!statW || statHtml.includes(statW.stats[0].name),
+    "附加属性出现在详情里（" + (statW ? statW.name + " → " + statW.stats.map((s) => s.name + s.mod).join("/") : "—") + "）");
+
+  /* 镰刀归了工具，武器这边不该再出现（R53：一个名字只属于一个模块） */
+  log(!WP.some((w) => /镰刀/.test(w.name)),
+    "镰刀类不在武器模块（已归「工具」，避免同名两处）");
+
+  /* ---------- 20. 侧栏导航（模块可达性） ---------- */
+  console.log("\n=== 20. 侧栏导航（模块可达性） ===");
 
   /* 导航从横向标签栏改成左侧竖栏（第十八轮）：横排 17 个模块需要约 1700px，
    * 只有 ≥1920 的屏幕能一眼看全。这里守住"每个模块都有一条导航入口"这件事——
@@ -1504,8 +1555,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(/background-attachment: local/.test(cssSrc),
     "木板缝那层用 background-attachment: local（侧栏自身滚动时缝跟着内容走）");
 
-  /* ---------- 20. 视觉资源 ---------- */
-  console.log("\n=== 20. 视觉资源（模块图标贴图） ===");
+  /* ---------- 21. 视觉资源 ---------- */
+  console.log("\n=== 21. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

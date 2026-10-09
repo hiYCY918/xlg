@@ -209,6 +209,7 @@ function moduleIconHtml(m) {
   products: "全部",
   tools: "全部",
   buildings: "全部",
+  weapons: "全部",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -1156,6 +1157,51 @@ function renderBuildings() {
   body.appendChild(grid);
 }
 
+/* ---- 武器 ---- */
+const WEAPON_FILTERS = [
+  { value: "全部", label: "全部" },
+  { value: "剑", label: "剑" },
+  { value: "匕首", label: "匕首" },
+  { value: "棍棒", label: "棍棒" },
+  { value: "弹弓", label: "弹弓" },
+];
+/* 暴击率在数据里是小数（0.04 = 4%），界面统一按百分比显示 */
+function critText(csc) {
+  if (csc == null) return "—";
+  return (csc * 100).toFixed(0) + "%";
+}
+function weaponStatText(stats) {
+  if (!stats || !stats.length) return "—";
+  return stats.map((s) => s.name + " " + s.mod).join("、");
+}
+function renderWeapons() {
+  const body = $("#body-weapons");
+  body.innerHTML = "";
+  const list = WEAPONS.filter((w) => state.weapons === "全部" || w.type === state.weapons);
+  const total = updateModuleCount(SECTION.weapons);
+  setShown("weapons", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(WEAPON_FILTERS, state.weapons, (v) => { state.weapons = v; renderWeapons(); }));
+  toolbar.appendChild(controlRow(hintNode("伤害是「最小-最大」区间；暴击率与附加属性决定实战手感，等级越高越强")));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((w) => `
+    <div ${cardAttrs(w.id)}>
+      ${itemIconHtml(w.id, w.name, GENERIC_ICON)}
+      <h3>${esc(w.name)}</h3>
+      <div class="meta"><span class="chip chip-plain">${esc(w.type || "武器")}</span>${w.level != null ? ` <span class="chip chip-plain">Lv ${w.level}</span>` : ""}</div>
+      <div class="meta">⚔️ 伤害 ${esc(w.damage || "—")}</div>
+      <div class="meta">💥 暴击 ${esc(critText(w.csc))}</div>
+      <div class="meta">✨ ${esc(weaponStatText(w.stats))}</div>
+      <div class="foot"><span class="muted">${w.gprice != null ? "商店售价 " + w.gprice + " 金" : "售价 " + (w.value != null ? w.value + " 金" : "—")}</span></div>
+    </div>`).join("") || emptyState("没有符合条件的武器");
+  body.appendChild(grid);
+}
+
 /* ---- 事件 ---- */
 /* ---- 打造（制造配方） ---- */
 const CRAFT_SORTS = [
@@ -1840,13 +1886,35 @@ const REGISTRY = [
           : "在木匠的商店找罗宾建造，通常需要三天完工；部分建筑可以继续升级。")}</p>`);
     },
   },
+  {
+    id: "weapons", stateKey: ["weapons"], spriteFor: "", sprite: "galaxy-sword", icon: "⚔️", label: "武器",
+    sub: "剑 / 匕首 / 棍棒 / 弹弓的伤害、暴击与附加属性", data: "WEAPONS", render: renderWeapons,
+    resetFilter: (s) => { s.weapons = "全部"; },
+    indexExtra: (w) => [w.type, w.damage, w.recipe].concat((w.stats || []).map((x) => x.name)),
+    detail: (w) => detailHead(itemIconHtml(w.id, w.name, GENERIC_ICON), w.name,
+      (w.type || "武器") + (w.level != null ? " · 等级 " + w.level : "")) +
+      detailSection("战斗数值", kvGrid([
+        ["类型", w.type || "—"],
+        ["等级", w.level != null ? String(w.level) : "—"],
+        ["伤害", w.damage || "—"],
+        ["暴击率", critText(w.csc)],
+        ["附加属性", weaponStatText(w.stats)],
+      ])) +
+      detailSection("价格", kvGrid([
+        ["售价", w.value != null ? w.value + " 金" : "不可出售"],
+        ["商店价", w.gprice != null ? w.gprice + " 金" : "—"],
+      ])) +
+      (w.source ? detailSection("获取方式", `<p>${esc(w.source)}</p>`) : "") +
+      detailSection("说明", `<p>${esc("伤害是最小-最大区间，实际伤害受攻击力与暴击影响；" +
+        "剑攻守均衡、匕首攻速快且暴击率高、棍棒伤害高但攻速慢、弹弓是远程武器需要弹药。")}</p>`),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
   BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES, ANIMALS,
-  ANIMAL_PRODUCTS, TOOLS, BUILDINGS,
+  ANIMAL_PRODUCTS, TOOLS, BUILDINGS, WEAPONS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];

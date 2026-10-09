@@ -52,6 +52,7 @@ const UNIVERSE = [
   ["动物制品", ["动物制品"], [], "ANIMAL_PRODUCTS"],
   ["工具", ["工具"], [], "TOOLS"],
   ["建筑", ["建筑"], [], "BUILDINGS"],
+  ["武器", ["武器"], [], "WEAPONS"],
 ];
 
 /* 分类/导航页而非内容条目，比对时排除 */
@@ -74,18 +75,22 @@ const EXCLUDED = new Map(Object.entries({
   "蟹笼": "已由「工匠制品」收录（R53 已有模块优先）",
   "鸵鸟孵化器": "已由「打造」收录（R53 已有模块优先）",
   "社区中心": "名字已由「任务」收录（id=community），站内名字不能重复（R53/R57）",
+  "爆炸弹丸": "是弹弓的弹药而非武器，且名字已由「打造」收录（R53）",
+  "镰刀": "已由「工具」收录（R53 已有模块优先）",
+  "金色的镰刀": "同上",
+  "铱镰刀": "同上",
 }));
 
 /* 整块系统盘点：**只列本站还没有对应模块的系统**（已收录的从本表移除，
  * 否则报告会永远显示「本站均无对应模块」，与事实不符）。 */
-const SYSTEMS = [
-  ["武器", "武器"],
-];
+/* 整块未覆盖的游戏系统：全部收录完毕。
+ * 保留空数组而不是删掉这个机制 —— 将来发现新的整块系统（如"技能""成就"）时直接往里加即可。 */
+const SYSTEMS = [];
 
 (async () => {
   const data = new Function(
     fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS};"
+    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS};"
   )();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */
