@@ -190,7 +190,9 @@ log(dups.length === 0, "id 无重复" + (dups.length ? ": " + dups.join(",") : "
 const missingName = allItems.filter((x) => !x.name).map((x) => x.id);
 log(missingName.length === 0, "全部条目有 name" + (missingName.length ? ": " + missingName.join(",") : ""));
 
-// 图片覆盖（报告，不判失败——兜底图标是设计内）
+// 图片覆盖（**断言**，不是报告）：上一轮新增「树液产物」时漏了 4 张贴图，
+// 而这里当时写的是 console.log 而不是 log，于是缺陷一路滑到了线上（见第三十轮）。
+// 兜底图标本身是设计内（R65），所以判据不是「必须有图」，而是「缺图必须都在已知清单里」。
 // 只统计「以贴图方式呈现」的模块：注册表用 spriteFor 显式声明前缀的才算
 // （npc 为 "npc-"，物品类为空串）；没声明 spriteFor 的模块用 emoji 呈现，不计缺口。
 // 注意判据是 hasOwnProperty 而非真值——空串前缀是合法值却 falsy。
@@ -209,7 +211,17 @@ for (const [countId, label, arr] of groups) {
   }
 }
 const noImg = imgIds.filter((i) => !haveImgs.includes(i));
-console.log(`[INFO] 图片覆盖：${imgIds.length - noImg.length}/${imgIds.length}（缺失 ${noImg.length} 个，将用兜底图标）` + (noImg.length ? ": " + noImg.join(",") : ""));
+/* 已知缺图（各有理由，Wiki 上没有可用的 48x48 素材），除此之外一律判失败。
+ * 注意白名单是「数据」：有理由才能进，理由消失就要出（下面第二条断言守着它）。 */
+const KNOWN_NO_IMG = { "gold-slime": "Wiki 无独立贴图", "dusty": "只有 220x349 的带相框立绘" };
+const untracked = noImg.filter((id) => !KNOWN_NO_IMG[id]);
+log(untracked.length === 0,
+  "无表外缺图（" + (imgIds.length - noImg.length) + "/" + imgIds.length + "，缺失 " + noImg.length + " 个均有登记）" +
+  (untracked.length ? "：新增缺图 " + untracked.join(",") : ""));
+/* 白名单防腐化：某个 id 已经配上图了，说明这条登记过期，该删（R31 可解释归零） */
+const staleKnown = Object.keys(KNOWN_NO_IMG).filter((id) => !noImg.includes(id));
+log(staleKnown.length === 0,
+  "缺图白名单无过期项" + (staleKnown.length ? "：" + staleKnown.join(",") + " 已能配上图，请从 KNOWN_NO_IMG 移除" : ""));
 console.log(`[INFO] 贴图模块 ${groups.length - emojiOnly.length} 个；emoji 呈现模块 ${emojiOnly.length} 个（${emojiOnly.join(" / ")}），不计入覆盖率`);
 
 // 模块数量

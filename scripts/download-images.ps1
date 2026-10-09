@@ -588,6 +588,12 @@ $items = @{
   "amethyst-ring" = "Amethyst_Ring.png"
   "savage-ring" = "Savage_Ring.png"
   "crabshell-ring" = "Crabshell_Ring.png"
+  # ---------- 工匠制品（第三十轮补；树液采集器产物。上一轮入库时漏了贴图，
+  #            详情/卡片上一直显示兜底 SVG。Wiki 原图即 48x48，1:1 无需缩放） ----------
+  "pine-tar"    = "Pine_Tar.png"
+  "maple-syrup" = "Maple_Syrup.png"
+  "oak-resin"   = "Oak_Resin.png"
+  "sap"         = "Sap.png"
 }
 
 $imgDir = Join-Path $Root "img"
