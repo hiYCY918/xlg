@@ -929,3 +929,52 @@ html, body {
   .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
   .control-row { gap: 8px; }
 }
+
+/* ===== 静态条目页（预渲染试点，scripts/gen-static-pages.js 生成） =====
+ * 这些页面的正文直接复用详情弹窗的片段，所以 .modal-head / .modal-section / .detail-kv
+ * 全部沿用；这里只补"页面外壳"这一层（顶栏、面包屑、列表）。
+ * 试点只有钓鱼一个模块，样式刻意保持最小——方案铺开前不引入新组件。 */
+.static-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 20px 12px;
+  border-bottom: 2px solid var(--border-strong);
+}
+.static-brand {
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--wood);
+  text-decoration: none;
+}
+.static-brand:hover { color: var(--accent); }
+.static-crumb { font-size: 13px; color: var(--muted); }
+.static-crumb a { color: var(--accent); }
+.static-main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.static-title { margin: 0 0 6px; font-size: 24px; color: var(--wood); }
+.static-lead { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
+.static-detail {
+  background: var(--panel);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.static-list { list-style: none; margin: 0; padding: 0; }
+.static-list li {
+  padding: 9px 12px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+.static-list a { color: var(--accent); font-weight: 600; }
+.static-back { margin-top: 20px; font-size: 14px; }
+.static-back a { color: var(--accent); }

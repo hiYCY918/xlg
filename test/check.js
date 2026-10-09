@@ -1807,6 +1807,76 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(notPublished.length === 0,
     "CI 发布清单包含全部 SEO 文件" + (notPublished.length ? "：漏 " + notPublished.join(",") : ""));
 
+  /* 23.9 静态条目页（预渲染试点）——产物是**提交进仓库的文件**，会脱离数据独立腐化，
+   * 这里守的就是这件事。（"是否与数据同步"另由 `scripts/gen-static-pages.js --check` 在 CI 里守，
+   * 那条需要真的跑一遍生成器，不适合塞进这条快速离线自检。） */
+  const staticDir = path.join(root, "static");
+  const pilotMods = fs.existsSync(staticDir)
+    ? fs.readdirSync(staticDir).filter((d) => fs.statSync(path.join(staticDir, d)).isDirectory())
+    : [];
+  log(pilotMods.length > 0,
+    "预渲染试点模块存在（" + pilotMods.length + " 个：" + pilotMods.join(", ") + "）");
+
+  const staticBad = [];
+  const staticUrls = [];
+  let staticPages = 0;
+  for (const m of pilotMods) {
+    const sec = data.REGISTRY.find((s) => s.id === m);
+    if (!sec) { staticBad.push(m + " 不是已注册模块"); continue; }
+    const items = data.MODULE_DATA[sec.dataRef] || [];
+    const dir = path.join(staticDir, m);
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith(".html"));
+    const itemFiles = files.filter((f) => f !== "index.html").map((f) => f.replace(".html", ""));
+    staticPages += files.length;
+    const missing = items.filter((x) => itemFiles.indexOf(x.id) < 0).map((x) => x.id);
+    const orphan = itemFiles.filter((id) => !items.some((x) => x.id === id));
+    if (missing.length) staticBad.push(m + " 缺页 " + missing.slice(0, 4).join(","));
+    if (orphan.length) staticBad.push(m + " 有孤儿页 " + orphan.slice(0, 4).join(","));
+    /* 索引页必须链到每一条：静态页的全部意义就是给爬虫一条能走的路 */
+    const idxHtml = fs.existsSync(path.join(dir, "index.html"))
+      ? fs.readFileSync(path.join(dir, "index.html"), "utf8") : "";
+    const unlinked = items.filter((x) => idxHtml.indexOf("./" + x.id + ".html") < 0).map((x) => x.id);
+    if (unlinked.length) staticBad.push(m + " 索引页未链到 " + unlinked.slice(0, 4).join(","));
+    for (const f of files) {
+      const html = fs.readFileSync(path.join(dir, f), "utf8");
+      /* 索引页的规范 URL 是目录形式（与它自己的 canonical、以及 sitemap 里那条一致） */
+      staticUrls.push(f === "index.html" ? SITE_URL + m + "/" : SITE_URL + m + "/" + f);
+      /* U+FFFD = 写盘时把孤立代理替换掉了（生成器曾用 String.slice 在代理对中间下刀） */
+      if (html.indexOf("\uFFFD") >= 0) staticBad.push(m + "/" + f + " 含替换字符");
+      if (f === "index.html") continue;
+      /* 条目页里残留 data-goto-* 说明 chip 没转成真链接，爬虫跟不了 */
+      if (html.indexOf("data-goto") >= 0) staticBad.push(m + "/" + f + " 残留 JS 跳转属性");
+      if (html.indexOf('href="./index.html"') < 0) staticBad.push(m + "/" + f + " 没有返回索引页的链接");
+    }
+  }
+  log(staticBad.length === 0,
+    "静态条目页自洽（" + pilotMods.length + " 个模块 / " + staticPages + " 个页面）" +
+    (staticBad.length ? "：" + staticBad.slice(0, 6).join("；") : ""));
+
+  /* 静态页必须进 sitemap，否则试点等于没告诉搜索引擎 */
+  const sitemapBody = fs.readFileSync(path.join(root, "sitemap.xml"), "utf8");
+  const urlNotListed = staticUrls.filter((u) => sitemapBody.indexOf("<loc>" + u + "</loc>") < 0);
+  log(staticUrls.length > 0 && urlNotListed.length === 0,
+    "sitemap 收录全部静态页（" + staticUrls.length + " 条）" +
+    (urlNotListed.length ? "：漏 " + urlNotListed.slice(0, 4).join(",") : ""));
+
+  /* 页面里回落到完整攻略站的深链接必须指向真实条目——否则是"看起来能点、点了没反应"的死链 */
+  const spaBad = [];
+  for (const m of pilotMods) {
+    const dir = path.join(staticDir, m);
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".html"))) {
+      const html = fs.readFileSync(path.join(dir, f), "utf8");
+      for (const h of html.matchAll(/index\.html#([a-z][a-z-]*)\/([a-z0-9-]+)/g)) {
+        const target = data.REGISTRY.find((s) => s.id === h[1]);
+        if (!target || !(data.MODULE_DATA[target.dataRef] || []).some((x) => x.id === h[2])) {
+          spaBad.push(m + "/" + f + " → #" + h[1] + "/" + h[2]);
+        }
+      }
+    }
+  }
+  log(spaBad.length === 0,
+    "静态页里的深链接回落都指向真实条目" + (spaBad.length ? "：死链 " + spaBad.slice(0, 4).join(",") : ""));
+
   /* ---------- 24. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化

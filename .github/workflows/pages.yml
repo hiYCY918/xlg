@@ -30,6 +30,10 @@ jobs:
           node-version: "20"
       - name: 全量自检
         run: node test/check.js
+      # 静态页是**提交进仓库的产物**，会脱离数据独立腐化。这里重跑一遍生成器比对，
+      # 有差异就红——比"记得改完数据顺手重新生成"可靠（R64：让流水线产出它）。
+      - name: 静态页与数据同步
+        run: node scripts/gen-static-pages.js --check
 
   deploy:
     needs: test # ← 关键：自检不过就不部署
@@ -50,6 +54,9 @@ jobs:
           for p in index.html .nojekyll robots.txt sitemap.xml favicon.ico apple-touch-icon.png og-cover.png css js img; do
             if [ -e "$p" ]; then cp -r "$p" dist/; fi
           done
+          # 静态页发布到**站点根**（URL 形如 /fishing/legend.html），而不是 /static/fishing/…
+          # 页面里的 canonical、sitemap 与相对路径都是按「站点根下的 <模块>/<条目>.html」算的。
+          if [ -d static ]; then cp -r static/. dist/; fi
           echo "--- 待发布内容 ---"
           ls -A dist
       - name: Upload artifact

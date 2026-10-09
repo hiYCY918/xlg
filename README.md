@@ -67,7 +67,7 @@
 game-guide/
 ├── index.html        入口页面（含 SEO 头：canonical / OG 卡片 / JSON-LD）
 ├── robots.txt        允许全站抓取 + 指向 sitemap
-├── sitemap.xml       单页站的 URL 清单（条目级长尾待预渲染，见 docs/ROADMAP.md）
+├── sitemap.xml       由 scripts/gen-static-pages.js 生成（首页 + 全部静态页）
 ├── favicon.ico       站点图标（16/32/48 三档，由 scripts/gen-seo-assets.py 生成）
 ├── apple-touch-icon.png  iOS 主屏图标（180×180）
 ├── og-cover.png      分享卡片图（1200×630，微信/QQ/Twitter 预览用）
@@ -78,16 +78,21 @@ game-guide/
 │   ├── icons.js      自绘 SVG 备用图标
 │   └── main.js       交互逻辑 + 模块注册表（REGISTRY，唯一事实来源）
 ├── img/              真实游戏贴图 897 张（下载脚本自动填充）
-├── test/             测试与审计工具（离线 1 个 + 联网 2 个）
-│   ├── check.js      一键全量自检（24 节 332 处断言）· 离线
+├── static/           预渲染的静态条目页（**生成物，勿手改**）
+│   └── fishing/      试点模块：1 个索引页 + 71 个条目页
+├── test/             测试与审计工具（离线 2 个 + 联网 2 个）
+│   ├── check.js      一键全量自检（24 节 336 处断言）· 离线
+│   ├── prerender-probe.js  预渲染可行性探针（落盘渲染后的 DOM，量体积/链接）· headless Chrome
 │   ├── verify-wiki.js 存在性核对 · 双轮（防编造/错名）· 联网
 │   ├── scroll-shot.js 滚动截图 / 几何量测 · headless Chrome + CDP（sticky、独立滚动类问题必用）
 │   └── audit-completeness.js  完备性审计（防遗漏）· 联网
 ├── docs/
-│   └── PROBLEMS.md   开发问题记录与规避清单（必读）
+│   ├── PROBLEMS.md   开发问题记录与规避清单（必读）
+│   └── ROADMAP.md    分阶段方案（含预渲染的实测数据与决策）
 ├── scripts/          运维脚本（与站点内容分离）
 │   ├── deploy.bat / deploy.ps1              一键部署
 │   ├── download-images.bat / download-images.ps1   仅下载贴图
+│   ├── gen-static-pages.js  生成 static/ 与 sitemap.xml（`--check` 只校验同步，CI 用）
 │   └── gen-seo-assets.py    重新生成 favicon / apple-touch-icon / og-cover（需 Pillow，不参与部署）
 ├── .github/workflows/pages.yml   GitHub Actions：先跑自检，通过才发布 dist/（只含站点文件）
 ├── .nojekyll         禁用 GitHub Pages 的 Jekyll 处理
@@ -99,7 +104,7 @@ game-guide/
 **改数据/代码 → 自检 → 双击 `scripts\deploy.bat` 上线**：
 
 ```bash
-node test/check.js             # 1. 一键全量自检（24 节 332 处断言，必须通过）
+node test/check.js             # 1. 一键全量自检（24 节 336 处断言，必须通过）
                                #    ① JS 语法 ② 数据完整性（注册表自洽 / id 唯一 / 贴图覆盖）
                                #    ③ 渲染冒烟（23 模块计数与 section）
                                #    ④ 收益算法基准值 + 23 模块详情渲染（全 964 条）
@@ -138,6 +143,24 @@ node test/audit-completeness.js # 3. 成批补内容后：完备性审计（防�
 > 数字写错、模块列表漏项或重复，自检会直接报 `[FAIL]`，**不再依赖"记得核对"**（这正是 R60 缺的那条执行手段：
 > 在此之前 R60 是一条没有断言兜底的规则，README 的数字因此反复腐化，工匠制品条目数与产出机器数就是这么落后的）。
 > 其余数字仍然**一律从 `node test/check.js` 的输出读，不要凭印象写**；机器分组数这类则回数据源数（`machines` 字段），不要数文档。
+
+## 预渲染的静态条目页（试点中）
+
+`static/` 下是**生成物**：把某模块的每个条目渲染成独立 HTML，让搜索引擎能收录条目级长尾
+（单页 + hash 路由时，只有首页会被索引）。目前试点只开了 `fishing`（钓鱼）一个模块。
+
+- 正文**复用站点自己的详情渲染函数**（`DETAIL_RENDERERS`），不另写一套模板，所以页面内容与站内所见同源；
+- 渲染结果里的交叉引用原本是 `data-goto-*` 交给 JS 委托，静态页里会**转成真 `<a href>`**——
+  爬虫不执行点击处理，不转就等于页面里没有任何可跟随的链接，"预渲染"白做；
+- `sitemap.xml` 也由这个脚本生成——站点地图是「内容清单」，手写必然与内容脱节。
+
+```bash
+node scripts/gen-static-pages.js          # 生成（改完数据后跑；deploy.ps1 会自动跑）
+node scripts/gen-static-pages.js --check  # 只校验产物与数据是否同步（CI 的 test job 用）
+```
+
+**再加一个模块**：把它加进 `scripts/gen-static-pages.js` 的 `PILOT_MODULES` 即可，
+页面外壳、sitemap、自检断言都会自动覆盖。要不要铺开到全部 964 条，见 `docs/ROADMAP.md` 第五节的实测数据。
 
 ## 技术栈
 

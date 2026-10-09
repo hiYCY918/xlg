@@ -66,6 +66,18 @@ if (Test-Path $idxPath) {
     }
 }
 
+# ---------- 4.5 重新生成静态条目页（预渲染试点） ----------
+# 必须排在版本号之后：静态页里的 css?v=N 要跟着版本号走，晚一步就会与新样式分叉。
+# 忘了跑也不会"看起来没事"——CI 的 test job 用 gen-static-pages.js --check 把漂移报成红灯（R64）。
+if (Get-Command node -ErrorAction SilentlyContinue) {
+    $gen = Join-Path $PSScriptRoot "gen-static-pages.js"
+    if (Test-Path $gen) {
+        Write-Host "正在重新生成静态条目页..." -ForegroundColor Yellow
+        node $gen
+        if ($LASTEXITCODE -ne 0) { Fail "静态页生成失败，已中止部署。" }
+    }
+}
+
 # ---------- 5. 全量自检（失败则中止部署，防止带 bug 上线） ----------
 if (Get-Command node -ErrorAction SilentlyContinue) {
     $check = Join-Path $Root "test\check.js"
