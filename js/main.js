@@ -203,6 +203,7 @@ function moduleIconHtml(m) {
   seeds: "全部", seedSort: "default",
   fruittrees: "全部", treeSort: "default",
   trees: "全部",
+  animals: "全部",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -924,11 +925,52 @@ function renderTrees() {
     </div>`).join("") || emptyState("没有符合条件的树木");
   body.appendChild(grid);
 }
-/* 种子 chip：落在种子模块（收口断言保证每棵树的 seed 都能在 SEEDS 里找到） */
-function seedChip(name) {
+/* 名字能落到某个条目上就出链接，否则退化成纯文本 chip。
+ * 素材缺口期的条目**不该渲染成死链**——这也是缺口表能逐步收缩的前提。 */
+function nameChip(name, prefix) {
   const hit = NAME_INDEX.get(name);
   if (!hit) return `<span class="chip chip-plain">${esc(name)}</span>`;
-  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(name)}">🌱 ${esc(name)}</span>`;
+  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" ` +
+    `role="button" tabindex="0" title="查看${esc(name)}">${prefix || ""}${esc(name)}</span>`;
+}
+/* 种子 chip：落在种子模块（收口断言保证每棵树的 seed 都能在 SEEDS 里找到） */
+function seedChip(name) {
+  return nameChip(name, "🌱 ");
+}
+
+/* ---- 动物 ---- */
+const ANIMAL_FILTERS = [
+  { value: "全部", label: "全部" },
+  { value: "鸡舍", label: "鸡舍动物" },
+  { value: "畜棚", label: "畜棚动物" },
+  { value: "宠物", label: "宠物" },
+];
+function renderAnimals() {
+  const body = $("#body-animals");
+  body.innerHTML = "";
+  const list = ANIMALS.filter((a) => state.animals === "全部" || a.type === state.animals);
+  const total = updateModuleCount(SECTION.animals);
+  setShown("animals", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(ANIMAL_FILTERS, state.animals, (v) => { state.animals = v; renderAnimals(); }));
+  toolbar.appendChild(controlRow(hintNode("先建好对应建筑才能在玛妮的牧场购买；除宠物外都会产出可加工的动物制品")));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((a) => `
+    <div ${cardAttrs(a.id)}>
+      ${itemIconHtml(a.id, a.name, GENERIC_ICON)}
+      <h3>${esc(a.name)}</h3>
+      <div class="meta"><span class="chip chip-plain">${esc(a.type)}</span></div>
+      <div class="meta">🏠 ${a.building ? esc(a.building) : "无需建筑"}</div>
+      <div class="meta">💰 ${a.buyprice != null ? `<span class="coin">${a.buyprice}</span>` : esc(a.buyText || "不适用")}</div>
+      <div class="meta">🥚 ${a.produce && a.produce.length ? a.produce.map((p) => nameChip(p)).join(" ") : "无产出"}</div>
+      <div class="foot"><span class="muted">${esc(a.note || (a.building ? "养在" + a.building + "里，每天可收获产物" : "农场宠物"))}</span></div>
+    </div>`).join("") || emptyState("没有符合条件的动物");
+  body.appendChild(grid);
 }
 
 /* ---- 事件 ---- */
@@ -1514,12 +1556,30 @@ const REGISTRY = [
       (t.note ? detailSection("说明", `<p>${esc(t.note)}</p>`) : "") +
       detailSection("砍伐产出", `<p>${esc("砍倒树木可获得木材；桃花心木额外掉落硬木。树木全年生长，冬季不会枯死。")}</p>`),
   },
+  {
+    id: "animals", stateKey: ["animals"], spriteFor: "", sprite: "white-chicken", icon: "🐄", label: "动物",
+    sub: "牧场动物的建筑、价格与产出", data: "ANIMALS", render: renderAnimals,
+    resetFilter: (s) => { s.animals = "全部"; },
+    indexExtra: (a) => [a.type, a.building, a.buyText].concat(a.produce || []),
+    detail: (a) => detailHead(itemIconHtml(a.id, a.name, GENERIC_ICON), a.name,
+      a.type + (a.building ? " · " + a.building : " · 宠物")) +
+      detailSection("数值", kvGrid([
+        ["类别", a.type],
+        ["所需建筑", a.building || "无需建筑"],
+        ["购买价格", a.buyprice != null ? a.buyprice + " 金" : (a.buyText || "不适用")],
+      ])) +
+      (a.produce && a.produce.length
+        ? detailSection("产出", `<p>${a.produce.map((p) => nameChip(p)).join(" ")}</p>`)
+        : "") +
+      (a.note ? detailSection("说明", `<p>${esc(a.note)}</p>`) : "") +
+      detailSection("饲养要点", `<p>${esc("动物需要先建好对应建筑才能购买；每天抚摸可提升好感度，好感度越高产物品质越好。鸡舍动物（鸡、鸭、兔、恐龙）的产物落在地板上，牛羊要用挤奶桶或剪刀采集，猪会在户外挖松露。")}</p>`),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
-  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES,
+  BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES, ANIMALS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];

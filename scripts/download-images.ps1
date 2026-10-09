@@ -388,6 +388,19 @@ $items = @{
   "green-rain-tree" = "Mossy_Seed.png"
   "tea-tree" = "Tea_Sapling.png"
   "palm-tree" = "Coconut.png"
+  # ---------- 动物（第二十一轮补；牛/羊/猪/鸵鸟等原图大于 48x48，
+  #            下载后需按整数倍最近邻缩放，见 test/check.js 的图片覆盖断言） ----------
+  "white-chicken" = "White_Chicken.png"
+  "void-chicken" = "Void_Chicken.png"
+  "golden-chicken" = "Golden_Chicken.png"
+  "duck" = "Duck.png"
+  "rabbit" = "Rabbit.png"
+  "dinosaur" = "Dinosaur.png"
+  "cow" = "White_Cow.png"
+  "goat" = "Goat.png"
+  "sheep" = "Sheep.png"
+  "pig" = "Pig.png"
+  "ostrich" = "Ostrich.png"
 }
 
 $imgDir = Join-Path $Root "img"

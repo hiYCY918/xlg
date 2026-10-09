@@ -912,6 +912,34 @@ const FRUIT_TREES = [
 ];
 
 /* ============================================================
+ * 动物（中文 Wiki Category:动物 的 12 条）
+ * 数据来源：各页的 {{Infobox animal}}（image / buyprice / building / produce）+ 「动物」汇总页正文
+ * 排除：动物（汇总页，进 HUB_PAGES）、鸭子（#重定向 → 鸭）、达斯迪保留（宠物，无信息框，数据取自正文）
+ * type 由所属建筑派生：鸡舍 / 畜棚 / 宠物
+ * building 的中文名来自「建筑英文名 → 中文名」映射：
+ *   Category:建筑 的页名 + langlinks 取英文名；大畜棚/高级畜棚/大鸡舍/高级鸡舍
+ *   没有独立页面，是从 畜棚/鸡舍 页面的升级对照表里**按列配对**抽出来的（表头中文名 ↔ File:*.png）
+ * produce 的名走物品表本地化，查不到的再去英文 Wiki 查 langlinks（跟着重定向走——
+ *   棕蛋/大棕蛋 在英文 Wiki 上重定向到 蛋/大鸡蛋，即它们不是独立物品）
+ * 贴图：动物精灵尺寸参差（牛 90x69、鸵鸟 93x96…），下载后按**整数倍**最近邻缩放到 48x48 内（R23）；
+ *   达斯迪没有合适的精灵图（Dusty3.png 是 220x349 带相框的立绘）→ 走兜底图标
+ * ============================================================ */
+const ANIMALS = [
+  { id: "white-chicken", name: "鸡", type: "鸡舍", building: "鸡舍", buyprice: 800, produce: ["蛋", "大鸡蛋"] },
+  { id: "void-chicken", name: "虚空鸡", type: "鸡舍", building: "大鸡舍", buyText: "不可购买", produce: ["虚空蛋"], note: "由虚空蛋孵化，需要大鸡舍；产出的虚空蛋可做虚空蛋黄酱。" },
+  { id: "golden-chicken", name: "金色的鸡", type: "鸡舍", building: "大鸡舍", buyText: "不可购买", produce: ["金蛋"], note: "由金蛋孵化，需要大鸡舍。" },
+  { id: "duck", name: "鸭", type: "鸡舍", building: "大鸡舍", buyprice: 1200, produce: ["鸭蛋", "鸭毛"] },
+  { id: "rabbit", name: "兔子", type: "鸡舍", building: "高级鸡舍", buyprice: 8000, produce: ["兔子的脚", "动物毛"] },
+  { id: "dinosaur", name: "恐龙", type: "鸡舍", building: "大鸡舍", buyText: "不适用", produce: ["恐龙蛋"], note: "由恐龙蛋孵化，需要大鸡舍；恐龙蛋也可用于博物馆捐赠。" },
+  { id: "cow", name: "牛", type: "畜棚", building: "畜棚", buyprice: 1500, produce: ["牛奶", "大壶牛奶"] },
+  { id: "goat", name: "山羊", type: "畜棚", building: "大畜棚", buyprice: 4000, produce: ["羊奶", "大瓶羊奶"] },
+  { id: "sheep", name: "绵羊", type: "畜棚", building: "高级畜棚", buyprice: 8000, produce: ["动物毛"] },
+  { id: "pig", name: "猪", type: "畜棚", building: "高级畜棚", buyprice: 16000, produce: ["松露"] },
+  { id: "ostrich", name: "鸵鸟", type: "畜棚", building: "畜棚", buyText: "不适用", produce: ["鸵鸟蛋"], note: "由鸵鸟蛋孵化。" },
+  { id: "dusty", name: "达斯迪", type: "宠物", note: "亚历克斯的狗，住在星之果实酒吧右侧围栏里的旧狗窝中。完成「垃圾清理熊」的请求后狗窝会翻新，才能看见它。" },
+];
+
+/* ============================================================
  * 树木（中文 Wiki Category:树 的 8 棵树）
  * 数据来源：各页的 {{Infobox tree}}（seed / tapper / growth）+ 正文补充
  * 排除三项并各有理由：树（汇总页）、大圆木 / 大树桩（是可砍的资源节点而非树）、

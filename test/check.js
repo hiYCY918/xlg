@@ -133,7 +133,7 @@ const src =
   "ARTISAN,artisanMachines," +
   "ARTIFACTS,MUSEUM_NAMES,MUSEUM_REWARDS,isDonated,toggleDonate,museumDonatedCount,readMuseum," +
   "SEEDS,SEED_SEASON_FILTERS,SEEDED_BY,seededBySection,seedPriceText,seedGrowthText,sortSeeds," +
-  "FRUIT_TREES,TREE_SEASONS,saplingChip,sortTrees," +
+  "FRUIT_TREES,TREE_SEASONS,saplingChip,sortTrees,ANIMALS,ANIMAL_FILTERS,nameChip," +
   "TREES,TREE_FILTERS,seedChip,ensureNavVisible};";
 
 let data;
@@ -1180,8 +1180,52 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(trSeedHtml.includes("data-goto-module=\"seeds\""),
     "树木详情中的种子生成了跳转链接（" + (trWithSeed ? trWithSeed.name : "—") + "）");
 
-  /* ---------- 15. 侧栏导航（模块可达性） ---------- */
-  console.log("\n=== 15. 侧栏导航（模块可达性） ===");
+  /* ---------- 15. 动物 ---------- */
+  console.log("\n=== 15. 动物（动物 ↔ 建筑 ↔ 动物制品） ===");
+
+  const AN = arrays.animals || [];
+  const anDup = [...new Set(AN.map((a) => a.id).filter((v, i, arr) => arr.indexOf(v) !== i))];
+  log(anDup.length === 0, "动物 id 无重复（" + AN.length + " 条）" + (anDup.length ? "：" + anDup.join(",") : ""));
+  const anCross = AN.filter((a) => ownerR.get(a.id) !== "animals").map((a) => a.id + "(属" + ownerR.get(a.id) + ")");
+  log(anCross.length === 0, "动物 id 与其它模块无冲突" + (anCross.length ? "：" + anCross.join(",") : ""));
+
+  const anTypes = [...new Set(AN.map((a) => a.type))].sort();
+  log(anTypes.length >= 3, "动物类别覆盖完整（" + anTypes.join(" / ") + "）");
+
+  const badAn = [];
+  for (const a of AN) {
+    if (!a.type) badAn.push(a.id + "(缺类别)");
+    if (a.type !== "宠物" && !a.building) badAn.push(a.id + "(缺建筑)");
+    if (a.building && !/[\u4e00-\u9fff]/.test(a.building)) badAn.push(a.id + "(建筑名未本地化)");
+    if (a.buyprice == null && !a.buyText && a.type !== "宠物") badAn.push(a.id + "(缺价格)");
+  }
+  log(badAn.length === 0, "动物字段齐全（类别 / 建筑 / 价格）" + (badAn.length ? "：" + badAn.join(",") : ""));
+
+  /* 产出的落点守恒（R31）：能跳转的 + 已知缺口的 == 全部产出。
+   * 「动物制品」是 Category:动物制品 的独立分类，尚未收录，故先入缺口表；
+   * 待该模块落地后本表应收缩到 0（过期项断言会报出来）。 */
+  const ANIMAL_PRODUCE_GAPS = [
+    "蛋", "大鸡蛋", "虚空蛋", "金蛋", "鸭蛋", "鸭毛", "兔子的脚",
+    "动物毛", "牛奶", "大壶牛奶", "羊奶", "大瓶羊奶", "鸵鸟蛋",
+  ];
+  const allProduce = [...new Set(AN.flatMap((a) => a.produce || []))];
+  const prodLinked = allProduce.filter((p) => data.NAME_INDEX.has(p));
+  const prodGap = allProduce.filter((p) => !data.NAME_INDEX.has(p));
+  const prodUntracked = prodGap.filter((p) => ANIMAL_PRODUCE_GAPS.indexOf(p) < 0);
+  log(prodUntracked.length === 0,
+    "动物产出无表外缺口（" + prodLinked.length + " 可跳转 / " + prodGap.length + " 在已知缺口表内）" +
+    (prodUntracked.length ? "：表外 " + prodUntracked.join(",") : ""));
+  const prodStale = ANIMAL_PRODUCE_GAPS.filter((p) => allProduce.indexOf(p) < 0 || data.NAME_INDEX.has(p));
+  log(prodStale.length === 0,
+    "动物产出缺口表无过期项（" + ANIMAL_PRODUCE_GAPS.length + " 项）" +
+    (prodStale.length ? "：已可跳转却仍在表内 " + prodStale.join(",") : ""));
+
+  const anHtml = String(data.DETAIL_RENDERERS.animals(AN[0].id));
+  log(anHtml.includes("饲养要点") && anHtml.includes("所需建筑"),
+    "动物详情含「数值」与「饲养要点」分区（" + AN[0].name + "）");
+
+  /* ---------- 16. 侧栏导航（模块可达性） ---------- */
+  console.log("\n=== 16. 侧栏导航（模块可达性） ===");
 
   /* 导航从横向标签栏改成左侧竖栏（第十八轮）：横排 17 个模块需要约 1700px，
    * 只有 ≥1920 的屏幕能一眼看全。这里守住"每个模块都有一条导航入口"这件事——
@@ -1267,8 +1311,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(/background-attachment: local/.test(cssSrc),
     "木板缝那层用 background-attachment: local（侧栏自身滚动时缝跟着内容走）");
 
-  /* ---------- 16. 视觉资源 ---------- */
-  console.log("\n=== 16. 视觉资源（模块图标贴图） ===");
+  /* ---------- 17. 视觉资源 ---------- */
+  console.log("\n=== 17. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];
