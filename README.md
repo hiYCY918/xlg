@@ -188,5 +188,6 @@ git push -u origin main
 | 种子 | `SEEDS` | 果树 | `FRUIT_TREES` |
 | 树木 | `TREES` | 动物 | `ANIMALS` |
 | 动物制品 | `ANIMAL_PRODUCTS` | 工具 | `TOOLS` |
+| 建筑 | `BUILDINGS` | | |
 
 直接修改或新增条目，刷新页面即可生效，无需改动其他文件；要让新模块获得全部既有能力（详情弹窗 / 搜索 / 深链接 / 反向索引），才需要在 `js/main.js` 的 `REGISTRY` 里登记。
