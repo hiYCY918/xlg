@@ -1,0 +1,6 @@
+# 星露谷物语 · 攻略站（非官方粉丝站）
+# 纯静态单页站，无敏感路径，允许全站抓取
+User-agent: *
+Allow: /
+
+Sitemap: https://hiycy918.github.io/xlg/sitemap.xml

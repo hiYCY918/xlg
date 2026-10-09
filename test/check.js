@@ -1755,7 +1755,59 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(strayTmp.length === 0,
     "仓库根目录无临时文件残留" + (strayTmp.length ? ": " + strayTmp.join(", ") : ""));
 
-  /* ---------- 23. 文档自一致性（R60 的执行手段） ----------
+  /* ---------- 23. SEO 基础设施（favicon / robots / sitemap / 分享卡片） ----------
+   * 这些东西的特点是「缺了不会报错、只是没人来」——所以必须断言存在性与一致性，
+   * 否则它们会像 R60 的数字一样，在无人察觉的情况下烂掉。 */
+  console.log("\n=== 23. SEO 基础设施 ===");
+
+  const SITE_URL = "https://hiycy918.github.io/xlg/";
+  const seoFiles = ["favicon.ico", "apple-touch-icon.png", "og-cover.png", "robots.txt", "sitemap.xml"];
+  const seoMissing = seoFiles.filter((f) => !fs.existsSync(path.join(root, f)));
+  log(seoMissing.length === 0,
+    "SEO 文件齐全（" + seoFiles.length + " 个）" + (seoMissing.length ? "：缺 " + seoMissing.join(",") : ""));
+
+  const headSrc = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const seoNeeds = [
+    ["canonical", /<link rel="canonical" href="https:\/\/hiycy918\.github\.io\/xlg\/" \/>/],
+    ["favicon 声明", /<link rel="icon" href="favicon\.ico"/],
+    ["apple-touch-icon 声明", /<link rel="apple-touch-icon" href="apple-touch-icon\.png"/],
+    ["og:title", /<meta property="og:title"/],
+    ["og:description", /<meta property="og:description"/],
+    ["og:image（绝对 URL）", /<meta property="og:image" content="https:\/\/hiycy918\.github\.io\/xlg\/og-cover\.png"/],
+    ["og:url（绝对 URL）", /<meta property="og:url" content="https:\/\/hiycy918\.github\.io\/xlg\/"/],
+    ["twitter:card", /<meta name="twitter:card" content="summary_large_image"/],
+    ["JSON-LD WebSite", /"@type":\s*"WebSite"/],
+  ];
+  const seoBad = seoNeeds.filter(([, re]) => !re.test(headSrc)).map(([n]) => n);
+  log(seoBad.length === 0,
+    "index.html 的 SEO 头齐全（" + seoNeeds.length + " 项）" + (seoBad.length ? "：缺 " + seoBad.join(",") : ""));
+
+  /* og:image 指的图必须真的在仓库里——改名/换图最容易漏掉 meta 这一处 */
+  const ogHit = /<meta property="og:image" content="[^"]*?\/([^"/]+)"/.exec(headSrc);
+  log(!!ogHit && fs.existsSync(path.join(root, ogHit[1])),
+    "og:image 指向的图片存在" + (ogHit ? "（" + ogHit[1] + "）" : "：meta 未匹配到文件名"));
+
+  const robotsSrc = fs.readFileSync(path.join(root, "robots.txt"), "utf8");
+  const sitemapSrc = fs.readFileSync(path.join(root, "sitemap.xml"), "utf8");
+  log(robotsSrc.indexOf("Allow: /") >= 0, "robots.txt 允许全站抓取");
+  log(robotsSrc.indexOf("Sitemap: " + SITE_URL + "sitemap.xml") >= 0, "robots.txt 指向本站 sitemap");
+  /* sitemap 的 loc 与 canonical 必须一致：两处各写一遍，最容易只改一处 */
+  log(sitemapSrc.indexOf("<loc>" + SITE_URL + "</loc>") >= 0, "sitemap 的 loc 与 canonical 一致");
+  const seoBom = ["robots.txt", "sitemap.xml"].filter((f) => {
+    const b = fs.readFileSync(path.join(root, f));
+    return b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF;
+  });
+  log(seoBom.length === 0,
+    "robots.txt / sitemap.xml 无 BOM（BOM 会让首行指令与 XML 声明失效）" + (seoBom.length ? "：" + seoBom.join(",") : ""));
+
+  /* 发布清单联动：CI 只发布 dist/ 里的站点文件，新增文件忘了加进列表就会线上 404。
+   * 这条断言把「加了文件」和「发布得出去」绑在一起。 */
+  const wfSrc = fs.readFileSync(path.join(root, ".github", "workflows", "pages.yml"), "utf8");
+  const notPublished = seoFiles.filter((f) => wfSrc.indexOf(f) < 0);
+  log(notPublished.length === 0,
+    "CI 发布清单包含全部 SEO 文件" + (notPublished.length ? "：漏 " + notPublished.join(",") : ""));
+
+  /* ---------- 24. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
    * （第三十轮一次查出 8 处：模块列表里「树木」重复、工匠制品 26→30 项、11→15 类机器、
@@ -1763,8 +1815,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
    * 判据：一条规则若只写在文档里，它就会按固定节奏腐化（R97 的同一种病）。
    *
    * 只查**能机器核对**的那几类，且正则一律锚定「描述现状」的句式——
-   * README 里有历史叙述（如「项目还只有 17 个模块时就已需 ~1700px」），全文扫数字必然误报（R90）。 */
-  console.log("\n=== 23. 文档自一致性（R60） ===");
+   * README 里有历史叙述（如「模块数只有 17 个时就已需 ~1700px」），全文扫数字必然误报（R90）。 */
+  console.log("\n=== 24. 文档自一致性（R60） ===");
 
   const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
   const readmeLines = readme.split("\n");

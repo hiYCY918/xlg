@@ -65,7 +65,12 @@
 
 ```
 game-guide/
-├── index.html        入口页面
+├── index.html        入口页面（含 SEO 头：canonical / OG 卡片 / JSON-LD）
+├── robots.txt        允许全站抓取 + 指向 sitemap
+├── sitemap.xml       单页站的 URL 清单（条目级长尾待预渲染，见 docs/ROADMAP.md）
+├── favicon.ico       站点图标（16/32/48 三档，由 scripts/gen-seo-assets.py 生成）
+├── apple-touch-icon.png  iOS 主屏图标（180×180）
+├── og-cover.png      分享卡片图（1200×630，微信/QQ/Twitter 预览用）
 ├── css/
 │   └── style.css     暖色田园主题样式
 ├── js/
@@ -74,7 +79,7 @@ game-guide/
 │   └── main.js       交互逻辑 + 模块注册表（REGISTRY，唯一事实来源）
 ├── img/              真实游戏贴图 897 张（下载脚本自动填充）
 ├── test/             测试与审计工具（离线 1 个 + 联网 2 个）
-│   ├── check.js      一键全量自检（23 节 323 处断言）· 离线
+│   ├── check.js      一键全量自检（24 节 331 处断言）· 离线
 │   ├── verify-wiki.js 存在性核对 · 双轮（防编造/错名）· 联网
 │   ├── scroll-shot.js 滚动截图 / 几何量测 · headless Chrome + CDP（sticky、独立滚动类问题必用）
 │   └── audit-completeness.js  完备性审计（防遗漏）· 联网
@@ -82,8 +87,9 @@ game-guide/
 │   └── PROBLEMS.md   开发问题记录与规避清单（必读）
 ├── scripts/          运维脚本（与站点内容分离）
 │   ├── deploy.bat / deploy.ps1              一键部署
-│   └── download-images.bat / download-images.ps1   仅下载贴图
-├── .github/workflows/pages.yml   GitHub Actions 自动部署
+│   ├── download-images.bat / download-images.ps1   仅下载贴图
+│   └── gen-seo-assets.py    重新生成 favicon / apple-touch-icon / og-cover（需 Pillow，不参与部署）
+├── .github/workflows/pages.yml   GitHub Actions：先跑自检，通过才发布 dist/（只含站点文件）
 ├── .nojekyll         禁用 GitHub Pages 的 Jekyll 处理
 └── README.md
 ```
@@ -93,7 +99,7 @@ game-guide/
 **改数据/代码 → 自检 → 双击 `scripts\deploy.bat` 上线**：
 
 ```bash
-node test/check.js             # 1. 一键全量自检（23 节 323 处断言，必须通过）
+node test/check.js             # 1. 一键全量自检（24 节 331 处断言，必须通过）
                                #    ① JS 语法 ② 数据完整性（注册表自洽 / id 唯一 / 贴图覆盖）
                                #    ③ 渲染冒烟（23 模块计数与 section）
                                #    ④ 收益算法基准值 + 23 模块详情渲染（全 964 条）

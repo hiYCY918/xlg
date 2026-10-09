@@ -47,7 +47,7 @@ jobs:
       - name: 组装站点产物
         run: |
           mkdir -p dist
-          for p in index.html .nojekyll robots.txt sitemap.xml favicon.ico apple-touch-icon.png css js img; do
+          for p in index.html .nojekyll robots.txt sitemap.xml favicon.ico apple-touch-icon.png og-cover.png css js img; do
             if [ -e "$p" ]; then cp -r "$p" dist/; fi
           done
           echo "--- 待发布内容 ---"
