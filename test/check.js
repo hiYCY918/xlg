@@ -136,6 +136,7 @@ const src =
   "FRUIT_TREES,TREE_SEASONS,saplingChip,sortTrees,ANIMALS,ANIMAL_FILTERS,nameChip," +
   "ANIMAL_PRODUCTS,PRODUCT_BY,PRODUCT_FILTERS,productKinds,renderProducts," +
   "TOOLS,TOOL_CATS,TOOL_FILTERS,toolCostText,tierRows," +
+  "BUILDINGS,BUILDING_FILTERS,buildingCostText,renderBuildings," +
   "TREES,TREE_FILTERS,seedChip,ensureNavVisible};";
 
 let data;
@@ -1328,8 +1329,96 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(plainHtml.includes("数值") && !plainHtml.includes("升级链"),
     "不可升级的工具不显示「升级链」（" + (plainTool ? plainTool.name : "—") + "）");
 
-  /* ---------- 18. 侧栏导航（模块可达性） ---------- */
-  console.log("\n=== 18. 侧栏导航（模块可达性） ===");
+  /* ---------- 18. 建筑（农场建筑 ↔ 城镇地点） ---------- */
+  console.log("\n=== 18. 建筑（农场建筑 ↔ 城镇地点） ===");
+
+  const BD = arrays.buildings || [];
+  const bdDup = [...new Set(BD.map((b) => b.id).filter((v, i, arr) => arr.indexOf(v) !== i))];
+  log(bdDup.length === 0, "建筑 id 无重复（" + BD.length + " 条）" + (bdDup.length ? "：" + bdDup.join(",") : ""));
+  const bdCross = BD.filter((b) => ownerR.get(b.id) !== "buildings").map((b) => b.id + "(属" + ownerR.get(b.id) + ")");
+  log(bdCross.length === 0, "建筑 id 与其它模块无冲突" + (bdCross.length ? "：" + bdCross.join(",") : ""));
+
+  const bdNames = BD.map((b) => b.name);
+  const bdNameDup = [...new Set(bdNames.filter((v, i) => bdNames.indexOf(v) !== i))];
+  log(bdNameDup.length === 0, "建筑名称无重复" + (bdNameDup.length ? "：" + bdNameDup.join(",") : ""));
+
+  /* 两种形态必须都被覆盖：漏掉一类会让整个半区在界面上"不存在" */
+  const bdTypes = [...new Set(BD.map((b) => b.type))].sort();
+  log(bdTypes.indexOf("农场建筑") >= 0 && bdTypes.indexOf("城镇地点") >= 0,
+    "两种建筑类型都有（" + bdTypes.join(" / ") + "：" +
+    bdTypes.map((x) => x + " " + BD.filter((b) => b.type === x).length).join("，") + "）");
+
+  const badBd = [];
+  for (const b of BD) {
+    if (!b.eng) badBd.push(b.id + "(无英文名)");
+    if (!b.type) badBd.push(b.id + "(无类型)");
+    /* 城镇地点：农舍（自己家）、大树桩（地点）、树屋本来就没有营业时间 */
+    if (b.type === "城镇地点" && !b.openHours && !/农舍|大树桩|树屋/.test(b.name)) badBd.push(b.id + "(缺营业时间)");
+    /* 农场建筑：造价 / 材料 / 升级表 至少有一个，否则界面上是一张空卡 */
+    if (b.type === "农场建筑" && b.cost == null && !b.costText && !(b.materials || []).length && !(b.tiers || []).length) {
+      badBd.push(b.id + "(既无造价也无材料)");
+    }
+  }
+  log(badBd.length === 0, "建筑字段齐全（类型 + 各自的必需项）" + (badBd.length ? "：" + badBd.slice(0, 6).join(",") : ""));
+
+  /* 材料 / 驻地 NPC 的落点：能跳转的 + 已知缺口的 == 全部引用 */
+  const OCCUPANT_GAPS = ["Witch", "Island Trader"];
+  const bdMats = [...new Set(BD.flatMap((b) => (b.materials || []).map((m) => m.name))
+    .concat(BD.flatMap((b) => (b.tiers || []).flatMap((t) => (t.materials || []).map((m) => m.name)))))];
+  /* 建筑材料同样按「可跳转 + 已知缺口」守恒（R31）。
+   * 龙牙同时也是打造材料的已知缺口；绿藻尚未被任何模块收录。 */
+  const BD_MAT_GAPS = ["龙牙", "绿藻"];
+  const bdMatMiss = bdMats.filter((n) => !data.NAME_INDEX.has(n) && !/[A-Za-z]/.test(n));
+  const bdMatUntracked = bdMatMiss.filter((n) => BD_MAT_GAPS.indexOf(n) < 0);
+  log(bdMatUntracked.length === 0,
+    "建筑材料无表外缺口（" + (bdMats.length - bdMatMiss.length) + " 可跳转 / " + bdMatMiss.length + " 在缺口表内）" +
+    (bdMatUntracked.length ? "：表外 " + bdMatUntracked.join(",") : ""));
+  const bdMatStale = BD_MAT_GAPS.filter((n) => bdMatMiss.indexOf(n) < 0);
+  log(bdMatStale.length === 0, "建筑材料缺口表无过期项（" + BD_MAT_GAPS.length + " 项）" +
+    (bdMatStale.length ? "：已可跳转却仍在表内 " + bdMatStale.join(",") : ""));
+
+  const bdOcc = [...new Set(BD.flatMap((b) => b.occupants || []))];
+  const bdOccMiss = bdOcc.filter((n) => !data.NAME_INDEX.has(n));
+  const bdOccUntracked = bdOccMiss.filter((n) => OCCUPANT_GAPS.indexOf(n) < 0);
+  log(bdOccUntracked.length === 0,
+    "驻地居民无表外缺口（" + (bdOcc.length - bdOccMiss.length) + " 可跳转 / " + bdOccMiss.length + " 在已知缺口表内）" +
+    (bdOccUntracked.length ? "：表外 " + bdOccUntracked.join(",") : ""));
+  const bdOccStale = OCCUPANT_GAPS.filter((n) => bdOccMiss.indexOf(n) < 0);
+  log(bdOccStale.length === 0, "驻地居民缺口表无过期项（" + OCCUPANT_GAPS.length + " 项）" +
+    (bdOccStale.length ? "：已可跳转却仍在表内 " + bdOccStale.join(",") : ""));
+
+  /* 升级表（畜棚 / 鸡舍 / 小屋）：造价与材料都要解析出来。
+   * 这里曾经因为"用文件名 split 定位"而全错位——"Big Barn.png" 里也含 "Barn.png"。 */
+  const bdTiered = BD.filter((b) => b.tiers && b.tiers.length);
+  const badBdTier = [];
+  for (const b of bdTiered) {
+    if (b.tiers.length < 2) badBdTier.push(b.id + "(档数 " + b.tiers.length + ")");
+    for (const x of b.tiers) {
+      if (!x.name) badBdTier.push(b.id + "(档缺名称)");
+      else if (!x.cost) badBdTier.push(b.id + "/" + x.name + "(缺造价)");
+    }
+  }
+  log(bdTiered.length >= 3 && badBdTier.length === 0,
+    bdTiered.length + " 个可升级建筑（" + bdTiered.map((b) => b.name).join("/") + "）档位完整" +
+    (badBdTier.length ? "：" + badBdTier.join(",") : ""));
+
+  /* 详情按类型分支：两类各自的分区不能串 */
+  const locB = BD.find((b) => b.type === "城镇地点" && b.openHours);
+  const farmB = BD.find((b) => b.type === "农场建筑" && b.cost != null);
+  const locHtml = locB ? String(data.DETAIL_RENDERERS.buildings(locB.id)) : "";
+  const farmHtml = farmB ? String(data.DETAIL_RENDERERS.buildings(farmB.id)) : "";
+  log(locHtml.includes("营业时间") && locHtml.includes("常驻居民"),
+    "城镇地点详情含「营业时间」与「常驻居民」（" + (locB ? locB.name : "—") + "）");
+  log(farmHtml.includes("建造价格") && farmHtml.includes("所需材料"),
+    "农场建筑详情含「建造价格」与「所需材料」（" + (farmB ? farmB.name : "—") + "）");
+  log(farmHtml.indexOf("营业时间") < 0, "农场建筑详情不串入城镇地点的分区");
+
+  /* 建筑用的是 96px 大图标位：图源是游戏截图，48px 格子装不下（见 css 注释） */
+  log(/icon-lg/.test(String(data.DETAIL_RENDERERS.buildings(BD[0].id))),
+    "建筑详情使用 96px 大图标位（图源是截图而非 48×48 精灵）");
+
+  /* ---------- 19. 侧栏导航（模块可达性） ---------- */
+  console.log("\n=== 19. 侧栏导航（模块可达性） ===");
 
   /* 导航从横向标签栏改成左侧竖栏（第十八轮）：横排 17 个模块需要约 1700px，
    * 只有 ≥1920 的屏幕能一眼看全。这里守住"每个模块都有一条导航入口"这件事——
@@ -1415,8 +1504,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(/background-attachment: local/.test(cssSrc),
     "木板缝那层用 background-attachment: local（侧栏自身滚动时缝跟着内容走）");
 
-  /* ---------- 19. 视觉资源 ---------- */
-  console.log("\n=== 19. 视觉资源（模块图标贴图） ===");
+  /* ---------- 20. 视觉资源 ---------- */
+  console.log("\n=== 20. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

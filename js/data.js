@@ -912,6 +912,90 @@ const FRUIT_TREES = [
 ];
 
 /* ============================================================
+ * 建筑（中文 Wiki Category:建筑 的 56 条）
+ * 三种形态：
+ *   ① {{Infobox location}} ×36 —— 城镇地点：openhours / closed / address / occupants
+ *   ② {{Infobox building}} ×17 —— 农场建筑：cost / materials / size / capacity
+ *   ③ 畜棚 / 鸡舍 / 小屋 —— 无信息框，正文里是**升级对照表**（tiers，与工具模块同一套解析）
+ * occupants 写的是英文名（{{NPC|Robin}}），用 NPCS 的 id 反查中文：
+ *   ⚠️ 有三个对不上，必须显式列别名 —— Wizard 的 id 是 rasmodius、Mr. Qi 的是 qi
+ *   （见下方 NPC_ALIAS 的说明；女巫与岛屿商人本就不在 NPC 模块，保留英文并记入缺口）
+ * 排除：「社区中心」——名字已由「任务」收录（id=community），
+ *   而站内名字是名称索引的键，不能重名（R53/R57）
+ * 升级表的造价/材料行是"一行多列"，按**列号**取；不要用文件名去 split ——
+ *   "Big Barn.png" 里也含 "Barn.png"，split 必然错位
+ * ============================================================ */
+const BUILDINGS = [
+  { id: "farmhouse", name: "农舍", eng: "Farmhouse", type: "城镇地点", address: "农场", closed: "无" },
+  { id: "harvey-s-clinic", name: "哈维的诊所", eng: "Harvey's Clinic", type: "城镇地点", openHours: "9:00至15:00", occupants: ["哈维"] },
+  { id: "museum", name: "博物馆", eng: "Museum", type: "城镇地点", address: "镇的东边, 铁匠铺的南面", openHours: "上午8:00至下午6:00", closed: "节日", occupants: ["冈瑟"], aka: ["星露谷博物馆和图书馆"] },
+  { id: "jojamart", name: "Joja超市", eng: "JojaMart", type: "城镇地点", address: "铁匠铺的北面", openHours: "9:00到23:00", closed: "玩家完成社区中心的所有收集包后", occupants: ["莫里斯"] },
+  { id: "slime-hutch", name: "史莱姆屋", eng: "Slime Hutch", type: "农场建筑", cost: 10000, materials: [{ name: "石头", qty: 500 }, { name: "精炼石英", qty: 10 }, { name: "铱锭", qty: 1 }], size: "4x7", capacity: 20 },
+  { id: "ice-cream-stand", name: "冰淇淋摊", eng: "Ice Cream Stand", type: "城镇地点", address: "在博物馆旁边", openHours: "下午1:00到下午5:00", closed: "周三 • 雨天", occupants: ["亚历克斯"] },
+  { id: "joja-warehouse", name: "Joja仓库", eng: "Joja Warehouse", type: "城镇地点", openHours: "全天", closed: "无" },
+  { id: "farm-obelisk", name: "农场图腾柱", eng: "Farm Obelisk", type: "农场建筑", costText: "20 金核桃", size: "3x2" },
+  { id: "witch-s-hut", name: "女巫小屋", eng: "Witch's Hut", type: "城镇地点", openHours: "全天", occupants: ["Witch", "仆从"] },
+  { id: "shed", name: "小屋", eng: "Shed", type: "农场建筑", tiers: [
+      { name: "小屋", cost: "15000", materials: [{ name: "木材", qty: 300 }] },
+      { name: "大屋子", cost: "20000", materials: [{ name: "木材", qty: 550 }, { name: "石头", qty: 300 }] },
+    ] },
+  { id: "earth-obelisk", name: "土之图腾柱", eng: "Earth Obelisk", type: "农场建筑", cost: 500000, materials: [{ name: "铱锭", qty: 10 }, { name: "地晶", qty: 10 }], size: "3x2" },
+  { id: "island-trader", name: "姜岛商人", eng: "Island Trader", type: "城镇地点", address: "姜岛", openHours: "一直开放", occupants: ["Island Trader"] },
+  { id: "island-obelisk", name: "姜岛图腾柱", eng: "Island Obelisk", type: "农场建筑", cost: 1000000, materials: [{ name: "铱锭", qty: 10 }, { name: "龙牙", qty: 10 }, { name: "香蕉", qty: 10 }], size: "3x2" },
+  { id: "island-farmhouse", name: "姜岛农舍", eng: "Island Farmhouse", type: "农场建筑", costText: "20 金核桃 个金色核桃", size: "7x5" },
+  { id: "giant-stump", name: "大树桩（地点）", eng: "Giant Stump", type: "城镇地点", address: "煤矿森林，池塘与玛妮的牧场之间" },
+  { id: "pet-bowl", name: "宠物碗", eng: "Pet Bowl", type: "农场建筑", cost: 5000, materials: [{ name: "硬木", qty: 25 }], size: "2x2" },
+  { id: "trailer", name: "拖车", eng: "Trailer", type: "城镇地点", openHours: "上午9:00至晚上8:00", occupants: ["潘姆", "潘妮"] },
+  { id: "the-stardrop-saloon", name: "星之果实酒吧", eng: "The Stardrop Saloon", type: "城镇地点", openHours: "中午12:00至凌晨12:00", occupants: ["格斯"] },
+  { id: "traveling-cart", name: "旅行货车", eng: "Traveling Cart", type: "城镇地点", address: "煤矿森林", openHours: "星期五和星期日：06:00至20:00 | 夜市：17:00至02:00 | 沙漠节：12:12至02:00", closed: "星期一至星期四，以及星期六" },
+  { id: "abandoned-house", name: "废弃的屋子", eng: "Abandoned House", type: "城镇地点", address: "煤矿森林", openHours: "全天", closed: "无" },
+  { id: "adventurer-s-guild", name: "探险家公会", eng: "Adventurer's Guild", type: "城镇地点", address: "矿井东边，深山的东北方", openHours: "14:00至02:00", occupants: ["马龙", "吉尔"] },
+  { id: "carpenter-s-shop", name: "木匠的商店", eng: "Carpenter's Shop", type: "城镇地点", openHours: "上午9:00至下午5:00", closed: "星期二", occupants: ["罗宾", "德米特里厄斯", "塞巴斯蒂安", "玛鲁"] },
+  { id: "tent", name: "帐篷", eng: "Tent", type: "城镇地点", address: "深山", openHours: "上午6:00至凌晨2:00", occupants: ["莱纳斯"] },
+  { id: "island-field-office", name: "岛屿办事处", eng: "Island Field Office", type: "城镇地点", address: "姜岛北部", openHours: "一直开放", occupants: ["蜗牛教授"] },
+  { id: "well", name: "水井", eng: "Well", type: "农场建筑", cost: 1000, materials: [{ name: "石头", qty: 75 }], size: "3x3" },
+  { id: "1-river-road", name: "河间大道1号", eng: "1 River Road", type: "城镇地点", address: "河间大道1号", openHours: "08:00至20:00", occupants: ["乔治", "艾芙琳", "亚历克斯"] },
+  { id: "1-willow-lane", name: "柳巷1号", eng: "1 Willow Lane", type: "城镇地点", address: "柳巷1号", openHours: "上午9:00至晚上8:00", occupants: ["乔迪", "肯特", "山姆", "文森特"] },
+  { id: "2-willow-lane", name: "柳巷2号", eng: "2 Willow Lane", type: "城镇地点", address: "柳巷2号", openHours: "9:00至20:00", occupants: ["艾米丽", "海莉"] },
+  { id: "water-obelisk", name: "水之图腾柱", eng: "Water Obelisk", type: "农场建筑", cost: 500000, materials: [{ name: "铱锭", qty: 5 }, { name: "蛤", qty: 1 }, { name: "珊瑚", qty: 1 }], size: "3x2" },
+  { id: "desert-trader", name: "沙漠商人", eng: "Desert Trader", type: "城镇地点", address: "沙漠", openHours: "一直开放", closed: "夜市期间 (冬季15-17)" },
+  { id: "desert-obelisk", name: "沙漠图腾柱", eng: "Desert Obelisk", type: "农场建筑", cost: 1000000, materials: [{ name: "铱锭", qty: 20 }, { name: "椰子", qty: 10 }, { name: "仙人掌果子", qty: 10 }], size: "3x2" },
+  { id: "treehouse", name: "树屋", eng: "Treehouse", type: "城镇地点", address: "深山", occupants: ["雷欧"] },
+  { id: "pierre-s-general-store", name: "皮埃尔的杂货店", eng: "Pierre's General Store", type: "城镇地点", address: "小镇广场北边", openHours: "商店：09:00到17:00 | 建筑：09:00到21:00", closed: "星期三", occupants: ["皮埃尔", "卡洛琳", "阿比盖尔"] },
+  { id: "greenhouse", name: "温室", eng: "Greenhouse", type: "农场建筑", costText: "完成茶水间收集包 | 或 | 在Joja社区发展申请书中花35000购入", size: "7x6 3x2" },
+  { id: "marnie-s-ranch", name: "玛妮的牧场", eng: "Marnie's Ranch", type: "城镇地点", openHours: "建筑可进入：上午9:00至下午6:00 | 营业时间：上午9:00至下午4:00", closed: "周一和周二 | (建筑仍然可进入)" },
+  { id: "wizard-s-tower", name: "法师塔", eng: "Wizard's Tower", type: "城镇地点", openHours: "早上6:00至晚上11:00", occupants: ["法师"] },
+  { id: "spa", name: "温泉", eng: "Spa", type: "城镇地点", openHours: "全天", closed: "无" },
+  { id: "barn", name: "畜棚", eng: "Barn", type: "农场建筑", tiers: [
+      { name: "畜棚", cost: "6000", materials: [{ name: "木材", qty: 350 }, { name: "石头", qty: 150 }] },
+      { name: "大畜棚", cost: "12000", materials: [{ name: "木材", qty: 450 }, { name: "石头", qty: 200 }] },
+      { name: "高级畜棚", cost: "25000", materials: [{ name: "木材", qty: 550 }, { name: "石头", qty: 300 }] },
+    ] },
+  { id: "dog-pen", name: "狗窝", eng: "Dog Pen", type: "城镇地点", openHours: "全天", closed: "无" },
+  { id: "movie-theater", name: "电影院", eng: "Movie Theater", type: "城镇地点", address: "社区线：废弃的Joja超市 | Joja线：Joja仓库", openHours: "上午 9:00 到晚上 9:00" },
+  { id: "oasis", name: "绿洲", eng: "Oasis", type: "城镇地点", address: "沙漠", openHours: "9:00至23:50", closed: "沙漠节期间、 | 秋季15日13:00之后", occupants: ["桑迪"] },
+  { id: "silo", name: "筒仓", eng: "Silo", type: "农场建筑", cost: 100, materials: [{ name: "石头", qty: 100 }, { name: "粘土", qty: 10 }, { name: "铜锭", qty: 5 }], size: "3x3" },
+  { id: "mill", name: "磨坊", eng: "Mill", type: "农场建筑", cost: 2500, materials: [{ name: "石头", qty: 50 }, { name: "木材", qty: 150 }, { name: "布料", qty: 4 }], size: "4x2" },
+  { id: "leah-s-cottage", name: "莉亚的农舍", eng: "Leah's Cottage", type: "城镇地点", openHours: "上午10:00至下午6:00", occupants: ["莉亚"] },
+  { id: "junimo-hut", name: "祝尼魔屋", eng: "Junimo Hut", type: "农场建筑", cost: 20000, materials: [{ name: "石头", qty: 1 }, { name: "杨桃", qty: 1 }, { name: "纤维", qty: 100 }], size: "3x2" },
+  { id: "elliott-s-cabin", name: "艾利欧特小屋", eng: "Elliott's Cabin", type: "城镇地点", openHours: "10:00至18:00", occupants: ["艾利欧特"] },
+  { id: "cabin", name: "联机小屋", eng: "Cabin", type: "农场建筑", cost: 100, size: "5x3" },
+  { id: "blacksmith", name: "铁匠铺", eng: "Blacksmith", type: "城镇地点", address: "穿过鹈鹕镇的小河的东岸", openHours: "9:00至16:00", closed: "社区中心重建后的每个星期五", occupants: ["克林特"] },
+  { id: "fish-shop", name: "鱼店", eng: "Fish Shop", type: "城镇地点", openHours: "上午9:00至下午5:00", closed: "不下雨的星期六（可进入建筑，但无法买卖物品）", occupants: ["威利"] },
+  { id: "casino", name: "赌场", eng: "Casino", type: "城镇地点", address: "沙漠", openHours: "上午9:00至晚上11:50", closed: "无", occupants: ["齐先生"] },
+  { id: "coop", name: "鸡舍", eng: "Coop", type: "农场建筑", tiers: [
+      { name: "鸡舍", cost: "4000", materials: [{ name: "木材", qty: 300 }, { name: "石头", qty: 100 }] },
+      { name: "大鸡舍", cost: "10000", materials: [{ name: "木材", qty: 400 }, { name: "石头", qty: 150 }] },
+      { name: "高级鸡舍", cost: "20000", materials: [{ name: "木材", qty: 500 }, { name: "石头", qty: 200 }] },
+    ] },
+  { id: "stable", name: "马厩", eng: "Stable", type: "农场建筑", cost: 10000, materials: [{ name: "硬木", qty: 100 }, { name: "铁锭", qty: 5 }], size: "4x2" },
+  { id: "gold-clock", name: "黄金时钟", eng: "Gold Clock", type: "农场建筑", cost: 10000000, size: "3x2" },
+  { id: "mayor-s-manor", name: "镇长的庄园", eng: "Mayor's Manor", type: "城镇地点", openHours: "上午8:30~晚上10:00", occupants: ["刘易斯"] },
+  { id: "fish-pond", name: "鱼塘", eng: "Fish Pond", type: "农场建筑", cost: 5000, materials: [{ name: "石头", qty: 200 }, { name: "海草", qty: 5 }, { name: "绿藻", qty: 5 }], size: "5x5" },
+  { id: "qi-s-walnut-room", name: "齐先生的核桃房", eng: "Qi's Walnut Room", type: "城镇地点", address: "姜岛", openHours: "一直开放", occupants: ["齐先生"] },
+];
+
+/* ============================================================
  * 工具（中文 Wiki Category:工具 的 18 件）
  * 三种数据形态，都是各页自己的组织结构：
  *   ① {{Infobox tool}} ×12 —— cost / soldby / source / eng（剪刀、挤奶桶、鱼竿类…）

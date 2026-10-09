@@ -159,9 +159,11 @@ function sortSelect(options, active, onChange, focusKey) {
  * 也不能反过来「加载成功再隐藏兜底」：那条路径依赖 onload，缓存命中时可能不触发，
  * 兜底就会一直盖住贴图（本项目曾因此全站只显示兜底图标）。
  * 用 onerror 驱动最稳：它只在失败时触发，不受缓存影响。 */
-function itemIconHtml(id, name, svgFallback) {
+/* extraClass：少数模块的图源不是 48×48 像素精灵（如建筑的截图），需要更大的图标位。
+ * 见 css 里 .item-icon.icon-lg 的注释。 */
+function itemIconHtml(id, name, svgFallback, extraClass) {
   return `
-      <span class="item-icon has-img">
+      <span class="item-icon has-img${extraClass ? " " + extraClass : ""}">
         <img class="icon-img" src="img/${esc(id)}.png" alt="${esc(name)}" loading="lazy" decoding="async"
              onerror="this.parentNode.classList.add('icon-failed'); this.remove()">
         <span class="icon-fallback">${svgFallback}</span>
@@ -206,6 +208,7 @@ function moduleIconHtml(m) {
   animals: "全部",
   products: "全部",
   tools: "全部",
+  buildings: "全部",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -1094,6 +1097,65 @@ function tierRows(t) {
     </div>`).join("");
 }
 
+/* ---- 建筑 ---- */
+const BUILDING_FILTERS = [
+  { value: "全部", label: "全部" },
+  { value: "农场建筑", label: "农场建筑" },
+  { value: "城镇地点", label: "城镇地点" },
+];
+function buildingCostText(b) {
+  if (b.cost != null) return b.cost + " 金";
+  if (b.costText) return b.costText;
+  /* 可升级建筑（畜棚/鸡舍/小屋）没有独立的 cost 字段——它们的造价就在升级表第一档里，
+   * 直接取出来用，免得界面上写「见说明」把读者支使到别处找。 */
+  if (b.tiers && b.tiers.length && b.tiers[0].cost) return b.tiers[0].cost + " 金";
+  return "见说明";
+}
+function renderBuildings() {
+  const body = $("#body-buildings");
+  body.innerHTML = "";
+  const list = BUILDINGS.filter((b) => state.buildings === "全部" || b.type === state.buildings);
+  const total = updateModuleCount(SECTION.buildings);
+  setShown("buildings", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(BUILDING_FILTERS, state.buildings, (v) => { state.buildings = v; renderBuildings(); }));
+  toolbar.appendChild(controlRow(hintNode("农场建筑在木匠的商店建造；城镇地点标出营业时间与常驻居民")));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((b) => {
+    const isLoc = b.type === "城镇地点";
+    const metas = isLoc
+      ? [
+          b.openHours ? `🕘 ${esc(b.openHours)}` : null,
+          b.closed ? `🚫 休息：${esc(b.closed)}` : null,
+          b.address ? `📍 ${esc(b.address)}` : null,
+          b.occupants && b.occupants.length ? `👤 ${b.occupants.map((n) => nameChip(n)).join(" ")}` : null,
+        ]
+      : [
+          `💰 ${esc(buildingCostText(b))}`,
+          b.materials && b.materials.length
+            ? `🧱 ${b.materials.map((m) => nameChip(m.name) + " ×" + m.qty).join("、")}` : null,
+          b.size ? `📐 ${esc(b.size)} 格` : null,
+          b.capacity != null ? `🐾 可养 ${b.capacity} 只` : null,
+        ];
+    return `
+    <div ${cardAttrs(b.id)}>
+      ${itemIconHtml(b.id, b.name, GENERIC_ICON, "icon-lg")}
+      <h3>${esc(b.name)}</h3>
+      <div class="meta"><span class="chip chip-plain">${esc(b.type)}</span></div>
+      ${metas.filter(Boolean).map((x) => `<div class="meta">${x}</div>`).join("")}
+      <div class="foot"><span class="muted">${esc(b.tiers && b.tiers.length
+        ? "可升级：" + b.tiers.map((t) => t.name).join(" → ")
+        : (isLoc ? "镇上的设施" : "在木匠的商店建造"))}</span></div>
+    </div>`;
+  }).join("") || emptyState("没有符合条件的建筑");
+  body.appendChild(grid);
+}
+
 /* ---- 事件 ---- */
 /* ---- 打造（制造配方） ---- */
 const CRAFT_SORTS = [
@@ -1742,13 +1804,49 @@ const REGISTRY = [
         ? "基础工具在游戏开始时获得，可在铁匠铺用金币与金属锭逐级升级；升级同时提升效率与可破坏的对象范围。"
         : "在对应商店购买后即可使用；畜牧用品放在畜棚 / 鸡舍内生效。")}</p>`),
   },
+  {
+    id: "buildings", stateKey: ["buildings"], spriteFor: "", sprite: "coop", icon: "🏠", label: "建筑",
+    sub: "农场建筑与镇上设施的造价、升级与营业信息", data: "BUILDINGS", render: renderBuildings,
+    resetFilter: (s) => { s.buildings = "全部"; },
+    indexExtra: (b) => [b.eng, b.address, b.openHours, b.closed, b.size]
+      .concat(b.occupants || [])
+      .concat((b.materials || []).map((m) => m.name))
+      .concat((b.tiers || []).map((t) => t.name))
+      .concat((b.tiers || []).flatMap((t) => (t.materials || []).map((m) => m.name))),
+    detail: (b) => {
+      const isLoc = b.type === "城镇地点";
+      return detailHead(itemIconHtml(b.id, b.name, GENERIC_ICON, "icon-lg"), b.name,
+        b.type + (b.tiers && b.tiers.length ? " · 可升级 " + b.tiers.length + " 档" : "")) +
+        detailSection("数值", kvGrid(isLoc ? [
+          ["类别", b.type],
+          ["营业时间", b.openHours || "—"],
+          ["休息日", b.closed || "全年无休"],
+          ["位置", b.address || "—"],
+        ] : [
+          ["类别", b.type],
+          ["建造价格", buildingCostText(b)],
+          ["占地", b.size ? b.size + " 格" : "—"],
+          ["容量", b.capacity != null ? "可养 " + b.capacity + " 只" : "—"],
+        ])) +
+        (!isLoc && b.materials && b.materials.length
+          ? detailSection("所需材料", `<p>${b.materials.map((m) => nameChip(m.name) + " ×" + m.qty).join("　")}</p>`)
+          : "") +
+        (b.tiers && b.tiers.length ? detailSection("升级档位", tierRows(b)) : "") +
+        (b.occupants && b.occupants.length
+          ? detailSection("常驻居民", `<p>${b.occupants.map((n) => nameChip(n)).join(" ")}</p>`)
+          : "") +
+        detailSection("说明", `<p>${esc(isLoc
+          ? "镇上的固定设施，按营业时间开放；节日或休息日可能不营业。"
+          : "在木匠的商店找罗宾建造，通常需要三天完工；部分建筑可以继续升级。")}</p>`);
+    },
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
   BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES, ANIMALS,
-  ANIMAL_PRODUCTS, TOOLS,
+  ANIMAL_PRODUCTS, TOOLS, BUILDINGS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];

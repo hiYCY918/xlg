@@ -427,6 +427,24 @@ html, body {
 .has-img .icon-fallback { display: none; }
 .has-img.icon-failed .icon-fallback { display: flex; }
 
+/* 建筑用的大图标位（96×96）。
+ * 为什么需要：建筑的图源是**游戏截图**（铁匠铺 768×544、赌场 896×449、镇长庄园 576×896），
+ * 不是 48×48 的像素精灵。硬塞进 48×48 要除以 16~32，实测 52 张里 14 张缩完最大边不到 30px，
+ * 基本看不清。放大格子后多数只需 /2~/8，既能保持**整数倍缩放**（R23），又认得出来。
+ * ⚠️ 里面再写 width/height:auto + max-*，是**禁止 contain 把小图放大**：
+ * 例如 56×28 的图在 96×96 里会被拉到 96×48，那就成了非整数放大。 */
+.item-icon.icon-lg {
+  width: 96px;
+  height: 96px;
+}
+.item-icon.icon-lg .icon-img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 .icon-img {
   width: 100%;
   height: 100%;
