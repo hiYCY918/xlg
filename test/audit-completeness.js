@@ -49,6 +49,7 @@ const UNIVERSE = [
   ["果树", ["果树"], [], "FRUIT_TREES"],
   ["树木", ["树"], [], "TREES"],
   ["动物", ["动物"], [], "ANIMALS"],
+  ["动物制品", ["动物制品"], [], "ANIMAL_PRODUCTS"],
 ];
 
 /* 分类/导航页而非内容条目，比对时排除 */
@@ -66,6 +67,8 @@ const EXCLUDED = new Map(Object.entries({
   "居民": "泛指分类，不是具体 NPC",
   "大圆木": "可砍伐的资源节点，不是树本身（属「树木」分类但不产出种子/树液）",
   "大树桩": "可砍伐的资源节点，不是树本身（同上）",
+  "鸭子": "重定向页（#重定向 → 鸭），不是独立动物",
+  "加工动物制品的收益": "攻略页而非物品",
 }));
 
 /* 整块系统盘点：**只列本站还没有对应模块的系统**（已收录的从本表移除，
@@ -79,7 +82,7 @@ const SYSTEMS = [
 (async () => {
   const data = new Function(
     fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS};"
+    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS};"
   )();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */

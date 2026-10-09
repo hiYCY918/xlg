@@ -401,6 +401,23 @@ $items = @{
   "sheep" = "Sheep.png"
   "pig" = "Pig.png"
   "ostrich" = "Ostrich.png"
+  # ---------- 动物制品（第二十二轮补；史莱姆球原图 66x116，下载后按整数倍缩放到 48x48 内） ----------
+  "rabbit-s-foot" = "Rabbit's_Foot.png"
+  "wool" = "Wool.png"
+  "slime" = "Slime.png"
+  "slime-ball" = "Slime_Ball.png"
+  "large-milk" = "Large_Milk.png"
+  "large-goat-milk" = "Large_Goat_Milk.png"
+  "large-egg" = "Large_Egg.png"
+  "milk" = "Milk.png"
+  "goat-milk" = "Goat_Milk.png"
+  "void-egg" = "Void_Egg.png"
+  "egg" = "Egg.png"
+  "golden-egg" = "Golden_Egg.png"
+  "roe" = "Roe.png"
+  "duck-feather" = "Duck_Feather.png"
+  "duck-egg" = "Duck_Egg.png"
+  "ostrich-egg" = "Ostrich_Egg.png"
 }
 
 $imgDir = Join-Path $Root "img"

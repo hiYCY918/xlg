@@ -134,6 +134,7 @@ const src =
   "ARTIFACTS,MUSEUM_NAMES,MUSEUM_REWARDS,isDonated,toggleDonate,museumDonatedCount,readMuseum," +
   "SEEDS,SEED_SEASON_FILTERS,SEEDED_BY,seededBySection,seedPriceText,seedGrowthText,sortSeeds," +
   "FRUIT_TREES,TREE_SEASONS,saplingChip,sortTrees,ANIMALS,ANIMAL_FILTERS,nameChip," +
+  "ANIMAL_PRODUCTS,PRODUCT_BY,PRODUCT_FILTERS,productKinds,renderProducts," +
   "TREES,TREE_FILTERS,seedChip,ensureNavVisible};";
 
 let data;
@@ -414,13 +415,9 @@ console.log("\n=== 3. 渲染冒烟 ===");
   /* 6.2 需求物品的跳转落点。
    * 规则（对应 R31「可解释归零」）：每个需求物品要么能在站内找到条目/同源贴图，
    * 要么必须落在这张**已知缺口表**里并写明理由；出现表外的新悬空引用即失败。 */
+  /* 第二十二轮加「动物制品」模块后，兔子的脚 / 动物毛 / 史莱姆泥 / 大壶牛奶 /
+   * 大瓶羊奶 / 大鸡蛋 / 鸭毛 / 鸭蛋 共 8 项已可跳转并从本表移除（R31 的收缩）。 */
   const BUNDLE_ITEM_GAPS = {
-    "兔子的脚": "待建：后续模块",
-    "动物毛": "待建：后续模块",
-    "史莱姆泥": "待建：后续模块",
-    "大壶牛奶": "待建：后续模块",
-    "大瓶羊奶": "待建：后续模块",
-    "大鸡蛋": "待建：后续模块",
     "太阳精华": "待建：后续模块",
     "干草": "待建：后续模块",
     "杏子": "待建：后续模块",
@@ -436,8 +433,6 @@ console.log("\n=== 3. 渲染冒烟 ===");
     "苹果": "待建：后续模块",
     "虚空精华": "待建：后续模块",
     "蝙蝠翅膀": "待建：后续模块",
-    "鸭毛": "待建：后续模块",
-    "鸭蛋": "待建：后续模块",
   };
   const dangling = new Set();
   for (const b of B) for (const it of (b.items || [])) for (const n of data.bundleItemNames(it)) {
@@ -738,8 +733,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
   const GIFT_GAPS = [
     "仙子玫瑰", "冷冻泪", "可乐", "墨鱼", "夏季紫丁香", "太阳精华", "宝石",
     "油炸鱿鱼", "泡菜", "海洋料理", "炖豆", "电池", "秋季蔬菜",
-    "罂粟", "羊奶酪", "羊毛", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华", "虚空蛋",
-    "辣鳗鱼", "鸵鸟蛋",
+    "罂粟", "羊奶酪", "羊毛", "葡萄酒", "蓝莓派", "蕨菜炖饭", "虚空精华",
+    "辣鳗鱼",
   ];
   const giftGapActual = [...giftNames].filter((g) => !data.NAME_INDEX.has(g));
   const giftUntracked = giftGapActual.filter((g) => GIFT_GAPS.indexOf(g) < 0);
@@ -835,7 +830,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
    * 蓝爵士种子/虞美人种子/郁金香球茎）——这正是这套「可解释归零」机制的设计意图：
    * 模块补齐后表会自己变小，过期项没删则会直接失败（R31）。 */
   const CR_GAPS = [
-    "史莱姆泥", "太阳精华", "松焦油", "枫糖浆", "树液",
+    "太阳精华", "松焦油", "枫糖浆", "树液",
     "橡树树脂", "河凝胶", "洞穴凝胶", "海凝胶", "虚空精华",
     "虫肉", "蝙蝠翅膀", "鱼", "鱼饵（物品）|鱼饵", "齐钻", "龙牙",
   ];
@@ -1204,10 +1199,9 @@ console.log("\n=== 3. 渲染冒烟 ===");
   /* 产出的落点守恒（R31）：能跳转的 + 已知缺口的 == 全部产出。
    * 「动物制品」是 Category:动物制品 的独立分类，尚未收录，故先入缺口表；
    * 待该模块落地后本表应收缩到 0（过期项断言会报出来）。 */
-  const ANIMAL_PRODUCE_GAPS = [
-    "蛋", "大鸡蛋", "虚空蛋", "金蛋", "鸭蛋", "鸭毛", "兔子的脚",
-    "动物毛", "牛奶", "大壶牛奶", "羊奶", "大瓶羊奶", "鸵鸟蛋",
-  ];
+  /* 第二十二轮「动物制品」模块落地后清空——13 项产物现在都能跳转了。
+   * 表本身保留：将来给动物新增产物时，落点检查仍然生效（R31）。 */
+  const ANIMAL_PRODUCE_GAPS = [];
   const allProduce = [...new Set(AN.flatMap((a) => a.produce || []))];
   const prodLinked = allProduce.filter((p) => data.NAME_INDEX.has(p));
   const prodGap = allProduce.filter((p) => !data.NAME_INDEX.has(p));
@@ -1224,8 +1218,51 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(anHtml.includes("饲养要点") && anHtml.includes("所需建筑"),
     "动物详情含「数值」与「饲养要点」分区（" + AN[0].name + "）");
 
-  /* ---------- 16. 侧栏导航（模块可达性） ---------- */
-  console.log("\n=== 16. 侧栏导航（模块可达性） ===");
+  /* ---------- 16. 动物制品（制品 ↔ 产出它的动物） ---------- */
+  console.log("\n=== 16. 动物制品（制品 ↔ 产出它的动物） ===");
+
+  const AP = arrays.products || [];
+  const apDup = [...new Set(AP.map((p) => p.id).filter((v, i, arr) => arr.indexOf(v) !== i))];
+  log(apDup.length === 0, "动物制品 id 无重复（" + AP.length + " 件）" + (apDup.length ? "：" + apDup.join(",") : ""));
+  const apCross = AP.filter((p) => ownerR.get(p.id) !== "products").map((p) => p.id + "(属" + ownerR.get(p.id) + ")");
+  log(apCross.length === 0, "动物制品 id 与其它模块无冲突" + (apCross.length ? "：" + apCross.join(",") : ""));
+
+  const apNames = AP.map((p) => p.name);
+  const apNameDup = [...new Set(apNames.filter((v, i) => apNames.indexOf(v) !== i))];
+  log(apNameDup.length === 0, "动物制品名称无重复（名字是反向索引的键）" + (apNameDup.length ? "：" + apNameDup.join(",") : ""));
+
+  /* 售价不一定是数字：鱼籽是公式、史莱姆球是 N/A —— 但两者必居其一，不能都空 */
+  const badAp = [];
+  for (const p of AP) {
+    if (!p.eng) badAp.push(p.id + "(无英文名)");
+    if (!p.source) badAp.push(p.id + "(无获取方式)");
+    if (p.sell == null && !p.sellText) badAp.push(p.id + "(既无售价也无售价说明)");
+  }
+  log(badAp.length === 0, "动物制品字段齐全（英文名 / 获取方式 / 售价或售价说明）" +
+    (badAp.length ? "：" + badAp.join(",") : ""));
+  log(AP.filter((p) => p.sell == null && p.sellText).length > 0,
+    "存在「售价不是数字」的制品且已写明规则（如 " +
+    (AP.find((p) => p.sell == null && p.sellText) || {}).name + "：" +
+    (AP.find((p) => p.sell == null && p.sellText) || {}).sellText + "）");
+
+  /* 反向索引的方向必须正确：产物 → 动物（写反了界面不报错，但「由这些动物产出」永远是空的） */
+  const apFromAnimal = AP.filter((p) => (data.PRODUCT_BY.get(p.name) || []).length);
+  const revBad = apFromAnimal.filter((p) => AN.filter((a) => (a.produce || []).indexOf(p.name) < 0 &&
+    (data.PRODUCT_BY.get(p.name) || []).some((a) => a.name === p.name)).length);
+  log(apFromAnimal.length >= 13,
+    "反向索引把动物产物对上了产出动物（" + apFromAnimal.length + " / " + AP.length + " 件有产出动物）");
+  const apLead = apFromAnimal[0];
+  const apHtml = apLead ? String(data.DETAIL_RENDERERS.products(apLead.id)) : "";
+  log(apHtml.includes("由这些动物产出") && apHtml.includes("data-goto-id"),
+    "动物制品详情含可跳转的「由这些动物产出」（" + (apLead ? apLead.name : "—") + "）");
+
+  /* 本轮目标：动物模块登记的 13 项产物缺口应当全部闭合 */
+  const stillGap = [...new Set(AN.flatMap((a) => a.produce || []))].filter((p) => !data.NAME_INDEX.has(p));
+  log(stillGap.length === 0,
+    "动物的全部产物都有了落点（缺口表已清零）" + (stillGap.length ? "：仍缺 " + stillGap.join(",") : ""));
+
+  /* ---------- 17. 侧栏导航（模块可达性） ---------- */
+  console.log("\n=== 17. 侧栏导航（模块可达性） ===");
 
   /* 导航从横向标签栏改成左侧竖栏（第十八轮）：横排 17 个模块需要约 1700px，
    * 只有 ≥1920 的屏幕能一眼看全。这里守住"每个模块都有一条导航入口"这件事——
@@ -1311,8 +1348,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(/background-attachment: local/.test(cssSrc),
     "木板缝那层用 background-attachment: local（侧栏自身滚动时缝跟着内容走）");
 
-  /* ---------- 17. 视觉资源 ---------- */
-  console.log("\n=== 17. 视觉资源（模块图标贴图） ===");
+  /* ---------- 18. 视觉资源 ---------- */
+  console.log("\n=== 18. 视觉资源（模块图标贴图） ===");
 
   /* 模块图标必须是真实游戏贴图且文件存在，否则会静默退化成 emoji */
   const modIconFails = [];

@@ -912,6 +912,35 @@ const FRUIT_TREES = [
 ];
 
 /* ============================================================
+ * 动物制品（中文 Wiki Category:动物制品 的 16 件）
+ * 数据来源：各页的 {{Infobox}}（eng / source / sellprice / edibility / quality）
+ * 排除三项：「加工动物制品的收益」（攻略页不是物品）、松露与恐龙蛋（已由收集物收录，R53 已有模块优先）
+ * 这一批的名目**正好把「动物」模块登记的 13 项产物缺口清零**（见 check.js 第 15 节的缺口表）
+ * sellprice 不一定是数字：鱼籽是公式「30 +（鱼的基础售价 × 0.5）」、史莱姆球是 N/A，
+ *   这两种存进 sellText 而不是硬塞数字
+ * source 字段是 <ul><li>…</li></ul> 列表，解析时要**先把列表标签换成分隔符再去标签**，
+ *   否则会拼成「兔子旅行货车飞蛇掉落（0.8%）猫」这种没有分隔的一坨
+ * ============================================================ */
+const ANIMAL_PRODUCTS = [
+  { id: "rabbit-s-foot", name: "兔子的脚", eng: "Rabbit's Foot", sell: 565, source: "兔子 • 旅行货车 • 飞蛇掉落（0.8%） • 猫", quality: true },
+  { id: "wool", name: "动物毛", eng: "wool", sell: 340, source: "兔子 • 绵羊" },
+  { id: "slime", name: "史莱姆泥", eng: "Slime", sell: 5, source: "史莱姆（怪物） • 科罗布斯 • 史莱姆球 • 旅行货车 • 鱼塘", quality: true },
+  { id: "slime-ball", name: "史莱姆球", eng: "Slime Ball", sellText: "不可出售", source: "史莱姆屋" },
+  { id: "large-milk", name: "大壶牛奶", eng: "Large Milk", sell: 190, edibility: 20, source: "牛" },
+  { id: "large-goat-milk", name: "大瓶羊奶", eng: "Large Goat Milk", sell: 345, edibility: 35, source: "山羊" },
+  { id: "large-egg", name: "大鸡蛋", eng: "Large Egg", sell: 95, edibility: 15, source: "鸡" },
+  { id: "milk", name: "牛奶", eng: "Milk", sell: 125, edibility: 15, source: "牛" },
+  { id: "goat-milk", name: "羊奶", eng: "Goat Milk", sell: 225, edibility: 25, source: "山羊" },
+  { id: "void-egg", name: "虚空蛋", eng: "Void Egg", sell: 65, source: "虚空鸡 • 女巫 • 科罗布斯" },
+  { id: "egg", name: "蛋", eng: "Egg", sell: 50, edibility: 10, source: "鸡" },
+  { id: "golden-egg", name: "金蛋", eng: "Golden Egg", sell: 500, edibility: 10, source: "金色的鸡 • 玛妮的牧场 • 齐先生的核桃房 • 女巫 • 钓鱼宝箱" },
+  { id: "roe", name: "鱼籽", eng: "Roe", sellText: "30 +（鱼的基础售价 × 0.5）", edibility: 20, source: "鱼塘", quality: true },
+  { id: "duck-feather", name: "鸭毛", eng: "Duck Feather", sell: 250, source: "鸭 • 猫" },
+  { id: "duck-egg", name: "鸭蛋", eng: "Duck Egg", sell: 95, edibility: 15, source: "鸭" },
+  { id: "ostrich-egg", name: "鸵鸟蛋", eng: "Ostrich Egg", sell: 600, edibility: 15, source: "鸵鸟" },
+];
+
+/* ============================================================
  * 动物（中文 Wiki Category:动物 的 12 条）
  * 数据来源：各页的 {{Infobox animal}}（image / buyprice / building / produce）+ 「动物」汇总页正文
  * 排除：动物（汇总页，进 HUB_PAGES）、鸭子（#重定向 → 鸭）、达斯迪保留（宠物，无信息框，数据取自正文）

@@ -204,6 +204,7 @@ function moduleIconHtml(m) {
   fruittrees: "全部", treeSort: "default",
   trees: "全部",
   animals: "全部",
+  products: "全部",
 };
 
 /* 卡片统一带上可点击语义（详情弹窗由 #page 上的事件委托处理） */
@@ -973,6 +974,61 @@ function renderAnimals() {
   body.appendChild(grid);
 }
 
+/* ---- 动物制品 ---- */
+/* 产物 → 产出它的动物（反向索引）：筛选分组与详情里的「由这些动物产出」都靠它。
+ * 数据源就是 ANIMALS 自己的 produce 字段，不另建一份映射——避免两处走偏。 */
+const PRODUCT_BY = new Map();
+ANIMALS.forEach((a) => (a.produce || []).forEach((p) => {
+  if (!PRODUCT_BY.has(p)) PRODUCT_BY.set(p, []);
+  PRODUCT_BY.get(p).push(a);
+}));
+const PRODUCT_FILTERS = [
+  { value: "全部", label: "全部" },
+  { value: "鸡舍", label: "鸡舍产物" },
+  { value: "畜棚", label: "畜棚产物" },
+  { value: "其他", label: "其他来源" },
+];
+function productKinds(p) {
+  const kinds = [...new Set((PRODUCT_BY.get(p.name) || []).map((a) => a.type))];
+  return kinds.length ? kinds : ["其他"];
+}
+function renderProducts() {
+  const body = $("#body-products");
+  body.innerHTML = "";
+  const list = ANIMAL_PRODUCTS.filter((p) =>
+    state.products === "全部" ? true : productKinds(p).indexOf(state.products) >= 0);
+  const total = updateModuleCount(SECTION.products);
+  setShown("products", list.length, total);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.appendChild(chipBar(PRODUCT_FILTERS, state.products, (v) => { state.products = v; renderProducts(); }));
+  toolbar.appendChild(controlRow(hintNode("牧场动物的产物大多可以直接出售，也可以加工成工匠制品卖出更高价")));
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = list.map((p) => {
+    const from = PRODUCT_BY.get(p.name) || [];
+    return `
+    <div ${cardAttrs(p.id)}>
+      ${itemIconHtml(p.id, p.name, GENERIC_ICON)}
+      <h3>${esc(p.name)}</h3>
+      <div class="meta">${cardSellLine(p)}</div>
+      <div class="meta">💪 回复体力 ${p.edibility != null ? p.edibility : "—"}</div>
+      <div class="meta">🐾 ${from.length ? from.map((a) => nameChip(a.name)).join(" ") : esc(p.source)}</div>
+      <div class="foot"><span class="muted">${esc(p.quality ? "有品质分级，品质越高售价越高" : "无品质分级")}</span></div>
+    </div>`;
+  }).join("") || emptyState("没有符合条件的动物制品");
+  body.appendChild(grid);
+}
+/* 售价不一定是数字：鱼籽是「30 +（鱼的基础售价 × 0.5）」这样的公式 */
+function cardSellLine(p) {
+  if (p.sell != null) return `💰 售价 <span class="coin">${p.sell}</span>`;
+  if (p.sellText) return `💰 售价 ${esc(p.sellText)}`;
+  return `💰 不可出售`;
+}
+
 /* ---- 事件 ---- */
 /* ---- 打造（制造配方） ---- */
 const CRAFT_SORTS = [
@@ -1574,12 +1630,38 @@ const REGISTRY = [
       (a.note ? detailSection("说明", `<p>${esc(a.note)}</p>`) : "") +
       detailSection("饲养要点", `<p>${esc("动物需要先建好对应建筑才能购买；每天抚摸可提升好感度，好感度越高产物品质越好。鸡舍动物（鸡、鸭、兔、恐龙）的产物落在地板上，牛羊要用挤奶桶或剪刀采集，猪会在户外挖松露。")}</p>`),
   },
+  {
+    id: "products", stateKey: ["products"], spriteFor: "", sprite: "egg", icon: "🥚", label: "动物制品",
+    sub: "牧场动物产出的蛋奶毛与其它制品", data: "ANIMAL_PRODUCTS", render: renderProducts,
+    resetFilter: (s) => { s.products = "全部"; },
+    indexExtra: (p) => [p.eng, p.sellText].concat((PRODUCT_BY.get(p.name) || []).map((a) => a.name)),
+    detail: (p) => {
+      const from = PRODUCT_BY.get(p.name) || [];
+      const kinds = productKinds(p);
+      return detailHead(itemIconHtml(p.id, p.name, GENERIC_ICON), p.name,
+        (from.length ? "由 " + from.map((a) => a.name).join(" / ") + " 产出" : "来源：" + p.source)) +
+        detailSection("数值", kvGrid([
+          ["售价", p.sell != null ? p.sell + " 金" : (p.sellText || "不可出售")],
+          ["回复体力", p.edibility != null ? String(p.edibility) : "不可食用"],
+          ["品质分级", p.quality ? "有（普通 / 银 / 金 / 铱星）" : "无"],
+          ["所属", kinds.join(" / ")],
+        ])) +
+        /* 反向索引：由这些动物产出（与种子模块的 SEEDED_BY 同一套做法） */
+        (from.length ? detailSection("由这些动物产出",
+          `<p>${from.map((a) => nameChip(a.name)).join(" ")}</p>`) : "") +
+        detailSection("获取方式", `<p>${esc(p.source)}</p>`) +
+        detailSection("用途", `<p>${esc(p.quality
+          ? "可直接出售，也可放进蛋黄酱机 / 奶酪机 / 织布机加工成工匠制品；品质越高售价越高。"
+          : "可直接出售，或作为其它配方的材料。")}</p>`);
+    },
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
   BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES, ANIMALS,
+  ANIMAL_PRODUCTS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
