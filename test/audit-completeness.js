@@ -170,11 +170,14 @@ const EXCLUDED = new Map(Object.entries({
 const WATCH_CATS = [
   ["家具", "整块未覆盖"],
   ["帽子", "整块未覆盖"],
-  ["成就", "整块未覆盖"],
   ["秘密", "整块未覆盖"],
   /* 2026-10-15 移出清单：肥料 / 鱼饵 / 技能 / 地点 都已收干净
    * ——「针对性鱼饵」补进工匠制品；肥料那 11 种一直在「打造」里（只剩汇总页）；
-   * 技能建成独立模块（5 个技能，英文标题页登记为同页别名）；地点建成独立模块（缺口 0/69）。
+   * 技能建成独立模块（5 个技能，英文标题页登记为同页别名）；地点建成独立模块（缺口 0/69）；
+   * 成就建成独立模块（49 个成就）。
+   * ⚠️ 顺带说清一件事：`Category:成就` 里装的**不是成就**，而是「任务 / 农作物 / 售卖 / 完美」
+   *    这类**含成就的内容页**——所以它从来就没法用来比对成就全集，成就的完整性由 check.js 第 28 节守
+   *    （条数 49 与游戏内成就数、以及页面第二张「补法」表的 49 行三方对上）。
    * 清单里留着已覆盖的分类，会让报告永远挂着一条不存在的问题。 */
 ];
 
@@ -197,7 +200,7 @@ const SYSTEMS = [];
    * SKILLS、LOCATIONS）。下面紧跟一条静态断言，漏了直接报错退出，不指望人记得。 */
   const EXPOSED = ["CROPS", "COLLECTIBLES", "FISH", "MINERALS", "MONSTERS", "QUESTS", "NPCS",
     "FESTIVALS", "EVENTS", "SEEDS", "FRUIT_TREES", "TREES", "ANIMALS", "ANIMAL_PRODUCTS", "TOOLS",
-    "BUILDINGS", "WEAPONS", "RINGS", "ARTISAN", "CRAFTING", "COOKING", "ARTIFACTS", "SKILLS", "LOCATIONS"];
+    "BUILDINGS", "WEAPONS", "RINGS", "ARTISAN", "CRAFTING", "COOKING", "ARTIFACTS", "SKILLS", "LOCATIONS", "ACHIEVEMENTS"];
   const DATA_SRC = fs.readFileSync(path.join(root, "js/data.js"), "utf8");
   /* 故意不暴露的 data.js 顶层数组，**必须写明理由**：
    * 有了这张表，新加一个数组时只有两条路——要么进 EXPOSED，要么在这里写清为什么不进，
