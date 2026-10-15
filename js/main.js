@@ -2747,10 +2747,6 @@ function ensureNavVisible(btn) {
 }
 
 function switchModule(id) {
-  /* 内容区背景按模块切换：CSS 里 `body[data-module="crops"]` 决定用哪张游戏截图。
-   * 图在 CSS 里声明而不是在这里拼 URL —— 样式归 CSS，也免得 JS 里散落路径。
-   * 切换时浏览器按需取那一张（约 12 KB），不落地就是底色，不会有闪烁感。 */
-  document.body.dataset.module = id;
   MODULES.forEach((m) => {
     const active = m.id === id;
     const sec = $(`#module-${m.id}`);

@@ -46,10 +46,11 @@
 
 * { box-sizing: border-box; }
 
-/* ===== 内容区背景：按模块切换的游戏截图 =====
+/* ===== 内容区背景：一张虚化的卡通画 =====
  *
- * 图片是**真实游戏画面**（各模块对应一张地点截图），由 scripts/make-bg.py 从原图派生：
- * 缩到 960 宽 → 预模糊 → JPEG q45，每张约 12 KB（不加工的话单张就 265 KB）。
+ * 图是 scripts/bg-source.jpg（289×202），由 scripts/make-bg.py 加工：
+ * 放大到 1280 宽 → 虚化 blur 9 → JPEG q60，约 24 KB。
+ * 源图**提交在仓库里**，所以全新克隆也能重跑这一步。
  *
  * ⚠️ 下面四条都是实测踩出来的，动之前先看理由：
  *
@@ -61,11 +62,14 @@
  *    body 若还留着自己的不透明底色，这个伪元素就完全看不见——第一版就是这么白做的：
  *    computed style 一切正常、图也加载了，屏幕上什么都没有。
  *
- * ③ **洗白层**（0.82→0.87 的米白渐变）压在图片上，保证正文对比度。实测洗白后
- *    26 张的平均色落在 rgb(213,205,192) ~ rgb(240,226,208)，全是浅色，深字完全压得住。
+ * ③ **洗白层**压在图片上保证正文对比度。这个系数与 scripts/bg-config.json 的
+ *    treat.scrim **必须一致**（脚本用它算对比度报数），test/check.js 有一条断言专门核对。
  *
- * ④ `cover` 要按**视口**算，不是按页面盒子——页面有 9000px 高，否则图会被拉成 31 倍。
+ * ④ `cover` 要按**视口**算，不是按页面盒子——页面有 9000px 高，否则图会被拉成几十倍。
  *    position:fixed 天然解决了这件事（②的写法顺带满足这条）。
+ *
+ * 上一版是「26 个模块各切换一张游戏地点截图」，改用这一张后那套机制成了死代码，
+ * 已整套移除（需要时可从 git 历史取回）。
  */
 html {
   background: var(--bg);
@@ -89,43 +93,12 @@ body::before {
     /* 顶部两个氛围渐变（原来在 body 上，随底色一起搬过来） */
     radial-gradient(1000px 500px at 0% 0%, rgba(224, 165, 58, 0.10), transparent 60%),
     radial-gradient(900px 500px at 100% 0%, rgba(95, 158, 63, 0.12), transparent 55%),
-    /* 洗白层，见 ③。**这个系数要和 scripts/make-bg.py 里的 SCRIM 保持一致**，
-     * 否则脚本算的色距不是用户看到的（改了这里记得同步那个数）。 */
+    /* 洗白层，见 ③ */
     linear-gradient(rgba(253, 246, 232, 0.70), rgba(253, 246, 232, 0.74)),
-    /* 当前模块的游戏截图；没选模块时是 none，只剩底色 */
-    var(--module-bg, none) center / cover no-repeat,
+    url("../img/bg/background.jpg") center / cover no-repeat,
     /* 极淡的棋盘格，呼应游戏界面的网格底纹 */
     repeating-conic-gradient(rgba(107, 69, 38, 0.030) 0% 25%, transparent 0% 50%) 0 0 / 10px 10px;
 }
-
-/* 模块 → 背景图。图在 img/bg/，由 scripts/make-bg.py 按 scripts/bg-map.json 生成；
- * 这个清单与 bg-map.json 的模块 id **必须一一对应**，test/check.js 会逐条核对。 */
-body[data-module="crops"]        { --module-bg: url("../img/bg/crops.jpg"); }
-body[data-module="collect"]      { --module-bg: url("../img/bg/collect.jpg"); }
-body[data-module="fishing"]      { --module-bg: url("../img/bg/fishing.jpg"); }
-body[data-module="mining"]       { --module-bg: url("../img/bg/mining.jpg"); }
-body[data-module="combat"]       { --module-bg: url("../img/bg/combat.jpg"); }
-body[data-module="quests"]       { --module-bg: url("../img/bg/quests.jpg"); }
-body[data-module="npc"]          { --module-bg: url("../img/bg/npc.jpg"); }
-body[data-module="festivals"]    { --module-bg: url("../img/bg/festivals.jpg"); }
-body[data-module="events"]       { --module-bg: url("../img/bg/events.jpg"); }
-body[data-module="bundles"]      { --module-bg: url("../img/bg/bundles.jpg"); }
-body[data-module="artifacts"]    { --module-bg: url("../img/bg/artifacts.jpg"); }
-body[data-module="artisan"]      { --module-bg: url("../img/bg/artisan.jpg"); }
-body[data-module="crafting"]     { --module-bg: url("../img/bg/crafting.jpg"); }
-body[data-module="cooking"]      { --module-bg: url("../img/bg/cooking.jpg"); }
-body[data-module="seeds"]        { --module-bg: url("../img/bg/seeds.jpg"); }
-body[data-module="fruittrees"]   { --module-bg: url("../img/bg/fruittrees.jpg"); }
-body[data-module="trees"]        { --module-bg: url("../img/bg/trees.jpg"); }
-body[data-module="animals"]      { --module-bg: url("../img/bg/animals.jpg"); }
-body[data-module="products"]     { --module-bg: url("../img/bg/products.jpg"); }
-body[data-module="tools"]        { --module-bg: url("../img/bg/tools.jpg"); }
-body[data-module="buildings"]    { --module-bg: url("../img/bg/buildings.jpg"); }
-body[data-module="weapons"]      { --module-bg: url("../img/bg/weapons.jpg"); }
-body[data-module="rings"]        { --module-bg: url("../img/bg/rings.jpg"); }
-body[data-module="skills"]       { --module-bg: url("../img/bg/skills.jpg"); }
-body[data-module="locations"]    { --module-bg: url("../img/bg/locations.jpg"); }
-body[data-module="achievements"] { --module-bg: url("../img/bg/achievements.jpg"); }
 
 /* ===== 顶部整体（品牌栏 + 横向导航） ===== */
 .site-head {

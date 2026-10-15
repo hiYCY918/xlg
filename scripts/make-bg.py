@@ -1,21 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""把游戏地点截图加工成「内容区背景」——每个模块一张，输出到 img/bg/<模块 id>.jpg。
+"""把源图加工成内容区背景，输出 img/bg/background.jpg。
 
 用法：
-    python scripts/make-bg.py                 # 按 bg-map.json 生成全部
-    python scripts/make-bg.py --only crops    # 只重做某一个
-    python scripts/make-bg.py --check         # 只核对产物是否齐全、是否与参数一致
-    python scripts/make-bg.py --report        # 打印每张的平均色与体积（换图时用来挑色调）
+    python scripts/make-bg.py            # 生成
+    python scripts/make-bg.py --check    # 只核对产物在不在
+    python scripts/make-bg.py --report   # 顺带打印产物路径
+    python scripts/make-bg.py --blur 16  # 试别的虚化档位（不改配置，直接出图）
 
-源图从 .bgraw/ 读（用 scripts/fetch-bg-raw.js 抓，见那里的说明：原图 11.7 MB 不进仓库）。
+源图是 scripts/bg-source.jpg（289×202 的卡通画），**提交在仓库里**，
+所以这一步在全新克隆上也能重跑——不像上一版要靠 .bgraw/ 里 11.7 MB 的地点截图缓存。
 
-为什么这么加工（三条都是实测出来的）：
-  ① **缩小到 960 宽**：原图 1920~2878，背景用 cover 铺满视口，960 足够；
-  ② **预模糊 blur=10**：背景最终被洗到 0.82，高频细节根本看不见，
-     而模糊掉之后 JPEG 能压到 1/30（265 KB → 9 KB），顺带让压在文字下面的底纹更干净；
-  ③ **JPEG q45**：同上，反正要洗白，画质损失看不出来。
-  实测 26 张合计约 250 KB，而「不加工直接铺」是 265 KB **一张**。
+为什么这么加工：
+  ① **放大到 1280 宽**：源图只有 289 宽，cover 铺满视口必须放大；用 LANCZOS，
+     不用最近邻——原图是平滑的卡通画而非像素画，最近邻会出锯齿。
+  ② **虚化 blur 9**：用户要的「虚化处理」。实测三档：blur 4 山峦树木都清楚（抢内容）、
+     blur 16 只剩色带、**blur 9 能看出天空 / 山 / 草地又不抢戏**。档位只是配置里的一个数。
+  ③ **JPEG q60**：画面本来就虚，画质损失看不出来；约 30 KB。
+
+上一版是「26 个模块各一张游戏地点截图」（bg-map.json + fetch-bg-raw.js + 26 张图）。
+用户改用这一张之后那套机制成了死代码，已整套移除；需要时可从 git 历史取回。
 """
 import argparse
 import json
@@ -28,21 +32,20 @@ except ImportError:
     sys.exit("需要 Pillow：pip install Pillow")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RAW_DIR = os.path.join(ROOT, ".bgraw")
+CONF = os.path.join(ROOT, "scripts", "bg-config.json")
 OUT_DIR = os.path.join(ROOT, "img", "bg")
-MAP_JSON = os.path.join(ROOT, "scripts", "bg-map.json")
 
 
-def find_raw(name):
-    for ext in (".png", ".jpg", ".jpeg"):
-        p = os.path.join(RAW_DIR, name + ext)
-        if os.path.exists(p) and os.path.getsize(p) > 1000:
-            return p
-    return None
+def build(conf, blur_override=None):
+    src = os.path.join(ROOT, conf["source"])
+    if not os.path.exists(src):
+        sys.exit("找不到源图：" + src)
+    t = conf["treat"]
+    width = int(t["width"])
+    blur = int(blur_override if blur_override is not None else t["blur"])
+    quality = int(t["quality"])
 
-
-def make_one(src_path, out_path, width, blur, quality, tint=None, tint_amount=0.0):
-    im = Image.open(src_path).convert("RGB")
+    im = Image.open(src).convert("RGB")
     w0, h0 = im.size
     im = im.resize((width, max(1, round(h0 * width / w0))), Image.LANCZOS)
     # 太高就裁中间一条：背景是 cover 铺满视口，16:9 够用，裁掉能少传一半像素
@@ -50,99 +53,57 @@ def make_one(src_path, out_path, width, blur, quality, tint=None, tint_amount=0.
     if im.height > target_h:
         top = (im.height - target_h) // 2
         im = im.crop((0, top, width, top + target_h))
-    # 色调偏移：**不是**为了好看，是为了让 26 个模块各有辨识度——
-    # 游戏里那 5 张洞穴截图（骷髅洞穴 / 矿场 / 精通洞窟 / 矿车 / 火山）平均色几乎一样，
-    # 洗到 0.82 之后色距只剩 1~3，换模块时肉眼完全看不出区别。
-    # 混入少量色调后色距拉到 10 以上，而画面本身仍是真实游戏截图。
-    if tint and tint_amount > 0:
-        layer = Image.new("RGB", im.size, tuple(tint))
-        im = Image.blend(im, layer, tint_amount)
     if blur:
         im = im.filter(ImageFilter.GaussianBlur(blur))
-    im.save(out_path, "JPEG", quality=quality, optimize=True, progressive=True)
-    small = im.resize((1, 1), Image.LANCZOS).getpixel((0, 0))
-    return w0, h0, im.size, small, os.path.getsize(out_path)
+
+    os.makedirs(OUT_DIR, exist_ok=True)
+    out = os.path.join(OUT_DIR, conf["output"])
+    im.save(out, "JPEG", quality=quality, optimize=True, progressive=True)
+    color = im.resize((1, 1), Image.LANCZOS).getpixel((0, 0))
+    return w0, h0, im.size, blur, color, os.path.getsize(out), out
 
 
 def main():
     ap = argparse.ArgumentParser(add_help=True)
-    ap.add_argument("--only", help="只处理指定的模块 id")
-    ap.add_argument("--check", action="store_true", help="只核对产物是否存在")
-    ap.add_argument("--report", action="store_true", help="打印每张的平均色与体积")
+    ap.add_argument("--check", action="store_true")
+    ap.add_argument("--report", action="store_true")
+    ap.add_argument("--blur", type=int, default=None, help="临时试别的虚化档位")
+    ap.add_argument("--scrim", type=float, default=None, help="只用来算对比度，取值同 CSS 的洗白系数")
     args = ap.parse_args()
 
-    cfg = json.load(open(MAP_JSON, encoding="utf-8"))
-    treat = cfg.get("treat") or {}
-    width = int(treat.get("width", 960))
-    blur = int(treat.get("blur", 10))
-    quality = int(treat.get("quality", 45))
-
-    mods = cfg["modules"]
-    if args.only:
-        mods = [m for m in mods if m["id"] == args.only]
-        if not mods:
-            sys.exit("bg-map.json 里没有模块 " + args.only)
+    conf = json.load(open(CONF, encoding="utf-8"))
+    out = os.path.join(OUT_DIR, conf["output"])
 
     if args.check:
-        missing = [m["id"] for m in mods if not os.path.exists(os.path.join(OUT_DIR, m["id"] + ".jpg"))]
-        if missing:
-            print("缺少 %d 张背景：%s" % (len(missing), "、".join(missing)))
+        if not os.path.exists(out):
+            print("缺少背景图：" + out)
             sys.exit(1)
-        total = sum(os.path.getsize(os.path.join(OUT_DIR, m["id"] + ".jpg")) for m in mods)
-        print("背景齐全：%d 张，合计 %.1f KB" % (len(mods), total / 1024))
+        print("背景图就位：%s  %.1f KB" % (conf["output"], os.path.getsize(out) / 1024))
         return
 
-    os.makedirs(OUT_DIR, exist_ok=True)
-    rows, missing_raw = [], []
-    for m in mods:
-        raw = find_raw(m["source"])
-        if not raw:
-            missing_raw.append("%s（源图 %s 不在 .bgraw/）" % (m["id"], m["source"]))
-            continue
-        out = os.path.join(OUT_DIR, m["id"] + ".jpg")
-        w0, h0, (w, h), color, size = make_one(
-            raw, out, width, blur, quality,
-            tint=m.get("tint"), tint_amount=float(m.get("tintAmount", 0) or 0))
-        rows.append((m["id"], m["source"], w0, h0, w, h, color, size))
+    w0, h0, (w, h), blur, color, size, path = build(conf, args.blur)
+    print("源图 %dx%d → 输出 %dx%d（blur %d）" % (w0, h0, w, h, blur))
+    print("平均色 rgb(%d,%d,%d)   体积 %.1f KB" % (color[0], color[1], color[2], size / 1024))
 
-    if missing_raw:
-        print("有 %d 个模块缺源图：" % len(missing_raw))
-        for x in missing_raw:
-            print("   " + x)
-        print("先跑：node scripts/fetch-bg-raw.js")
+    # 可读性：正文压在背景上的对比度。洗白系数必须与 CSS 里的一致（默认取配置值）。
+    scrim = args.scrim if args.scrim is not None else float(conf["treat"].get("scrim", 0.70))
+    SCRIM = (253, 246, 232)
+    bg = tuple(round(SCRIM[i] * scrim + color[i] * (1 - scrim)) for i in range(3))
+    TEXT = (67, 53, 42)   # --text: #43352a
 
-    if rows:
-        if args.report:
-            print("%-14s %-18s %-12s %-10s %s" % ("模块", "源图", "原始", "输出", "平均色 / 体积"))
-            for (mid, srcname, w0, h0, w, h, c, size) in rows:
-                print("%-14s %-18s %-12s %-10s rgb(%3d,%3d,%3d)  %5.1f KB" %
-                      (mid, srcname, "%dx%d" % (w0, h0), "%dx%d" % (w, h), c[0], c[1], c[2], size / 1024))
-        total = sum(r[7] for r in rows)
-        print("生成 %d 张，合计 %.1f KB（平均 %.1f KB/张）" % (len(rows), total / 1024, total / len(rows) / 1024))
-        # 色调撞车检查：**按洗白后的颜色**算，那才是肉眼看到的。
-        # 阈值 4：色距小于 4 时，两个模块的背景在屏幕上基本分不出来。
-        SCRIM = (253, 246, 232)
-        # 洗白系数必须与 css/style.css 里 body::before 的 linear-gradient 保持一致，
-        # 否则这里算的色距不是用户看到的（改了 CSS 记得同步这个数）
-        def washed(c, a=0.70):
-            return tuple(round(SCRIM[i] * a + c[i] * (1 - a)) for i in range(3))
-        def dist(a, b):
-            return sum((a[i] - b[i]) ** 2 for i in range(3)) ** 0.5
-        near = []
-        for i in range(len(rows)):
-            for j in range(i + 1, len(rows)):
-                d = dist(washed(rows[i][6]), washed(rows[j][6]))
-                if d < 4:
-                    near.append("%s vs %s（洗白后色距 %.1f）" % (rows[i][0], rows[j][0], d))
-        if near:
-            print("警告：有 %d 对背景洗白后几乎一样，换模块时看不出区别 —— 给其中一张加 tint：" % len(near))
-            for x in near:
-                print("   " + x)
-        else:
-            print("色调检查通过：26 张背景两两色距都 >= 4（洗白后）")
+    def lum(c):
+        def f(v):
+            v = v / 255.0
+            return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+        r, g, b = (f(x) for x in c)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
-    if missing_raw:
-        sys.exit(1)
+    la, lb = lum(TEXT), lum(bg)
+    ratio = (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+    print("洗白 %.2f 后背景约 rgb(%d,%d,%d)，正文对比度 %.1f:1  %s" %
+          (scrim, bg[0], bg[1], bg[2], ratio, "OK（AA 要求 4.5）" if ratio >= 4.5 else "**低于 AA**"))
+    if args.report:
+        print("产物：" + path)
 
 
 if __name__ == "__main__":
