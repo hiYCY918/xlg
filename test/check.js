@@ -2447,6 +2447,69 @@ console.log("\n=== 3. 渲染冒烟 ===");
     log(false, "找不到没有心事件的 NPC，无法核对空小节的处理");
   }
 
+  /* ---------- 30. 内容区背景（按模块切换的游戏截图） ----------
+   * 背景图是**生成物**（scripts/make-bg.py 按 scripts/bg-map.json 派生），
+   * 生成物会脱离源头独立腐化：改了 id、换了文件名、删了图，页面上只会静默少一层背景，
+   * 不报错、不白屏，肉眼也很难发现。所以这里逐条核对四方：映射表 ↔ 模块 ↔ 图片文件 ↔ CSS 规则。
+   * 没有断言的地方就是没人看的地方（R97）。 */
+  console.log("\n=== 30. 内容区背景（按模块切换的游戏截图） ===");
+
+  const BG_MAP = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "scripts", "bg-map.json"), "utf8"));
+  const bgCss = fs.readFileSync(path.join(__dirname, "..", "css", "style.css"), "utf8");
+  const bgIds = BG_MAP.modules.map((m) => m.id);
+  const bgModIds = (data.MODULES || []).map((m) => m.id);
+
+  /* 30.1 映射表覆盖全部模块，且不多不少 */
+  const bgMissing = bgModIds.filter((id) => bgIds.indexOf(id) < 0);
+  const bgExtra = bgIds.filter((id) => bgModIds.indexOf(id) < 0);
+  log(bgMissing.length === 0 && bgExtra.length === 0,
+    "背景映射表与 " + bgModIds.length + " 个模块一一对应" +
+    (bgMissing.length ? "；缺 " + bgMissing.join("、") : "") +
+    (bgExtra.length ? "；多出 " + bgExtra.join("、") : ""));
+
+  /* 30.2 每张图真实存在且不是空文件 */
+  const bgBadFile = [];
+  let bgBytes = 0;
+  for (const id of bgIds) {
+    const p = path.join(__dirname, "..", "img", "bg", id + ".jpg");
+    if (!fs.existsSync(p)) { bgBadFile.push(id + "（文件不存在）"); continue; }
+    const size = fs.statSync(p).size;
+    bgBytes += size;
+    if (size < 2000) bgBadFile.push(id + "（只有 " + size + " 字节）");
+  }
+  log(bgBadFile.length === 0,
+    bgIds.length + " 张背景图都在，合计 " + Math.round(bgBytes / 1024) + " KB（平均 " +
+    Math.round(bgBytes / bgIds.length / 1024 * 10) / 10 + " KB/张）" +
+    (bgBadFile.length ? "：" + bgBadFile.slice(0, 5).join("；") : ""));
+
+  /* 30.3 CSS 里每条 data-module 规则都指向存在的文件（改名后静默失效就靠这条兜住） */
+  const bgRuleRe = /body\[data-module="([a-z-]+)"\]\s*\{\s*--module-bg:\s*url\("([^"]+)"\);\s*\}/g;
+  const bgRules = new Map();
+  let rm;
+  while ((rm = bgRuleRe.exec(bgCss))) bgRules.set(rm[1], rm[2]);
+  const bgRuleBad = [];
+  for (const id of bgIds) {
+    const url = bgRules.get(id);
+    if (!url) { bgRuleBad.push(id + "（CSS 里没有规则）"); continue; }
+    const rel = url.replace(/^\.\.\//, "");
+    if (!fs.existsSync(path.join(__dirname, "..", rel))) bgRuleBad.push(id + " → " + url + "（文件不存在）");
+  }
+  log(bgRules.size === bgIds.length && bgRuleBad.length === 0,
+    "CSS 里正好 " + bgRules.size + " 条 body[data-module] 规则，且都指向真实存在的图" +
+    (bgRuleBad.length ? "：" + bgRuleBad.slice(0, 5).join("；") : ""));
+
+  /* 30.4 切模块时必须真的把 data-module 挂上去，否则 30.3 那些规则永远不会命中 */
+  const bgMainSrc = fs.readFileSync(path.join(__dirname, "..", "js", "main.js"), "utf8");
+  const bgSwitchFn = /function switchModule\(id\)\s*\{([\s\S]*?)\n\}/.exec(bgMainSrc);
+  log(!!bgSwitchFn && /document\.body\.dataset\.module\s*=\s*id/.test(bgSwitchFn[1]),
+    "switchModule 会设置 body.dataset.module（否则那 26 条规则形同虚设）");
+
+  /* 30.5 背景是 fixed 伪元素：底色必须在 html、body 必须透明，否则伪元素被盖住 */
+  log(/body::before\s*\{[\s\S]*?position:\s*fixed/.test(bgCss),
+    "背景用 position: fixed 的伪元素（不是 background-attachment: fixed，后者滚动慢 4 倍）");
+  log(/html\s*\{[^}]*background:\s*var\(--bg\)/.test(bgCss) && /body\s*\{[^}]*background:\s*transparent/.test(bgCss),
+    "底色在 html、body 透明（否则 z-index:-1 的伪元素被 body 自己的底色盖住）");
+
   /* ---------- 30. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
