@@ -2133,6 +2133,8 @@ console.log("\n=== 3. 渲染冒烟 ===");
       const where = l.name + "/" + s.t;
       if (!s.t || !s.b) briefBad.push(where + " 缺标题或摘要");
       else if (/[<>{}[\]]/.test(s.b)) briefBad.push(where + " 含标记残留");
+      /* 子标题 `===X===` 漏进摘要过一次：章节正文以子标题开头时，按换行切是切不掉的 */
+      else if (/={2,}/.test(s.b) || /^=/.test(s.b)) briefBad.push(where + " 摘要里是子标题");
       else if (/^Category:/.test(s.b)) briefBad.push(where + " 摘要就是分类");
       else if (/^(历史|历史记录|画廊|参考|参考来源|导航|琐事|外部链接|注释)$/.test(s.t)) briefBad.push(where + " 是页面元信息章节");
       else if (s.b.length < 8) briefBad.push(where + " 摘要过短");
