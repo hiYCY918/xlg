@@ -2183,6 +2183,12 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(qTypeBad.length === 0 && Q_TYPES.every((t) => qBy[t] > 0),
     "四种类型齐全且没有第五种类型" + (qTypeBad.length ? "：" + qTypeBad.join("、") : ""));
 
+  /* 27.1b 任务名末尾不该带「？」——中文 Wiki 用它标存疑译名（如「深入地底？」），
+   * 那是页面标记不是任务名。⚠️ 只查「？」：叹号是合法的（「需要多汁的虫子！」）。 */
+  const qNameBad = QS.filter((q) => /[？?]$/.test(q.name)).map((q) => q.name);
+  log(qNameBad.length === 0,
+    "任务名没有带上 Wiki 的存疑标记「？」" + (qNameBad.length ? "：" + qNameBad.join("、") : ""));
+
   /* 27.2 字段完整。奖励这项要留意：**Wiki 表里就有几条奖励格是空的**
    * （养殖动物 / 探索矿场 / 矿场深处 / 深入地底 / 开始铸造），
    * 那不是解析漏了而是源头没有，所以只要求是字符串，并把「—」的条数报出来。 */

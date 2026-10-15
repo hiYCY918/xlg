@@ -410,7 +410,7 @@ const QUESTS = [
     need: "在矿井、秘密森林或农场中消灭10只史莱姆。",
     reward: "允许进入探险家公会",
   },
-  { id: "to-the-bottom", name: "深入地底？", type: "主线", source: "在矿井中到达40层。",
+  { id: "to-the-bottom", name: "深入地底", type: "主线", source: "在矿井中到达40层。",
     objective: "当前依然未发现地底最深处。这到底有多深啊？",
     need: "抵达矿场地底。",
     reward: "—",
