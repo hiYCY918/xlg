@@ -8,6 +8,9 @@ $ErrorActionPreference = "Continue"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $Root
 
+# ⚠️ 2026-10-15 起本脚本的**取数部分已失效**（两个 Wiki 主机都上了 Cloudflare，Invoke-RestMethod 一律 403）。
+# 请改用 scripts/fetch-images.js（走 headless Chrome），它会来解析下面这张映射表。
+# 本文件继续保留，因为**这张表是贴图映射的唯一来源**，改映射仍然改这里。
 # 物品 id -> Wiki 文件名
 $items = @{
   # ---------- 农作物 ----------

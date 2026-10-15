@@ -93,7 +93,8 @@ game-guide/
 │   └── ROADMAP.md    分阶段方案（含预渲染的实测数据与决策）
 ├── scripts/          运维脚本（与站点内容分离）
 │   ├── deploy.bat / deploy.ps1              一键部署
-│   ├── download-images.bat / download-images.ps1   仅下载贴图
+│   ├── download-images.bat / download-images.ps1   **贴图映射表的唯一来源**（取数部分已被 Cloudflare 挡死）
+│   ├── fetch-images.js     按那张映射表补齐缺失贴图（走 headless Chrome，含 R83 尺寸比打印）
 │   ├── gen-static-pages.js  生成 static/ 与 sitemap.xml（`--check` 只校验同步，CI 用）
 │   ├── sync-doc-counts.js   把文档里的计数按 check.js 的真实结果写回（`--apply` 才写入）
 │   └── gen-seo-assets.py    重新生成 favicon / apple-touch-icon / og-cover（需 Pillow，不参与部署）

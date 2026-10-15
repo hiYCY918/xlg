@@ -91,11 +91,18 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
     Write-Host "（未检测到 node，跳过自检）" -ForegroundColor Yellow
 }
 
-# ---------- 6. 下载真实物品贴图（已存在则跳过，失败不阻塞） ----------
-# 该脚本与本脚本同在 scripts/ 目录，故用 $PSScriptRoot 定位
-if (Test-Path (Join-Path $PSScriptRoot "download-images.ps1")) {
-    Write-Host "正在准备真实物品贴图（img/ 文件夹）..." -ForegroundColor Yellow
-    & (Join-Path $PSScriptRoot "download-images.ps1")
+# ---------- 6. 补齐缺失贴图（已存在则跳过，失败不阻塞） ----------
+# 用 Node 版而不是 download-images.ps1：两个 Wiki 主机自 2026-10-15 起都上了 Cloudflare，
+# PowerShell 的 Invoke-RestMethod 一律拿到 403 挑战页，那条路已经走不通了。
+# 映射表仍以 download-images.ps1 的 $items 为唯一来源（Node 版会去解析它）。
+if (Get-Command node -ErrorAction SilentlyContinue) {
+    $fetchImg = Join-Path $PSScriptRoot "fetch-images.js"
+    if (Test-Path $fetchImg) {
+        Write-Host "正在补齐缺失贴图（img/ 文件夹）..." -ForegroundColor Yellow
+        node $fetchImg
+        # 故意不因它失败而中止部署：贴图缺了页面会走兜底图标，不该拦住整站上线
+        if ($LASTEXITCODE -ne 0) { Write-Host "（贴图有失败项，页面会先用兜底图标）" -ForegroundColor Yellow }
+    }
 }
 
 # ---------- 7. 提交未保存的改动 ----------
