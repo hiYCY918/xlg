@@ -1667,12 +1667,22 @@ console.log("\n=== 3. 渲染冒烟 ===");
   const navGap = num(/\.nav \{[\s\S]*?gap: (\d+)px;/, cssSrc);
   const navPadTop = num(/\.nav \{[\s\S]*?padding: (\d+)px \d+px \d+px;/, cssSrc);
   const titleH = num(/\.nav-title \{[\s\S]*?height: (\d+)px;/, cssSrc);
-  const seam = /repeating-linear-gradient\(0deg, transparent 0 (\d+)px, rgba\([^)]*\) (\d+)px (\d+)px\)/.exec(cssSrc);
-  const seamStart = seam ? Number(seam[2]) : null;
-  const seamPeriod = seam ? Number(seam[3]) : null;
+  const seam = /repeating-linear-gradient\((\d+)deg, transparent 0 (\d+)px, rgba\([^)]*\) (\d+)px (\d+)px\)/.exec(cssSrc);
+  const seamAngle = seam ? Number(seam[1]) : null;
+  const seamStart = seam ? Number(seam[3]) : null;
+  const seamPeriod = seam ? Number(seam[4]) : null;
 
   log(itemH !== null && navGap !== null && seamPeriod !== null,
-    "侧栏几何参数可解析（条目高 " + itemH + " / 间距 " + navGap + " / 缝周期 " + seamPeriod + "）");
+    "侧栏几何参数可解析（条目高 " + itemH + " / 间距 " + navGap + " / 缝周期 " + seamPeriod + " / 角度 " + seamAngle + "deg）");
+  /* ⚠️ 角度必须是 180deg（锚在顶边）。
+   * `0deg` 是「朝上」的渐变，起算点在**底边**，于是整条缝的相位取决于 `.nav` 的高度：
+   * 实测 `.nav` 高 838px、838 mod 44 = 2，缝就被推到了条目**内部**
+   * （像素采样：缝落在 mod 44 = 16.5，而条目间隙在 42~44）。
+   * 这个 bug 存活了很久——因为此前只断言了**周期**与**起点**，唯独没断言**角度**，
+   * 而角度恰好是把前两个数字变成废纸的那一项。 */
+  log(seamAngle === 180,
+    "木板缝渐变用 180deg 锚在顶边（当前 " + seamAngle + "deg；0deg 会锚到**底边**，" +
+    "相位随 .nav 高度漂移，缝就落进条目内部了）");
   log(seamPeriod === itemH + navGap,
     "木板缝周期 == 条目高 + 间距（" + seamPeriod + " == " + itemH + " + " + navGap + "）");
   log(seamStart === itemH,
