@@ -290,7 +290,24 @@ html, body {
   flex: 1 1 auto;
   min-width: 0;
 }
-.module { animation: fadeIn 0.22s ease; }
+/* contain: layout —— 把每个模块的布局影响**关在自己的盒子里**。
+ *
+ * 为什么需要：初始化时 `MODULES.forEach(m => m.render())` 会把 **26 个模块全部渲染**，
+ * 页面上同时存在约 17400 个节点 / 1126 张卡片。这本身没问题，但**任何一次布局失效都要按整页算**——
+ * 打开详情弹窗时改了 `body.style.overflow` 并取消隐藏遮罩，就会触发整篇文档重排。
+ * 实测（CDP Performance 指标，打开详情 10 次的累计「布局」耗时）：
+ *     不加        16.5ms
+ *     contain: layout  3.1ms   ← 采用这个
+ *     contain: layout paint  2.9ms
+ * `layout paint` 只多省 0.2ms，却会把溢出内容裁掉、并让本元素成为 fixed 后代的包含块——
+ * 这里没必要冒那个险（站内的 fixed 元素都在模块外：顶栏、侧栏、弹窗遮罩）。
+ *
+ * 安全性核对过：模块内所有 position: absolute 的元素（.mod-icon-fallback / .icon-fallback）
+ * 都已经有 position: relative 的父级，包含块变了也不会移位；页面高度实测不变（8279 → 8279）。 */
+.module {
+  animation: fadeIn 0.22s ease;
+  contain: layout;
+}
 .module[hidden] { display: none; }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
