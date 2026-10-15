@@ -1954,6 +1954,7 @@ const REGISTRY = [
       detailSection("生日", `<p>🎂 ${esc(n.birthday)}</p>`) +
       detailSection("最爱的礼物", `<div class="chip-list">${n.loves.map(giftChip).join("")}</div>` +
         (n.loves.some((g) => NAME_INDEX.has(g)) ? `<p class="muted">带下划线的礼物可点击查看该物品。</p>` : "")) +
+      heartEventSection(n.name) +
       bundleUsesSection(n.name),
   },
   {
@@ -2936,6 +2937,25 @@ function closeModal() {
   document.body.style.overflow = "";
   if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
   lastFocused = null;
+}
+
+/* NPC 的心事件：**数据只有一份**（EVENTS），NPC 详情与事件模块各自从它渲染。
+ * 这不是「同名两处」（R53）——R53 说的是同一件东西被录进两个数组、以后各改一半；
+ * 这里是一个数据源、两个入口，与「收集包 ↔ 物品」「NPC 礼物 ↔ 物品」是同一套双向打通。
+ * 玩家查某个村民时最想看到的就是这段，所以它该出现在 NPC 详情里；
+ * 而「游戏里都有哪些心事件」这个用法仍然由事件模块承担。 */
+function heartEventSection(npcName) {
+  const list = EVENTS.filter((e) => e.type === "心事件" && e.npc === npcName);
+  if (!list.length) return "";
+  list.sort((a, b) => a.hearts - b.hearts);
+  const rows = list.map((e) => `
+      <div class="heart-row" data-goto-module="events" data-goto-id="${esc(e.id)}" role="button" tabindex="0">
+        <span class="heart-lv">${e.hearts} 心${e.group ? "·群体" : ""}${e.after ? "·婚后" : ""}</span>
+        <span class="heart-trigger">${esc(e.trigger || e.desc.slice(0, 44))}</span>
+      </div>`).join("");
+  return detailSection("心事件（" + list.length + "）",
+    `<div class="heart-list">${rows}</div>` +
+    `<p class="muted">点开任一事件可看完整说明与对话选项的好感度变化。</p>`);
 }
 
 /* ============================================================

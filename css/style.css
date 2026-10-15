@@ -804,6 +804,31 @@ html, body {
 .choice-delta.up { color: var(--accent); }
 .choice-delta.down { color: var(--red); }
 
+/* ===== NPC 详情里的心事件列表 =====
+ * 这里只列「几心 + 触发条件」，完整说明与对话选项在事件模块里 —— 一个数据源、两个入口。
+ * 谢恩有 10 条，整段铺开会让 NPC 弹窗长到没法看，所以做成可点的紧凑行。 */
+.heart-list { display: flex; flex-direction: column; gap: 6px; }
+.heart-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 10px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.heart-row:hover { border-color: var(--accent); background: #fff; }
+.heart-lv {
+  flex: 0 0 auto;
+  min-width: 54px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--wood);
+}
+.heart-trigger { flex: 1 1 auto; font-size: 13px; line-height: 1.6; color: var(--text); }
+
 /* 进度条 */
 .bundle-progress { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
 .bundle-bar {

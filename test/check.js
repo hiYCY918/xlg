@@ -2409,6 +2409,34 @@ console.log("\n=== 3. 渲染冒烟 ===");
     log(false, "找不到没有触发条件的事件，无法核对空小节的处理");
   }
 
+  /* 29.6 NPC 详情里也要能看到自己的心事件（**一个数据源、两个入口**）
+   * —— 玩家查某个村民时最想看到的就是这段。这里守的是「两边真的对得上」：
+   *    NPC 详情列出的条数 == EVENTS 里属于该 NPC 的条数，且每行都是可点跳转的。 */
+  const npcWithEvents = [...new Set(EV.filter((e) => e.type === "心事件").map((e) => e.npc))];
+  let npcDetailBad = [];
+  for (const name of npcWithEvents) {
+    const npc = data.NPCS.find((x) => x.name === name);
+    if (!npc) { npcDetailBad.push(name + " 不在 NPCS 里"); continue; }
+    const h = String(data.DETAIL_RENDERERS.npc(npc.id));
+    const want = EV.filter((e) => e.type === "心事件" && e.npc === name).length;
+    const rows = (h.match(/class="heart-row"/g) || []).length;
+    if (!h.includes("心事件（" + want + "）")) npcDetailBad.push(name + " 的标题不是「心事件（" + want + "）」");
+    if (rows !== want) npcDetailBad.push(name + " 渲染出 " + rows + " 行，应为 " + want);
+    if (!/data-goto-module="events"/.test(h)) npcDetailBad.push(name + " 的事件行不带跳转属性");
+  }
+  log(npcDetailBad.length === 0,
+    npcWithEvents.length + " 个有心事件的 NPC，详情里都列出了自己的 " +
+    EV.filter((e) => e.type === "心事件").length + " 条（条数一致且可点跳转）" +
+    (npcDetailBad.length ? "：" + npcDetailBad.slice(0, 5).join("；") : ""));
+  /* 没有心事件的 NPC 不该凭空多出这一节 */
+  const npcNoEvent = data.NPCS.find((x) => npcWithEvents.indexOf(x.name) < 0);
+  if (npcNoEvent) {
+    const h = String(data.DETAIL_RENDERERS.npc(npcNoEvent.id));
+    log(!h.includes("心事件（"), "没有心事件的 NPC 不渲染这一节（" + npcNoEvent.name + "）");
+  } else {
+    log(false, "找不到没有心事件的 NPC，无法核对空小节的处理");
+  }
+
   /* ---------- 30. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
