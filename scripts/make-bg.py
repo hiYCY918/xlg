@@ -122,7 +122,9 @@ def main():
         # 色调撞车检查：**按洗白后的颜色**算，那才是肉眼看到的。
         # 阈值 4：色距小于 4 时，两个模块的背景在屏幕上基本分不出来。
         SCRIM = (253, 246, 232)
-        def washed(c, a=0.82):
+        # 洗白系数必须与 css/style.css 里 body::before 的 linear-gradient 保持一致，
+        # 否则这里算的色距不是用户看到的（改了 CSS 记得同步这个数）
+        def washed(c, a=0.70):
             return tuple(round(SCRIM[i] * a + c[i] * (1 - a)) for i in range(3))
         def dist(a, b):
             return sum((a[i] - b[i]) ** 2 for i in range(3)) ** 0.5

@@ -2504,6 +2504,21 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(!!bgSwitchFn && /document\.body\.dataset\.module\s*=\s*id/.test(bgSwitchFn[1]),
     "switchModule 会设置 body.dataset.module（否则那 26 条规则形同虚设）");
 
+  /* 30.6 洗白系数必须两处一致：CSS 决定用户看到的，make-bg.py 用它算色距。
+   * 只改一处的话，"26 张色距都 >= 4"这句结论就不成立了——检查的是别的数。 */
+  const bgCssScrim = (() => {
+    const m = /linear-gradient\(rgba\(253, 246, 232, (0\.\d+)\), rgba\(253, 246, 232, (0\.\d+)\)\)/.exec(bgCss);
+    return m ? Number(m[1]) : null;
+  })();
+  const bgPyScrim = (() => {
+    const src = fs.readFileSync(path.join(__dirname, "..", "scripts", "make-bg.py"), "utf8");
+    const m = /def washed\(c, a=([0-9.]+)\)/.exec(src);
+    return m ? Number(m[1]) : null;
+  })();
+  log(bgCssScrim !== null && bgCssScrim === bgPyScrim,
+    "洗白系数与生成脚本一致（CSS " + bgCssScrim + " / make-bg.py " + bgPyScrim + "）" +
+    (bgCssScrim !== bgPyScrim ? " —— 不一致的话脚本报的色距不是用户看到的效果" : ""));
+
   /* 30.5 背景是 fixed 伪元素：底色必须在 html、body 必须透明，否则伪元素被盖住 */
   log(/body::before\s*\{[\s\S]*?position:\s*fixed/.test(bgCss),
     "背景用 position: fixed 的伪元素（不是 background-attachment: fixed，后者滚动慢 4 倍）");

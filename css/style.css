@@ -89,8 +89,9 @@ body::before {
     /* 顶部两个氛围渐变（原来在 body 上，随底色一起搬过来） */
     radial-gradient(1000px 500px at 0% 0%, rgba(224, 165, 58, 0.10), transparent 60%),
     radial-gradient(900px 500px at 100% 0%, rgba(95, 158, 63, 0.12), transparent 55%),
-    /* 洗白层，见 ③ */
-    linear-gradient(rgba(253, 246, 232, 0.82), rgba(253, 246, 232, 0.87)),
+    /* 洗白层，见 ③。**这个系数要和 scripts/make-bg.py 里的 SCRIM 保持一致**，
+     * 否则脚本算的色距不是用户看到的（改了这里记得同步那个数）。 */
+    linear-gradient(rgba(253, 246, 232, 0.70), rgba(253, 246, 232, 0.74)),
     /* 当前模块的游戏截图；没选模块时是 none，只剩底色 */
     var(--module-bg, none) center / cover no-repeat,
     /* 极淡的棋盘格，呼应游戏界面的网格底纹 */
