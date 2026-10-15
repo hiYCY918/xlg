@@ -147,7 +147,7 @@ const src =
   "TREES,TREE_FILTERS,seedChip,ensureNavVisible," +
   "progressSnapshot,progressToJson,normalizeImported,mergeProgress,applyProgressText," +
   "downloadProgressFile,copyProgressToClipboard,progressActions,PROGRESS_VERSION,MUSEUM_KEY," +
-  "SKILLS};";
+  "SKILLS,LOCATIONS,COOKING};";
 
 let data;
 try {
@@ -161,6 +161,17 @@ try {
 /* 模块清单由注册表驱动：新增模块时下面的计数、渲染、详情断言自动覆盖，
  * 不再需要在这里补一行（这是 #30 那类「审计随数据增长而静默失守」的机制化修复）。 */
 const mods = data.MODULES;
+
+/* 收口断言：每个模块的数据数组都必须真的从上面那个 return 清单里**露出来**。
+ * 为什么需要：main.js 与 data.js 在同一个函数作用域里，所以 `MODULE_DATA = {…, LOCATIONS}`
+ * 在页面里完全正常，而本文件是靠末尾那句 `return {…}` 显式枚举来取数的——
+ * **漏加一个名字，页面照跑、这里却拿到 undefined**，于是新模块的专属断言全部对空数组通过。
+ * 这个坑已经踩了三次（ALL_NAMES、SKILLS、LOCATIONS），所以把它变成一条断言。 */
+const notExposed = data.REGISTRY.filter((s) => !Array.isArray(data[s.dataRef])).map((s) => s.id + "(" + s.dataRef + ")");
+log(notExposed.length === 0,
+  "自检取数清单覆盖全部 " + data.REGISTRY.length + " 个模块的数据数组" +
+  (notExposed.length ? "：下面这些模块的数据没被 return 出来，它们的专属断言会对空数组通过 —— " + notExposed.join("、") : ""));
+
 const secOf = (id) => data.REGISTRY.find((s) => s.id === id);
 const arrays = {};
 const groups = mods.map((m) => {
@@ -2076,7 +2087,84 @@ console.log("\n=== 3. 渲染冒烟 ===");
     log(false, "找不到「耕种」技能，无法核对分支分组");
   }
 
-  /* ---------- 26. 文档自一致性（R60 的执行手段） ----------
+  /* ---------- 26. 地点（散文型模块） ----------
+   * 这个模块的数据不是字段而是**散文**（31 页里只有 10 页有信息框），
+   * 所以这一节守的是「散文被正确清洗」与「居民没有被误读」，而不是字段完整性。 */
+  console.log("\n=== 26. 地点（散文型模块） ===");
+
+  const LOC = data.LOCATIONS || [];
+  log(LOC.length === 31, "地点 31 个（" + LOC.map((l) => l.name).join(" / ") + "）");
+
+  /* 26.1 字段完整、首段非空——首段就是这个模块的主要内容，空了等于卡片没有信息 */
+  const locBad = [];
+  for (const l of LOC) {
+    if (!l.id || !l.name || !l.icon) locBad.push((l.name || "?") + " 缺 id/name/icon");
+    if (!l.intro || l.intro.length < 10) locBad.push(l.name + " 首段过短（" + (l.intro || "").length + " 字）");
+    if (l.occupants && !l.occupants.length) locBad.push(l.name + " 是空的 occupants 数组");
+  }
+  log(locBad.length === 0, "每条都有 id/name/icon 与非空首段（至少 10 字）" + (locBad.length ? "：" + locBad.join("；") : ""));
+
+  /* 26.2 常驻居民必须是**人/商户**，不能是任务
+   * —— 这条守的是真踩过的坑：正文里的 {{NPC|Elliott|最爱的礼物}} 意为「某某最爱的礼物」，
+   *    扫全文抓 {{NPC}} 曾把任务「巫师的委托」（站内 id 恰好是 wizard）当成山洞的居民。 */
+  const OCC_GAP = { "老坎诺利大师": "秘密森林里的一尊雕像，Wiki 信息框把它列为 occupants，但站内未收录" };
+  const occBad = [];
+  const occSeen = [];
+  for (const l of LOC) {
+    for (const n of l.occupants || []) {
+      occSeen.push(l.name + "/" + n);
+      const hit = data.NAME_INDEX.get(n);
+      if (!hit) { if (!OCC_GAP[n]) occBad.push(l.name + "/" + n + " 站内没有且未登记"); }
+      else if (hit.module === "quests") occBad.push(l.name + "/" + n + " 是任务，不是居民");
+    }
+  }
+  log(occBad.length === 0,
+    "全部 " + occSeen.length + " 个常驻居民都有落点且不是任务（" + Object.keys(OCC_GAP).length + " 个已登记缺口）" +
+    (occBad.length ? "：" + occBad.join("；") : ""));
+
+  /* 26.3 章节摘要必须是干净的散文
+   * —— 同样踩过：<section begin=… />、<gallery>、Category:地点 都曾漏进摘要，
+   *    只剩表格的章节还会把碎片（如「附近地点」）当成一句话。 */
+  const briefBad = [];
+  let briefTotal = 0;
+  for (const l of LOC) {
+    for (const s of l.sections || []) {
+      briefTotal++;
+      const where = l.name + "/" + s.t;
+      if (!s.t || !s.b) briefBad.push(where + " 缺标题或摘要");
+      else if (/[<>{}[\]]/.test(s.b)) briefBad.push(where + " 含标记残留");
+      else if (/^Category:/.test(s.b)) briefBad.push(where + " 摘要就是分类");
+      else if (/^(历史|历史记录|画廊|参考|参考来源|导航|琐事|外部链接|注释)$/.test(s.t)) briefBad.push(where + " 是页面元信息章节");
+      else if (s.b.length < 8) briefBad.push(where + " 摘要过短");
+      else if (s.b.length > 90) briefBad.push(where + " 摘要过长（" + s.b.length + "）");
+    }
+  }
+  log(briefTotal > 0 && briefBad.length === 0,
+    "全部 " + briefTotal + " 条章节摘要都是干净散文（8~90 字、无标记、非元信息章节）" +
+    (briefBad.length ? "：" + briefBad.slice(0, 5).join("；") : ""));
+
+  /* 26.4 详情能渲染，居民是可点 chip，没居民的不渲染空小节 */
+  let locDetail = "";
+  try { locDetail = String(data.DETAIL_RENDERERS.locations(LOC[0] && LOC[0].id)); } catch (e) { locDetail = "ERR:" + e.message; }
+  log(locDetail.indexOf("ERR:") !== 0 && locDetail.includes("简介"),
+    "地点详情渲染出简介" + (locDetail.indexOf("ERR:") === 0 ? "：" + locDetail : ""));
+  const gj = LOC.find((l) => l.name === "姜岛");
+  if (gj) {
+    const h = String(data.DETAIL_RENDERERS.locations(gj.id));
+    log(h.includes("常驻居民") && h.includes("chip-link"),
+      "有居民的地点把居民渲染成可跳转 chip（姜岛：" + gj.occupants.join("、") + "）");
+  } else {
+    log(false, "找不到「姜岛」，无法核对居民 chip");
+  }
+  const noOcc = LOC.filter((l) => !l.occupants || !l.occupants.length)[0];
+  if (noOcc) {
+    const h = String(data.DETAIL_RENDERERS.locations(noOcc.id));
+    log(!h.includes("常驻居民"), "没有居民的地点不渲染空的「常驻居民」小节（" + noOcc.name + "）");
+  } else {
+    log(false, "31 个地点全都有居民，无法核对空小节的处理");
+  }
+
+  /* ---------- 27. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
    * （第三十轮一次查出 8 处：模块列表里「树木」重复、工匠制品 26→30 项、11→15 类机器、
@@ -2085,7 +2173,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
    *
    * 只查**能机器核对**的那几类，且正则一律锚定「描述现状」的句式——
    * README 里有历史叙述（如「模块数只有 17 个时就已需 ~1700px」），全文扫数字必然误报（R90）。 */
-  console.log("\n=== 26. 文档自一致性（R60） ===");
+  console.log("\n=== 27. 文档自一致性（R60） ===");
 
   const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
   const readmeLines = readme.split("\n");

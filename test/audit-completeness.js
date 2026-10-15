@@ -172,10 +172,9 @@ const WATCH_CATS = [
   ["帽子", "整块未覆盖"],
   ["成就", "整块未覆盖"],
   ["秘密", "整块未覆盖"],
-  ["地点", "部分覆盖（地名与区域）"],
-  /* 2026-10-15 移出清单：肥料 / 鱼饵 / 技能 都已收干净
+  /* 2026-10-15 移出清单：肥料 / 鱼饵 / 技能 / 地点 都已收干净
    * ——「针对性鱼饵」补进工匠制品；肥料那 11 种一直在「打造」里（只剩汇总页）；
-   * 技能已建成独立模块（5 个技能，中文名与审计口径对齐，英文标题页登记为同页别名）。
+   * 技能建成独立模块（5 个技能，英文标题页登记为同页别名）；地点建成独立模块（缺口 0/69）。
    * 清单里留着已覆盖的分类，会让报告永远挂着一条不存在的问题。 */
 ];
 
@@ -189,11 +188,40 @@ const SYSTEMS = [];
    * 却年年被报成「整块未覆盖」。待补总数因此被灌水（修正后见输出）。
    * 判据：往 REGISTRY 里加了模块，这里和下面的 UNIVERSE 都要同步——否则审计会**安静地多报**。
    * 2026-10-15 第二次踩：新加的 SKILLS 忘了加进来，「技能」当场被报成 10 条缺失
-   * （其实站内已经有耕种/采矿/采集/钓鱼/战斗了）。 */
-  const data = new Function(
-    fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS,RINGS,ARTISAN,CRAFTING,COOKING,ARTIFACTS,SKILLS};"
-  )();
+   * （其实站内已经有耕种/采矿/采集/钓鱼/战斗了）。
+   * 2026-10-15 第三次踩：LOCATIONS 又忘了。所以下面加了一条**静态收口断言**：
+   * 直接把 data.js 里所有顶层 `const X = [` 抠出来，与这张清单比对——漏一个就报错，
+   * 不指望人记得同步两处。 */
+  /* 要暴露给审计的模块数组。**新增模块必须把数组名加进来**，否则该模块的条目会被报成
+   * 「Wiki 有、站内没有」，也就是多报缺口（这个坑 2026-10-15 踩了三次：CRAFTING/COOKING、
+   * SKILLS、LOCATIONS）。下面紧跟一条静态断言，漏了直接报错退出，不指望人记得。 */
+  const EXPOSED = ["CROPS", "COLLECTIBLES", "FISH", "MINERALS", "MONSTERS", "QUESTS", "NPCS",
+    "FESTIVALS", "EVENTS", "SEEDS", "FRUIT_TREES", "TREES", "ANIMALS", "ANIMAL_PRODUCTS", "TOOLS",
+    "BUILDINGS", "WEAPONS", "RINGS", "ARTISAN", "CRAFTING", "COOKING", "ARTIFACTS", "SKILLS", "LOCATIONS"];
+  const DATA_SRC = fs.readFileSync(path.join(root, "js/data.js"), "utf8");
+  /* 故意不暴露的 data.js 顶层数组，**必须写明理由**：
+   * 有了这张表，新加一个数组时只有两条路——要么进 EXPOSED，要么在这里写清为什么不进，
+   * 不会出现「默默漏掉」这第三种情况（那正是让审计多报缺口的元凶）。 */
+  const NOT_EXPOSED = {
+    SEASONS: "是季节常量表，不是条目数组",
+    BUNDLES: "收集包：条目本身就是清单，Wiki 侧没有可比的分类全集",
+    BUNDLE_ROOMS: "同上",
+  };
+  const DECLARED = [...DATA_SRC.matchAll(/^const ([A-Z_][A-Z0-9_]*) = \[/gm)].map((m) => m[1]);
+  const MISSING = DECLARED.filter((n) => EXPOSED.indexOf(n) < 0 && !NOT_EXPOSED[n]);
+  if (MISSING.length) {
+    console.log("[FAIL] 审计的取数清单漏了 data.js 里的数组：" + MISSING.join("、"));
+    console.log("       这些模块的条目会被报成「Wiki 有、站内没有」，也就是多报缺口。");
+    console.log("       修法：把缺的名字补进 " + path.basename(__filename) +
+      " 的 EXPOSED 数组；若确实不该暴露，写进 NOT_EXPOSED 并说明理由。");
+    process.exit(1);
+  }
+  const GHOST = EXPOSED.filter((n) => DECLARED.indexOf(n) < 0);
+  if (GHOST.length) {
+    console.log("[FAIL] 审计的 EXPOSED 里有 data.js 并不存在的数组名：" + GHOST.join("、"));
+    process.exit(1);
+  }
+  const data = new Function(DATA_SRC + "; return {" + EXPOSED.join(",") + "};")();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */
   const ALL_NAMES = new Set();

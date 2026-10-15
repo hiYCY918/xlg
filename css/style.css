@@ -741,6 +741,20 @@ html, body {
   font-weight: 700;
 }
 
+/* ===== 地点：章节摘要 =====
+ * 地点模块的详情是「一段简介 + 若干方面」，每个方面只有**首句摘要**——
+ * 所以用小标题 + 短段落的紧凑排布，而不是逐条卡片（31 个地点里最多的有 9 个方面，
+ * 卡片式会拉得很长，扫读反而慢）。 */
+.loc-sections { display: flex; flex-direction: column; gap: 10px; }
+.loc-section {
+  padding: 8px 10px;
+  background: var(--card);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+.loc-section h5 { margin: 0 0 3px; font-size: 13px; color: var(--wood); }
+.loc-section p { margin: 0; font-size: 13px; line-height: 1.65; color: var(--text); }
+
 /* 进度条 */
 .bundle-progress { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
 .bundle-bar {

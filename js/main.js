@@ -1739,6 +1739,30 @@ function renderSkills() {
   body.appendChild(grid);
 }
 
+/* ---- 地点（区域与场景） ----
+ * 31 个区域，形态比别的模块杂得多：只有 10 页有 infobox，21 页是纯散文。
+ * 因此**不按字段渲染，按散文渲染**：首段当简介，章节首句当「相关方面」。
+ * emoji 呈现（与任务/节日/事件/收集包同类）：那 10 张 infobox 图都是地图截图，
+ * 塞进 48px 的格子必然糊成一团，不如用 emoji。 */
+function renderLocations() {
+  const body = $("#body-locations");
+  body.innerHTML = "";
+  const total = updateModuleCount(SECTION.locations);
+  setShown("locations", LOCATIONS.length, total);
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = LOCATIONS.map((l) => `
+      <div ${cardAttrs(l.id)}>
+        ${emojiIcon(l.icon)}
+        <h3>${esc(l.name)}</h3>
+        <p class="desc">${esc(l.intro)}</p>
+        <div class="foot"><span class="muted">${
+          (l.occupants && l.occupants.length ? "常驻 " + l.occupants.length + " 人 · " : "") +
+          ((l.sections || []).length ? (l.sections || []).length + " 个方面" : "无子章节")}</span></div>
+      </div>`).join("") || emptyState("暂无地点数据");
+  body.appendChild(grid);
+}
+
 /* ============================================================
  * 模块注册表（唯一事实来源）
  * ------------------------------------------------------------
@@ -2273,13 +2297,36 @@ const REGISTRY = [
             ${s.professions.filter((p) => p.tier === 10 && p.branch === b.name).map(skillProfBlock).join("")}
           </div>`).join("")),
   },
+  {
+    id: "locations", stateKey: [], sprite: "warp-totem-island", icon: "🗺️", label: "地点",
+    sub: "各区域的位置、解锁方式、常驻居民与可做的事", data: "LOCATIONS", render: renderLocations,
+    /* 首段与章节摘要都进搜索索引：玩家常按「怎么去下水道」「矿车」这类**用途**找 */
+    indexExtra: (l) => [l.intro]
+      .concat(l.occupants || [])
+      .concat((l.sections || []).map((s) => s.t + " " + s.b)),
+    detail: (l) => detailHead(emojiIcon(l.icon), l.name,
+      (l.occupants && l.occupants.length ? "常驻 " + l.occupants.join("、") + " · " : "") +
+      ((l.sections || []).length + " 个方面")) +
+      detailSection("简介", `<p>${esc(l.intro)}</p>`) +
+      (l.occupants && l.occupants.length
+        ? detailSection("常驻居民", `<div class="chip-list">${l.occupants.map((n) => nameChip(n)).join("")}</div>`)
+        : "") +
+      ((l.sections || []).length
+        ? detailSection("相关方面",
+          `<div class="loc-sections">${l.sections.map((s) => `
+            <div class="loc-section">
+              <h5>${esc(s.t)}</h5>
+              <p>${esc(s.b)}</p>
+            </div>`).join("")}</div>`)
+        : ""),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
   BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES, ANIMALS,
-  ANIMAL_PRODUCTS, TOOLS, BUILDINGS, WEAPONS, RINGS, SKILLS,
+  ANIMAL_PRODUCTS, TOOLS, BUILDINGS, WEAPONS, RINGS, SKILLS, LOCATIONS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
