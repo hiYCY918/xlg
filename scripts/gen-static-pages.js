@@ -100,6 +100,50 @@ const stripTags = (html) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").t
  * 沙丁鱼的描述正好在第 110 个码点处切到了 emoji）。 */
 const clip = (s, n) => (Array.from(String(s)).slice(0, n).join(""));
 
+/* chip 的 <span> → <a>。**不能再用 `([^<]*)` 抓 chip 内容**：
+ * 卡片上的行内标签图标（labelIcon 产出的 <span class="label-icon"><img …></span>）
+ * 会在 chip **里面**再嵌一层 span，于是「chip 内容里不含 <」这个前提不成立，
+ * 整条 chip 匹配不上、data-goto-* 原样留在静态页里（实测 72 个页面全中，被静态页断言拦下）。
+ * 改成**数括号**找配对的 </span>——与 R91 是同一类问题：嵌套结构不能用字符类或非贪婪正则。
+ * 只认「以 <span 开头」这一种嵌套；chip 里实际也就只有图标这一种。 */
+const CHIP_OPEN = '<span class="chip chip-link"';
+function chipsToLinks(html) {
+  let out = "", i = 0;
+  for (;;) {
+    const start = html.indexOf(CHIP_OPEN, i);
+    if (start < 0) { out += html.slice(i); return out; }
+    out += html.slice(i, start);
+    let depth = 0, j = start, end = -1;
+    while (j < html.length) {
+      const nextOpen = html.indexOf("<span", j);
+      const nextClose = html.indexOf("</span>", j);
+      if (nextClose < 0) break;
+      if (nextOpen >= 0 && nextOpen < nextClose) { depth++; j = nextOpen + 5; }
+      else {
+        depth--;
+        j = nextClose + 7;
+        if (depth === 0) { end = j; break; }
+      }
+    }
+    if (end < 0) { out += html.slice(start); return out; }   /* 没配平就不动它，交给断言报红 */
+    const seg = html.slice(start, end);
+    const gt = seg.indexOf(">");
+    const attrs = seg.slice(CHIP_OPEN.length, gt);
+    const text = seg.slice(gt + 1, seg.length - "</span>".length);
+    const mod = /data-goto-module="([^"]*)"/.exec(attrs);
+    const id = /data-goto-id="([^"]*)"/.exec(attrs);
+    const title = /title="([^"]*)"/.exec(attrs);
+    if (!mod || !id) { out += seg; i = end; continue; }
+    const t = title ? ` title="${title[1]}"` : "";
+    /* 目标页只在已生成的模块里存在；否则回落到完整攻略站的深链接（仍是可用链接，不是死链） */
+    const target = generated.has(mod[1] + "/" + id[1])
+      ? `../../${mod[1]}/${id[1]}.html`
+      : `../../index.html#${mod[1]}/${id[1]}`;
+    out += `<a class="chip chip-link" href="${target}"${t}>${text}</a>`;
+    i = end;
+  }
+}
+
 /* 详情片段 → 静态页正文：修正相对路径 + 把 JS chip 换成真链接。
  * 这是整件事的关键一步：不转的话爬虫在页面里找不到任何可跟随的链接。 */
 function toStaticBody(frag, moduleId, itemId) {
@@ -107,19 +151,9 @@ function toStaticBody(frag, moduleId, itemId) {
   /* 1) 图片/资源改成本页相对根目录的路径（页面在 static/<模块>/ 下，退两级） */
   html = html.replace(/(src|href)="(?!https?:|\/\/|#|\.\.\/)([^"]+)"/g, (m, attr, url) => `${attr}="../../${url}"`);
   /* 2) chip → <a>。渲染层产出的是 <span class="chip chip-link" data-goto-module data-goto-id role tabindex title>，
-   *    换成 a 之后样式不变（.chip-link 本就是链接外观），但爬虫能跟。 */
-  html = html.replace(/<span class="chip chip-link"([^>]*)>([^<]*)<\/span>/g, (m, attrs, text) => {
-    const mod = /data-goto-module="([^"]*)"/.exec(attrs);
-    const id = /data-goto-id="([^"]*)"/.exec(attrs);
-    const title = /title="([^"]*)"/.exec(attrs);
-    if (!mod || !id) return m;
-    const t = title ? ` title="${title[1]}"` : "";
-    /* 目标页只在已生成的模块里存在；否则回落到完整攻略站的深链接（仍是可用链接，不是死链） */
-    const target = generated.has(mod[1] + "/" + id[1])
-      ? `../../${mod[1]}/${id[1]}.html`
-      : `../../index.html#${mod[1]}/${id[1]}`;
-    return `<a class="chip chip-link" href="${target}"${t}>${text}</a>`;
-  });
+   *    换成 a 之后样式不变（.chip-link 本就是链接外观），但爬虫能跟。
+   *    ⚠️ chip 里可能嵌着行内标签图标，所以要用配平扫描而不是正则 —— 见 chipsToLinks 的注释。 */
+  html = chipsToLinks(html);
   /* 3) 详情片段自带 role/tabindex 等交互语义，静态页里没有意义，留着反而误导读屏 */
   html = html.replace(/\s(role="button"|tabindex="\d+")/g, "");
   return html;
