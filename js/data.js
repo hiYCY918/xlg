@@ -1645,6 +1645,77 @@ const LOCATIONS = [
   },
 ];
 
+/* ---------- 成就 ----------
+ * 来源：中文 Wiki「成就」页的两张表，2026-10-15。
+ *   表 1（50 行）给出 成就名 / 描述 / 平台图标 / 解锁物品；
+ *   表 2（50 行）给出「错过了怎么补」，合并进同一条的 missed 字段。
+ * 图标用**平台图标**（每成就一张插图，64×64 或 128×128 → 统一转 PNG 并按整数倍落到 64 格）；
+ *   而不用「游戏内图标」——那个只有 12 种星星徽章、多条共用，且**有 10 条在 Wiki 上本来就是空的**。
+ * id 取平台图标的文件名（Achievement Greenhorn.jpg → greenhorn）；与站内已有 id 撞车的加后缀，
+ *   实测 3 条：legend（有条鱼叫 legend）/ gourmet-chef / danger-in-the-deep。
+ * unlock 是解锁的奖励物品（多为帽子）。**帽子模块本站没做**，所以它们是纯文本，不是可跳转 chip。 */
+/* ---------- 成就 ----------
+ * 来源：中文 Wiki「成就」页的两张表，2026-10-15。
+ *   表 1（50 行）给出 成就名 / 描述 / 平台图标 / 解锁物品；
+ *   表 2（50 行）给出「错过了怎么补」，合并进同一条的 missed 字段。
+ * 图标用**平台图标**（每成就一张插图，64×64 或 128×128 → 统一转 PNG 并按整数倍落到 64 格）；
+ *   而不用「游戏内图标」——那个只有 12 种星星徽章、多条共用，且**有 10 条在 Wiki 上本来就是空的**。
+ * id 取平台图标的文件名（Achievement Greenhorn.jpg → greenhorn）；与站内已有 id 撞车的加后缀，
+ *   实测 3 条：legend（有条鱼叫 legend）/ gourmet-chef / danger-in-the-deep。
+ * unlock 是解锁的奖励物品（多为帽子）。**帽子模块本站没做**，所以它们是纯文本，不是可跳转 chip。 */
+const ACHIEVEMENTS = [
+  { id: "greenhorn", name: "新手", desc: "赚取15,000 金", unlock: "老伙计帽", missed: "赚取任意数量的金币。" },
+  { id: "cowpoke", name: "牛仔", desc: "赚取50,000 金", unlock: "幸运蝴蝶结", missed: "赚取任意数量的金币。" },
+  { id: "homesteader", name: "农场主", desc: "赚取250,000 金", unlock: "凉帽", missed: "赚取任意数量的金币。" },
+  { id: "millionaire", name: "百万富翁", desc: "赚取1,000,000 金", unlock: "圆顶礼帽", missed: "赚取任意数量的金币。" },
+  { id: "legend-achievement", name: "千万富翁", desc: "赚取10,000,000 金", hidden: true, unlock: "墨西哥帽", missed: "赚取任意数量的金币。" },
+  { id: "a-complete-collection", name: "全套收集", desc: "完成博物馆的收集。", unlock: "牛仔帽", missed: "向博物馆捐赠一个新的物品。" },
+  { id: "a-new-friend", name: "新朋友", desc: "与某人达到了5颗心的等级。", unlock: "蝴蝶结", missed: "改变与 NPC 好感度（例如，使用弹弓射击 NPC）。" },
+  { id: "best-friends", name: "最好的朋友", desc: "与某人达到了10颗心的等级。", unlock: "老鼠耳朵", missed: "改变与 NPC 好感度（例如，使用弹弓射击 NPC）。" },
+  { id: "the-beloved-farmer", name: "深受喜爱的农夫", desc: "与8个人达到了10颗心的等级。", unlock: "猫耳", missed: "改变与 NPC 好感度（例如，使用弹弓射击 NPC）。" },
+  { id: "cliques", name: "拉帮结派", desc: "与4个人达到了5颗心的等级。", unlock: "三重冕", missed: "改变与 NPC 好感度（例如，使用弹弓射击 NPC）。" },
+  { id: "networking", name: "网络交友", desc: "与10个人达到了5颗心的等级。", unlock: "圣诞帽", missed: "改变与 NPC 好感度（例如，使用弹弓射击 NPC）。" },
+  { id: "popular", name: "万人迷", desc: "与20个人达到了5颗心的等级。", unlock: "护耳", missed: "改变与 NPC 好感度（例如，使用弹弓射击 NPC）。" },
+  { id: "cook", name: "厨子", desc: "烹饪10道不同的料理。", unlock: "精美蝴蝶结", missed: "烹饪一个物品。" },
+  { id: "sous-chef", name: "副主厨师", desc: "烹饪25道不同的料理。", unlock: "紫红小帽", missed: "烹饪一个物品。" },
+  { id: "gourmet-chef", name: "美食大厨", desc: "烹饪每种配方。", unlock: "射手帽、厨师帽", missed: "烹饪一个物品。" },
+  { id: "moving-up", name: "节节高升", desc: "升级你的房屋。", unlock: "热带风小发卡" },
+  { id: "living-large", name: "富裕生活", desc: "将房屋升级至最大号。（第2次升级，不含地窖）", unlock: "猎人帽" },
+  { id: "diy", name: "自己动手", desc: "制作15个不同的物品。", unlock: "雏菊发卡", missed: "打造一个物品。" },
+  { id: "artisan", name: "工匠", desc: "制作30个不同的物品。", unlock: "司机帽", missed: "打造一个物品。" },
+  { id: "master-craft", name: "制造大师", desc: "制作每种物品。", unlock: "土地神帽", missed: "打造一个物品。" },
+  { id: "fisherman", name: "渔夫", desc: "抓住10种不同的鱼。", unlock: "防雨帽", missed: "钓上一条野生鱼。" },
+  { id: "ol-mariner", name: "老海员", desc: "抓住24种不同的鱼。", unlock: "大檐帽", missed: "钓上一条野生鱼。" },
+  { id: "master-angler", name: "垂钓大师", desc: "抓住每一种不同的鱼。", unlock: "眼罩", missed: "钓上一条野生鱼。" },
+  { id: "mother-catch", name: "捕鱼大师", desc: "抓住100条鱼。", unlock: "西瓜发卡", missed: "钓上一条野生鱼。" },
+  { id: "treasure-trove", name: "无主宝藏", desc: "向博物馆捐赠40种不同的物品。", unlock: "蓝色软帽", missed: "向博物馆捐赠一个新的物品。" },
+  { id: "gofer", name: "听差", desc: "完成10个“需要帮助”任务。", unlock: "波尔卡蝴蝶结", missed: "完成一个任务或特别任务。" },
+  { id: "a-big-help", name: "帮了大忙", desc: "完成40个“需要帮助”任务。", unlock: "小鸡面具", missed: "完成一个任务或特别任务。" },
+  { id: "polyculture", name: "混合栽培", desc: "运送 15 份每种农作物。（注）", unlock: "专业牛仔帽", missed: "出售一件物品；成就会在每天过夜结算时被重新检查。" },
+  { id: "monoculture", name: "单一栽培", desc: "运送 300 份一种农作物。（注）", unlock: "牛仔女郎帽", missed: "出售一件物品；成就会在每天过夜结算时被重新检查。" },
+  { id: "full-shipment", name: "全部货物", desc: "运送每一种物品。", unlock: "哥布林面具", missed: "出售一件物品；成就会在每天过夜结算时被重新检查。" },
+  { id: "prarie-king", name: "草原之王", desc: "通关“草原王者大冒险”。", unlock: "草原之王街机系统", missed: "启动草原王者大冒险。" },
+  { id: "the-bottom", name: "底部", desc: "到达矿井的最底层。", unlock: "头骨钥匙", missed: "前往矿井 120 层。" },
+  { id: "local-legend", name: "当地传奇", desc: "重建鹈鹕镇的社区中心。", unlock: "星露谷英雄奖杯", missed: "进入社区中心。" },
+  { id: "joja-co-member-of-the-year", name: "Joja公司年度会员", desc: "成为Joja公司的会员并购买所有社区发展福利。", unlock: "汽水机", missed: "进入Joja超市。" },
+  { id: "mystery-of-the-stardrops", name: "星之果实的神秘", desc: "找到所有星之果实。", missed: "前往精通山洞。" },
+  { id: "full-house", name: "浪漫满屋", desc: "结婚并养育2个孩子。", missed: "亲吻配偶。" },
+  { id: "singular-talent", name: "非凡天赋", desc: "任意一种技能达到10级。", missed: "前往精通山洞。" },
+  { id: "master-of-the-five-ways", name: "5种技能大师", desc: "每种技能都达到10级。", missed: "前往精通山洞。" },
+  { id: "protector-of-the-valley", name: "城镇守护者", desc: "完成探险家公会猎人会长的全部任务。", missed: "击杀任意怪物。" },
+  { id: "fectors-challenge", name: "因子挑战", desc: "一命通关“草原王者大冒险”", hidden: true, missed: "启动草原王者大冒险。" },
+  { id: "a-distant-shore", name: "遥远的海岸", desc: "到达姜岛。", unlock: "纸帽子", missed: "前往姜岛码头。" },
+  { id: "well-read", name: "博览群书", desc: "阅读每一本书。", unlock: "报童帽", missed: "读一本书。" },
+  { id: "two-thumbs-up", name: "意犹未尽", desc: "看一场 电影。", unlock: "小丑帽", missed: "看场电影。" },
+  { id: "blue-ribbon", name: "冠军", desc: "在星露谷展览会中获得第一名。", unlock: "蓝丝带", missed: "在星露谷展览会上再次夺冠。" },
+  { id: "an-unforgettable-soup", name: "难忘的汤", desc: "在夏威夷宴会中放置最好的食材。", unlock: "州长帽", missed: "再次让州长高兴。" },
+  { id: "good-neighbors", name: "热心邻居", desc: "帮助你森林中的邻居组建它的家庭。", unlock: "白色蝴蝶结", missed: "在浣熊一家有至少 8 个孩子后，前往煤矿森林。" },
+  { id: "danger-in-the-deep-achievement", name: "深处的危险", desc: "到达危险矿井的最底部。", unlock: "太空头盔", missed: "挑战之神庙启动后前往矿井 120 层。" },
+  { id: "infinite-power", name: "无限力量", desc: "获取无限之刃。", unlock: "无限之冠", missed: "锻造一把新的无限之刃。" },
+  { id: "perfection", name: "完美", desc: "到达顶峰。", unlock: "祝尼魔帽子", missed: "前往顶峰。" },
+];
+
+
 
 
 /* ---------- 古物（博物馆收藏） ----------

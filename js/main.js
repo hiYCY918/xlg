@@ -1766,6 +1766,27 @@ function renderLocations() {
   body.appendChild(grid);
 }
 
+/* ---- 成就 ----
+ * 49 个成就，每个一张**平台图标**（Steam 插图，64×64，1:1 落在 .icon-md 图标位）。
+ * 不用「游戏内图标」的原因：那个只有 12 种星星徽章、多条共用，而且有 10 条在 Wiki 上本来就是空的。
+ * unlock 是解锁的奖励物品（多为帽子），**帽子模块本站没做**，所以它是纯文本而不是可跳转 chip。 */
+function renderAchievements() {
+  const body = $("#body-achievements");
+  body.innerHTML = "";
+  const total = updateModuleCount(SECTION.achievements);
+  setShown("achievements", ACHIEVEMENTS.length, total);
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = ACHIEVEMENTS.map((a) => `
+      <div ${cardAttrs(a.id)}>
+        ${itemIconHtml(a.id, a.name, "🏆", "icon-md")}
+        <h3>${esc(a.name)}${a.hidden ? ' <span class="badge gold">隐藏</span>' : ""}</h3>
+        <p class="desc">${esc(a.desc)}</p>
+        <div class="foot"><span class="muted">${a.unlock ? "解锁 " + esc(a.unlock) : "无解锁奖励"}</span></div>
+      </div>`).join("") || emptyState("暂无成就数据");
+  body.appendChild(grid);
+}
+
 /* ============================================================
  * 模块注册表（唯一事实来源）
  * ------------------------------------------------------------
@@ -2342,13 +2363,25 @@ const REGISTRY = [
             </div>`).join("")}</div>`)
         : ""),
   },
+  {
+    id: "achievements", stateKey: [], spriteFor: "", sprite: "perfection", icon: "🏆", label: "成就",
+    sub: "成就的解锁条件、奖励物品，以及错过之后怎么补", data: "ACHIEVEMENTS", render: renderAchievements,
+    /* 解锁条件与「补法」都进搜索索引：玩家常按「赚取」「结婚」这类**条件**找成就 */
+    indexExtra: (a) => [a.desc, a.unlock, a.missed],
+    detail: (a) => detailHead(itemIconHtml(a.id, a.name, "🏆", "icon-md"), a.name,
+      a.hidden ? "隐藏成就" : "成就") +
+      detailSection("解锁条件", `<p>${esc(a.desc)}</p>`) +
+      (a.unlock ? detailSection("解锁奖励", `<p>${esc(a.unlock)}</p>`) : "") +
+      /* 「错过了怎么补」来自页面的第二张表：同一个补法用 rowspan 管住了好几条成就 */
+      (a.missed ? detailSection("错过了怎么补", `<p>${esc(a.missed)}</p>`) : ""),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
   BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES, ANIMALS,
-  ANIMAL_PRODUCTS, TOOLS, BUILDINGS, WEAPONS, RINGS, SKILLS, LOCATIONS,
+  ANIMAL_PRODUCTS, TOOLS, BUILDINGS, WEAPONS, RINGS, SKILLS, LOCATIONS, ACHIEVEMENTS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];

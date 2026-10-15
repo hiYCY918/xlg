@@ -54,23 +54,31 @@ for raw in files:
         failed.append("%s 打不开：%s" % (raw, e))
         continue
     w, h = im.size
-    if w <= SLOT and h <= SLOT:
+    need_scale = w > SLOT or h > SLOT
+    is_png = p.lower().endswith(".png")
+    # 不需要缩放、本身又是 PNG → 没事可做
+    if not need_scale and is_png:
         skipped += 1
         continue
-    if CHECK:
+    if CHECK and need_scale:
         over.append("%s %dx%d" % (os.path.basename(p), w, h))
         continue
-    k = max(math.ceil(w / SLOT), math.ceil(h / SLOT), 1)
-    nw, nh = w // k, h // k
+    if need_scale:
+        k = max(math.ceil(w / SLOT), math.ceil(h / SLOT), 1)
+        nw, nh = w // k, h // k
+    else:
+        k, nw, nh = 1, w, h
     if nw < 1 or nh < 1:
         failed.append("%s 缩完没有像素了" % raw)
         continue
-    # 统一成 RGBA 存 PNG（JPG 没有 alpha），与站内其余贴图一致
+    # 统一成 RGBA 存 PNG（JPG 没有 alpha）——站点的贴图全是 PNG，
+    # 所以**即使不用缩放也要转格式**（成就那批平台图标就是 jpg 源）
     dest = os.path.splitext(p)[0] + ".png"
     im.convert("RGBA").resize((nw, nh), Image.LANCZOS).save(dest, "PNG", optimize=True)
     if dest != p and os.path.exists(p):
         os.remove(p)
-    scaled.append("%-28s %dx%d → 1/%-3d → %dx%d" % (os.path.basename(p), w, h, k, nw, nh))
+    scaled.append("%-30s %dx%d → %s → %dx%d" % (
+        os.path.basename(p), w, h, ("1/%-3d" % k) if need_scale else "转 PNG", nw, nh))
 
 for line in scaled:
     print(line)

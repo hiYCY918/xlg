@@ -147,7 +147,7 @@ const src =
   "TREES,TREE_FILTERS,seedChip,ensureNavVisible," +
   "progressSnapshot,progressToJson,normalizeImported,mergeProgress,applyProgressText," +
   "downloadProgressFile,copyProgressToClipboard,progressActions,PROGRESS_VERSION,MUSEUM_KEY," +
-  "SKILLS,LOCATIONS,COOKING};";
+  "SKILLS,LOCATIONS,COOKING,ACHIEVEMENTS};";
 
 let data;
 try {
@@ -2275,7 +2275,70 @@ console.log("\n=== 3. 渲染冒烟 ===");
     log(false, "找不到「神秘的齐」，无法核对多阶段渲染");
   }
 
-  /* ---------- 28. 文档自一致性（R60 的执行手段） ----------
+  /* ---------- 28. 成就 ----------
+   * 数据来自「成就」页的两张表。这一节守的是：
+   *   · 条数（49 是游戏内成就数，也是「补法」表的行数，两者对上才说明没漏没重）
+   *   · 每张平台图标都在、都是 PNG、都不超过 64 格
+   *   · 「美食大厨」那种**一个成就解锁两件奖励**的 rowspan 续行没被当成两条 */
+  console.log("\n=== 28. 成就 ===");
+
+  const ACH = data.ACHIEVEMENTS || [];
+  const hiddenN = ACH.filter((a) => a.hidden).length;
+  log(ACH.length === 49,
+    "成就 " + ACH.length + " 条（含隐藏成就 " + hiddenN + " 条）—— Wiki 表 50 行，其中 1 行是同一成就的第二件奖励");
+
+  /* 28.1 字段完整 + 隐藏标记是布尔而不是字符串 */
+  const achBad = [];
+  for (const a of ACH) {
+    if (!a.id || !a.name) achBad.push((a.name || "?") + " 缺 id/name");
+    if (!a.desc || a.desc === "—") achBad.push(a.name + " 缺解锁条件");
+    if (a.hidden !== undefined && typeof a.hidden !== "boolean") achBad.push(a.name + " 的 hidden 不是布尔");
+  }
+  log(achBad.length === 0,
+    "每条都有 id/name/解锁条件，hidden 是布尔" + (achBad.length ? "：" + achBad.slice(0, 5).join("；") : ""));
+
+  /* 28.2 「（隐藏成就）」是 Wiki 在描述末尾的标注，应已抽成 hidden 字段而不是留在正文里
+   * —— 留在正文里会在卡片上重复显示「隐藏」两遍 */
+  const hiddenLeft = ACH.filter((a) => /隐藏成就/.test(a.desc)).map((a) => a.name);
+  log(hiddenLeft.length === 0,
+    "描述里的「（隐藏成就）」标注已抽成 hidden 字段" + (hiddenLeft.length ? "：" + hiddenLeft.join("、") : ""));
+
+  /* 28.3 每个成就一张平台图标：存在、是 PNG、不超过 64 格
+   * —— 图标源是 64×64 或 128×128，入库时统一转 PNG 并把 128 的按 1/2 落到 64（.icon-md 图标位） */
+  const achImgBad = [];
+  let achMax = 0;
+  for (const a of ACH) {
+    const p = path.join(root, "img", a.id + ".png");
+    if (!fs.existsSync(p)) { achImgBad.push(a.id + " 缺图"); continue; }
+    const buf = fs.readFileSync(p);
+    if (buf.slice(0, 8).toString("hex") !== "89504e470d0a1a0a") { achImgBad.push(a.id + " 不是 PNG"); continue; }
+    const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+    achMax = Math.max(achMax, w, h);
+    if (w > 64 || h > 64) achImgBad.push(a.id + " " + w + "x" + h);
+  }
+  log(achImgBad.length === 0,
+    "49 张成就图标齐备、都是 PNG、都不超过 64×64（最大边 " + achMax + "px）" +
+    (achImgBad.length ? "：" + achImgBad.slice(0, 5).join("；") : ""));
+
+  /* 28.4 一个成就可以解锁多件奖励（「美食大厨」= 射手帽 + 厨师帽），
+   * 但不能因为 rowspan 续行而变成两条同名成就 */
+  const nameCount = {};
+  ACH.forEach((a) => { nameCount[a.name] = (nameCount[a.name] || 0) + 1; });
+  const dupName = Object.keys(nameCount).filter((n) => nameCount[n] > 1);
+  log(dupName.length === 0,
+    "没有同名成就（rowspan 续行已合并成多件奖励）" + (dupName.length ? "：" + dupName.join("、") : ""));
+  const chef = ACH.find((a) => a.name === "美食大厨");
+  log(chef && chef.unlock && chef.unlock.indexOf("、") > 0,
+    "「美食大厨」的多件奖励合并正确（" + (chef ? chef.unlock : "找不到该成就") + "）");
+
+  /* 28.5 详情能渲染出条件/奖励/补法 */
+  const achSample = ACH.find((a) => a.unlock && a.missed) || ACH[0];
+  let achDetail = "";
+  try { achDetail = String(data.DETAIL_RENDERERS.achievements(achSample.id)); } catch (e) { achDetail = "ERR:" + e.message; }
+  log(achDetail.indexOf("ERR:") !== 0 && achDetail.includes("解锁条件") && achDetail.includes("解锁奖励"),
+    "成就详情渲染出解锁条件与奖励" + (achDetail.indexOf("ERR:") === 0 ? "：" + achDetail : ""));
+
+  /* ---------- 29. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
    * （第三十轮一次查出 8 处：模块列表里「树木」重复、工匠制品 26→30 项、11→15 类机器、
@@ -2284,7 +2347,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
    *
    * 只查**能机器核对**的那几类，且正则一律锚定「描述现状」的句式——
    * README 里有历史叙述（如「模块数只有 17 个时就已需 ~1700px」），全文扫数字必然误报（R90）。 */
-  console.log("\n=== 28. 文档自一致性（R60） ===");
+  console.log("\n=== 29. 文档自一致性（R60） ===");
 
   const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
   const readmeLines = readme.split("\n");
