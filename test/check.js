@@ -2338,7 +2338,78 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(achDetail.indexOf("ERR:") !== 0 && achDetail.includes("解锁条件") && achDetail.includes("解锁奖励"),
     "成就详情渲染出解锁条件与奖励" + (achDetail.indexOf("ERR:") === 0 ? "：" + achDetail : ""));
 
-  /* ---------- 29. 文档自一致性（R60 的执行手段） ----------
+  /* ---------- 29. 事件（随机事件 + 心事件） ----------
+   * 数据来自 48 个 NPC 页的「爱心事件」小节。这一节守的是：
+   *   · 条数与两种类型的比例
+   *   · 心事件的 npc / hearts 字段，以及 npc 能跳转回 NPC 条目
+   *   · 对话选项的 delta 是数字（这是心事件里最实用的一块）
+   *   · trigger 允许为空，但**只能有源头就没写的那一条** */
+  console.log("\n=== 29. 事件（随机事件 + 心事件） ===");
+
+  const EV = data.EVENTS || [];
+  const evRandom = EV.filter((e) => e.type === "随机事件").length;
+  const evHeart = EV.filter((e) => e.type === "心事件").length;
+  log(EV.length === 139 && evRandom === 7 && evHeart === 132,
+    "事件 " + EV.length + " 条（随机事件 " + evRandom + " / 心事件 " + evHeart + "）");
+
+  /* 29.1 心事件字段：npc 必须有、hearts 必须是数字 */
+  const evBad = [];
+  for (const e of EV) {
+    if (!e.id || !e.name || !e.desc) evBad.push((e.name || "?") + " 缺 id/name/desc");
+    if (e.type === "心事件") {
+      if (!e.npc) evBad.push(e.name + " 缺 npc");
+      if (typeof e.hearts !== "number" || e.hearts < 0 || e.hearts > 14) evBad.push(e.name + " 的 hearts 不合法（" + e.hearts + "）");
+    }
+  }
+  log(evBad.length === 0, "心事件都有 npc 且 hearts 在 0~14 之间" + (evBad.length ? "：" + evBad.slice(0, 5).join("；") : ""));
+
+  /* 29.2 npc 必须能跳回 NPC 条目（R97：带引用的字段要有落点守恒） */
+  const npcMiss = [];
+  for (const e of EV) {
+    if (e.type !== "心事件") continue;
+    if (!data.NAME_INDEX.has(e.npc)) npcMiss.push(e.name + " → " + e.npc);
+  }
+  log(npcMiss.length === 0,
+    "全部 " + evHeart + " 条心事件的 npc 都能跳回 NPC 条目" + (npcMiss.length ? "：" + npcMiss.slice(0, 5).join("；") : ""));
+
+  /* 29.3 对话选项的 delta 必须是数字（解析时正则没抓到就会是 undefined） */
+  const chBad = [];
+  let chTotal = 0;
+  for (const e of EV) {
+    for (const c of e.choices || []) {
+      chTotal++;
+      if (!c.text) chBad.push(e.name + " 有空选项文案");
+      if (typeof c.delta !== "number" || !isFinite(c.delta)) chBad.push(e.name + " 的选项 delta 不是数字");
+    }
+  }
+  log(chTotal > 0 && chBad.length === 0,
+    "对话选项合计 " + chTotal + " 个，文案与好感度数值都完整" + (chBad.length ? "：" + chBad.slice(0, 5).join("；") : ""));
+
+  /* 29.4 trigger 允许为空，但只能有**源头就没写**的那一条（法师 4 心） */
+  const EV_NO_TRIGGER = ["法师 4心"];
+  const noTrig = EV.filter((e) => !e.trigger).map((e) => e.name);
+  log(noTrig.length === EV_NO_TRIGGER.length && noTrig.every((n) => EV_NO_TRIGGER.indexOf(n) >= 0),
+    "没有触发条件的只有源头就没写的那 " + EV_NO_TRIGGER.length + " 条（" + EV_NO_TRIGGER.join("、") + "）" +
+    (noTrig.length !== EV_NO_TRIGGER.length ? "；实际有 " + noTrig.length + " 条：" + noTrig.slice(0, 5).join("、") : ""));
+
+  /* 29.5 详情能渲染：心事件要显示心级、选项与 NPC chip */
+  const he = EV.find((e) => e.type === "心事件" && e.choices && e.choices.length);
+  let evDetail = "";
+  try { evDetail = String(data.DETAIL_RENDERERS.events(he.id)); } catch (err) { evDetail = "ERR:" + err.message; }
+  log(evDetail.indexOf("ERR:") !== 0 && evDetail.includes("触发条件") && evDetail.includes("说明") &&
+    evDetail.includes("对话选项") && evDetail.includes("chip-link"),
+    "心事件详情渲染出触发条件 / 说明 / 对话选项，且 NPC 是可点 chip" +
+    (evDetail.indexOf("ERR:") === 0 ? "：" + evDetail : ""));
+  /* 没有触发条件的那条不该渲染出空的「触发条件」小节 */
+  const noTrigEvent = EV.find((e) => !e.trigger);
+  if (noTrigEvent) {
+    const h = String(data.DETAIL_RENDERERS.events(noTrigEvent.id));
+    log(!h.includes("触发条件"), "没有触发条件的事件不渲染空的「触发条件」小节（" + noTrigEvent.name + "）");
+  } else {
+    log(false, "找不到没有触发条件的事件，无法核对空小节的处理");
+  }
+
+  /* ---------- 30. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
    * （第三十轮一次查出 8 处：模块列表里「树木」重复、工匠制品 26→30 项、11→15 类机器、
@@ -2347,7 +2418,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
    *
    * 只查**能机器核对**的那几类，且正则一律锚定「描述现状」的句式——
    * README 里有历史叙述（如「模块数只有 17 个时就已需 ~1700px」），全文扫数字必然误报（R90）。 */
-  console.log("\n=== 29. 文档自一致性（R60） ===");
+  console.log("\n=== 30. 文档自一致性（R60） ===");
 
   const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
   const readmeLines = readme.split("\n");

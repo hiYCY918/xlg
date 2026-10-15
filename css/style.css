@@ -780,6 +780,30 @@ html, body {
 .quest-stage h5 { margin: 0 0 3px; font-size: 12px; color: var(--muted); font-weight: 700; }
 .quest-stage p { margin: 0; font-size: 13px; line-height: 1.65; color: var(--text); }
 
+/* ===== 事件：心事件的对话选项 =====
+ * 这是心事件里最实用的一块——玩家想知道「选哪句加好感」。
+ * 数值用红绿区分正负，0 保持中性（Wiki 上大量选项就是 0）。 */
+.choices { display: flex; flex-direction: column; gap: 6px; }
+.choice {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 10px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.choice-text { flex: 1 1 auto; font-size: 13px; line-height: 1.6; color: var(--text); }
+.choice-delta {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.choice-delta.up { color: var(--accent); }
+.choice-delta.down { color: var(--red); }
+
 /* 进度条 */
 .bundle-progress { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
 .bundle-bar {

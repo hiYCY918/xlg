@@ -1693,7 +1693,7 @@ function renderEvents() {
     <div class="list-item clickable" data-id="${esc(e.id)}" role="button" tabindex="0">
       <h3>✨ ${esc(e.name)} <span class="badge ${e.type === "随机事件" ? "gold" : "green"}">${esc(e.type)}</span></h3>
       <p class="desc">${esc(e.desc)}</p>
-      <div class="kv"><span>触发：<b>${esc(e.trigger)}</b></span></div>
+      ${e.trigger ? `<div class="kv"><span>触发：<b>${esc(e.trigger)}</b></span></div>` : ""}
     </div>`).join("") || emptyState("没有符合条件的事件");
   body.appendChild(wrap);
 }
@@ -1972,10 +1972,27 @@ const REGISTRY = [
   {
     id: "events", stateKey: ["events"], sprite: "fairy-rose", icon: "✨", label: "事件",
     sub: "随机事件与心事件的触发条件", data: "EVENTS", render: renderEvents,
-    indexExtra: (e) => [e.trigger, e.type],
-    detail: (e) => detailHead(emojiIcon("✨"), e.name, esc(e.type)) +
-      detailSection("触发条件", `<p>${esc(e.trigger)}</p>`) +
-      detailSection("说明", `<p>${esc(e.desc)}</p>`),
+    /* NPC 名与选项文案都进索引：玩家常按「阿比盖尔」「送花束」这类词找事件 */
+    indexExtra: (e) => [e.trigger, e.type, e.npc]
+      .concat((e.choices || []).map((c) => c.text)),
+    detail: (e) => detailHead(emojiIcon("✨"), e.name,
+      e.type === "心事件"
+        ? nameChip(e.npc) + " · " + e.hearts + " 心" + (e.group ? "（群体事件）" : "") + (e.after ? "（婚后）" : "")
+        : esc(e.type)) +
+      /* 触发条件：有 1 条源头就没写（法师 4 心），那种情况整节不渲染，而不是显示一个空段落 */
+      (e.trigger ? detailSection("触发条件", `<p>${esc(e.trigger)}</p>`) : "") +
+      detailSection("说明", `<p>${esc(e.desc)}</p>`) +
+      /* 选项分支：心事件里最实用的一块——玩家想知道"选哪个加好感" */
+      (e.choices && e.choices.length
+        ? detailSection("对话选项",
+          `<div class="choices">${e.choices.map((c) => `
+            <div class="choice">
+              <span class="choice-text">${esc(c.text)}</span>
+              <span class="choice-delta ${c.delta > 0 ? "up" : c.delta < 0 ? "down" : ""}">${
+                c.delta > 0 ? "+" : ""}${c.delta}</span>
+            </div>`).join("")}</div>` +
+          `<p class="muted">数字是与该角色的好感度变化；Wiki 上没标数字的按 0 计。</p>`)
+        : ""),
   },
   {
     id: "bundles", stateKey: ["bundles"], sprite: "npc-junimo", icon: "📦", label: "收集包",
