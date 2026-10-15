@@ -594,6 +594,9 @@ $items = @{
   "maple-syrup" = "Maple_Syrup.png"
   "oak-resin"   = "Oak_Resin.png"
   "sap"         = "Sap.png"
+  # ---------- 工匠制品（第三十一轮补；鱼饵制造机的产出。Wiki 页「针对性鱼饵」的主图是
+  #            Pink_Bait.png —— 该图标随鱼种变色，Wiki 以粉色变体作代表，原图即 48x48） ----------
+  "targeted-bait" = "Pink_Bait.png"
 }
 
 $imgDir = Join-Path $Root "img"

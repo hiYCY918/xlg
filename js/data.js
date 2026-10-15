@@ -758,6 +758,14 @@ const ARTISAN = [
   { id: "maple-syrup", name: "枫糖浆", machines: ["枫树"], mats: ["枫树"], sell: 200, producedBy: "由枫树上的树液采集器产出", source: "打造" },
   { id: "oak-resin", name: "橡树树脂", machines: ["橡树"], mats: ["橡树"], sell: 150, producedBy: "由橡树上的树液采集器产出", source: "打造 • 幽灵头骨" },
   { id: "sap", name: "树液", machines: ["桃花心木树"], mats: ["桃花心木树"], sell: 2, producedBy: "由桃花心木树上的树液采集器产出", source: "树 • 史莱姆" },
+  /* 2026-10-15 补：Wiki 的「针对性鱼饵」属 Category:鱼饵，但它**不是玩家亲手打造的配方**，
+   * 而是鱼饵制造机的产出，故归工匠制品——这样机器 chip 能直接跳到打造配方（鱼饵制造机已在站内）。
+   * 售价是公式（0.1 × 鱼的售价），按本模块惯例写进 priceNote 而不是硬塞一个数字。
+   * 贴图沿用 Wiki 该页主图 Pink_Bait.png：针对性鱼饵的图标随鱼种变色，Wiki 以粉色变体作代表
+   * （英文站 Targeted Bait 页的主图是同一张，R13：文件名从数据源读，不靠猜）。 */
+  { id: "targeted-bait", name: "针对性鱼饵", machines: ["鱼饵制造机"], mats: ["任意鱼"],
+    priceNote: "0.1 × 鱼的售价", producedBy: "鱼饵制造机投入任意鱼产出 5~10 个（游戏内 10 分钟）",
+    source: "鱼饵制造机 • 鱼店" },
 ];
 
 /* ---------- 古物（博物馆收藏） ----------

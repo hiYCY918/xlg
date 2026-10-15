@@ -130,6 +130,29 @@ async function viaChrome(url, timeoutMs) {
   return JSON.parse(txt);
 }
 
+/* 取二进制（贴图）。图片同样被 Cloudflare 挡：直连拿到的是挑战页 HTML 而不是 PNG，
+ * 所以这里**只走浏览器**，并且要在页面内转 base64 才能从 CDP 带出来。
+ * 有了它，换贴图这条链路才不依赖 PowerShell 的 Invoke-WebRequest（那条路已被 Cloudflare 断掉）。 */
+async function fetchBinary(url, opts) {
+  if (!(await ensureBrowser())) throw new Error("取图失败：缺少可用的 Chrome（可用 CHROME_PATH 指定）");
+  const origin = new URL(url).origin;
+  await primeBrowser(origin);
+  const expr = "fetch(" + JSON.stringify(url) + ", {credentials:'include'})" +
+    ".then(function(r){ if(!r.ok) return 'HTTP ' + r.status; return r.arrayBuffer(); })" +
+    ".then(function(b){ if(typeof b === 'string') return b;" +
+    " var u=new Uint8Array(b), s='';" +
+    " for(var i=0;i<u.length;i+=8192){ s+=String.fromCharCode.apply(null,u.subarray(i,i+8192)); }" +
+    " return btoa(s); })" +
+    ".catch(function(e){ return 'FETCH_ERR ' + e.message; })";
+  const r = await cdp("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true });
+  const txt = (r && r.result && r.result.value) || "";
+  if (!txt) throw new Error("取图失败：页内 fetch 没有返回内容");
+  if (txt.indexOf("FETCH_ERR") === 0 || txt.indexOf("HTTP ") === 0) throw new Error("取图失败：" + txt.slice(0, 80));
+  const buf = Buffer.from(txt, "base64");
+  stats.chrome++;
+  return buf;
+}
+
 /* 对外唯一入口：拿不到就抛，绝不返回空值 */
 async function fetchJson(url, opts) {
   const timeoutMs = (opts && opts.timeoutMs) || 25000;
@@ -157,4 +180,4 @@ async function fetchJson(url, opts) {
   }
 }
 
-module.exports = { fetchJson, closeBrowser, stats };
+module.exports = { fetchJson, fetchBinary, closeBrowser, stats };
