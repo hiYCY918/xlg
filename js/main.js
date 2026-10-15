@@ -1919,7 +1919,9 @@ const REGISTRY = [
     /* 副标题只放类型：来源字段是 Wiki 的「触发条件」列，有的很长
      * （「神秘的齐」那条是「放一个电池组在巴士站旁边通道的加密箱里」），
      * 塞进副标题会把标题行撑得很难看——来源在下面的「来源与奖励」里已经列了。 */
-    detail: (q) => detailHead(emojiIcon("📜"), q.name, esc(q.type)) +
+    /* 标题图标用该模块**已有的游戏贴图**（侧栏用的就是它），emoji 退回当加载失败的兜底。
+     * 原来这 4 个模块直接拿 emoji 当图标，于是同一张卡片上像素画与矢量 emoji 混排。 */
+    detail: (q) => detailHead(itemIconHtml("star-shard", "任务", "📜"), q.name, esc(q.type)) +
       detailSection("任务内容", `<p>${esc(q.objective)}</p>`) +
       (q.need ? detailSection("需求", `<p>${esc(q.need)}</p>`) : "") +
       /* 多阶段任务（「神秘的齐」是 rowspan=4）：只显示第 1 段会少给 3 段内容 */
@@ -1961,7 +1963,7 @@ const REGISTRY = [
     id: "festivals", stateKey: [], sprite: "pumpkin", icon: "🎉", label: "节日",
     sub: "全年节日的日期、地点与玩法", data: "FESTIVALS", render: renderFestivals,
     indexExtra: (f) => [f.location, f.desc],
-    detail: (f) => detailHead(emojiIcon("🎉"), f.name, `${esc(f.season)}季 ${esc(String(f.day))} 日`) +
+    detail: (f) => detailHead(itemIconHtml("pumpkin", "节日", "🎉"), f.name, `${esc(f.season)}季 ${esc(String(f.day))} 日`) +
       detailSection("时间地点", kvGrid([
         ["季节", f.season],
         ["日期", f.day + " 日"],
@@ -1976,7 +1978,7 @@ const REGISTRY = [
     /* NPC 名与选项文案都进索引：玩家常按「阿比盖尔」「送花束」这类词找事件 */
     indexExtra: (e) => [e.trigger, e.type, e.npc]
       .concat((e.choices || []).map((c) => c.text)),
-    detail: (e) => detailHead(emojiIcon("✨"), e.name,
+    detail: (e) => detailHead(itemIconHtml("fairy-rose", "事件", "✨"), e.name,
       e.type === "心事件"
         ? nameChip(e.npc) + " · " + e.hearts + " 心" + (e.group ? "（群体事件）" : "") + (e.after ? "（婚后）" : "")
         : esc(e.type)) +
@@ -2010,7 +2012,7 @@ const REGISTRY = [
       const filled = bundleFilled(b);
       const room = BUNDLE_ROOMS.find((r) => r.name === b.room);
       const rew = (b.rewards || []).map((r) => `${esc(r.name)} ×${r.qty}`).join("、") || "—";
-      const head = detailHead(emojiIcon("📦"), b.name,
+      const head = detailHead(itemIconHtml("npc-junimo", "收集包", "📦"), b.name,
         `${esc(b.room)}${room && room.sub ? " · " + esc(room.sub) : ""}`);
 
       const need = b.price
@@ -2908,9 +2910,6 @@ function kvGrid(pairs) {
     const val = (v && typeof v === "object" && "__raw" in v) ? v.__raw : esc(v);
     return `<div class="kv-cell"><span class="kv-k">${esc(k)}</span><span class="kv-v">${val}</span></div>`;
   }).join("")}</div>`;
-}
-function emojiIcon(ch) {
-  return `<span class="item-icon emoji-icon"><span class="icon-fallback">${ch}</span></span>`;
 }
 
 

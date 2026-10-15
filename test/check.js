@@ -1720,10 +1720,15 @@ console.log("\n=== 3. 渲染冒烟 ===");
    * 界面上只是"有一点脏"，肉眼很难判定——正是那种只能靠断言守住的缺陷。
    * 同时要保证纯 emoji 图标**不带** .has-img，否则它自己的内容会被 CSS 收起。 */
   const iconFails = [];
+  /* 探针覆盖三类图标。第三项原先是 ["quests", "emoji 图标", true] ——
+   * quests 的标题图标那时用的就是 emoji；现在 4 个模块的标题图标都换成贴图了，
+   * 全站已经没有「纯 emoji 图标」，isEmoji 分支留着守将来的退化（真加了会被这条拦下）。 */
   const iconProbes = [
     ["crops", "物品图标", false],
     ["npc", "NPC 头像", false],
-    ["quests", "emoji 图标", true],
+    ["quests", "模块标题图标", false],
+    ["events", "模块标题图标", false],
+    ["bundles", "模块标题图标", false],
   ];
   for (const [mod, label, isEmoji] of iconProbes) {
     const arr = arrays[mod] || [];
@@ -2446,6 +2451,32 @@ console.log("\n=== 3. 渲染冒烟 ===");
   } else {
     log(false, "找不到没有心事件的 NPC，无法核对空小节的处理");
   }
+
+  /* ---------- 29.7 详情标题图标必须是游戏贴图 ----------
+   * 4 个模块（任务 / 节日 / 事件 / 收集包）原先把 emoji 直接当标题图标，
+   * 于是同一张卡片上像素画与矢量 emoji 混排——两种视觉语言，且 emoji 随系统字体变样。
+   * 这类退化不报错、不白屏，只会悄悄变回 emoji，所以要有断言。 */
+  const headBad = [];
+  for (const m of data.MODULES || []) {
+    /* MODULE_DATA 是按 dataRef（数据数组名）索引的，模块 id 取不到 —— 用现成的 arrays 映射 */
+    const sample = (arrays[m.id] || [])[0];
+    if (!sample) { headBad.push(m.id + "（没有样例数据）"); continue; }
+    let html = "";
+    try { html = String(data.DETAIL_RENDERERS[m.id](sample.id)); } catch (e) { headBad.push(m.id + "（渲染抛错：" + e.message + "）"); continue; }
+    /* 抓「.modal-head 到 <h3> 之前」这一段：标题结构是 modal-head > 图标 + <div><h3>名称…
+     * 拿「</div> 后跟 <div>」当终点会跨过图标本身（图标那串里没有 </div>），
+     * 于是第一版这条断言对 26 个模块全报「不是贴图」——断言本身写错了。 */
+    const head = (/class="modal-head">([\s\S]*?)<h3>/.exec(html) || [, ""])[1];
+    if (head.indexOf('class="icon-img"') < 0) headBad.push(m.id + "（标题图标不是贴图）");
+  }
+  log(headBad.length === 0,
+    "26 个模块的详情标题图标都是游戏贴图（emoji 只作加载失败的兜底）" +
+    (headBad.length ? "：" + headBad.slice(0, 6).join("；") : ""));
+
+  /* 那个只吐 emoji 的旧助手不该再被用到（留成死代码会诱使人再用它） */
+  const mainSrc2 = fs.readFileSync(path.join(__dirname, "..", "js", "main.js"), "utf8");
+  log(!/emojiIcon\s*\(/.test(mainSrc2),
+    "已移除只吐 emoji 的 emojiIcon 助手（避免又有人拿它当模块图标）");
 
   /* ---------- 30. 内容区背景（一张虚化的卡通画） ----------
    * 背景图是**生成物**（scripts/make-bg.py 从 scripts/bg-source.jpg 派生）。
