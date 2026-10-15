@@ -1740,10 +1740,13 @@ function renderSkills() {
 }
 
 /* ---- 地点（区域与场景） ----
- * 31 个区域，形态比别的模块杂得多：只有 10 页有 infobox，21 页是纯散文。
- * 因此**不按字段渲染，按散文渲染**：首段当简介，章节首句当「相关方面」。
- * emoji 呈现（与任务/节日/事件/收集包同类）：那 10 张 infobox 图都是地图截图，
- * 塞进 48px 的格子必然糊成一团，不如用 emoji。 */
+ * 31 个区域，形态比别的模块杂得多：只有 9 页有信息框图，其余是纯散文。
+ * 内容按散文渲染：首段当简介，章节首句当「相关方面」。
+ *
+ * 图片用 **96px 的 .icon-lg 图标位**——图源是游戏截图（小的 96×96，大的 2878×1536），
+ * 塞进 48 格要除以 30 以上，基本看不清；建筑模块（同样是截图）走的也是这条路。
+ * 入库前已按**整数倍**缩小到不超过 96（R83：`.icon-img` 挂着 pixelated，非整数比会丢行列）。
+ * emoji 保留下来当**兜底**：图真的加载失败时显示它（R65，由 onerror 决定，不会常驻）。 */
 function renderLocations() {
   const body = $("#body-locations");
   body.innerHTML = "";
@@ -1753,7 +1756,7 @@ function renderLocations() {
   grid.className = "grid";
   grid.innerHTML = LOCATIONS.map((l) => `
       <div ${cardAttrs(l.id)}>
-        ${emojiIcon(l.icon)}
+        ${itemIconHtml(l.id, l.name, l.icon, "icon-lg")}
         <h3>${esc(l.name)}</h3>
         <p class="desc">${esc(l.intro)}</p>
         <div class="foot"><span class="muted">${
@@ -2317,13 +2320,13 @@ const REGISTRY = [
           </div>`).join("")),
   },
   {
-    id: "locations", stateKey: [], sprite: "warp-totem-island", icon: "🗺️", label: "地点",
+    id: "locations", stateKey: [], spriteFor: "", sprite: "warp-totem-island", icon: "🗺️", label: "地点",
     sub: "各区域的位置、解锁方式、常驻居民与可做的事", data: "LOCATIONS", render: renderLocations,
     /* 首段与章节摘要都进搜索索引：玩家常按「怎么去下水道」「矿车」这类**用途**找 */
     indexExtra: (l) => [l.intro]
       .concat(l.occupants || [])
       .concat((l.sections || []).map((s) => s.t + " " + s.b)),
-    detail: (l) => detailHead(emojiIcon(l.icon), l.name,
+    detail: (l) => detailHead(itemIconHtml(l.id, l.name, l.icon, "icon-lg"), l.name,
       (l.occupants && l.occupants.length ? "常驻 " + l.occupants.join("、") + " · " : "") +
       ((l.sections || []).length + " 个方面")) +
       detailSection("简介", `<p>${esc(l.intro)}</p>`) +

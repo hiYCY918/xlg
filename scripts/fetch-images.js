@@ -29,7 +29,8 @@ const CHECK_ONLY = process.argv.indexOf("--check") >= 0;
 function readMap() {
   const src = fs.readFileSync(MAP_PS1, "utf8");
   const map = new Map();
-  for (const m of src.matchAll(/"([a-z0-9-]+)"\s*=\s*"([^"]+\.png)"/g)) map.set(m[1], m[2]);
+  /* jpg 源图也要认：地点那批里有 Farm_Pond.jpg / Beach Overview.jpg / Skullkeyentrance.jpg */
+  for (const m of src.matchAll(/"([a-z0-9-]+)"\s*=\s*"([^"]+\.(?:png|jpe?g))"/gi)) map.set(m[1], m[2]);
   return map;
 }
 

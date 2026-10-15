@@ -2145,6 +2145,34 @@ console.log("\n=== 3. 渲染冒烟 ===");
     "全部 " + briefTotal + " 条章节摘要都是干净散文（8~90 字、无标记、非元信息章节）" +
     (briefBad.length ? "：" + briefBad.slice(0, 5).join("；") : ""));
 
+  /* 26.3b 每个地点都要有**真实游戏截图**，且必须落进 96px 图标位
+   * —— 库里原图小的 96×96、大的 2878×1536，入库前按整数倍缩到两边都不超过 96（R83）。
+   *    这里守住「图在不在」与「有没有超格」；**整数比例由缩放脚本保证并打印**（check 时拿不到原图尺寸）。 */
+  const locImgMiss = [];
+  const locImgOver = [];
+  let locImgMax = 0;
+  for (const l of LOC) {
+    const p = path.join(root, "img", l.id + ".png");
+    if (!fs.existsSync(p)) { locImgMiss.push(l.id); continue; }
+    const buf = fs.readFileSync(p);
+    if (buf.slice(0, 8).toString("hex") !== "89504e470d0a1a0a") { locImgMiss.push(l.id + "(不是 PNG)"); continue; }
+    const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+    locImgMax = Math.max(locImgMax, w, h);
+    if (w > 96 || h > 96) locImgOver.push(l.id + " " + w + "x" + h);
+  }
+  log(locImgMiss.length === 0 && locImgOver.length === 0,
+    "31 个地点的真实截图齐备且都不超过 96×96（最大边 " + locImgMax + "px）" +
+    (locImgMiss.length ? "；缺 " + locImgMiss.join(",") : "") +
+    (locImgOver.length ? "；超格 " + locImgOver.join(",") : ""));
+
+  /* 26.3c 贴图必须**带 emoji 兜底**：图真的加载失败时不能出现空白格
+   * —— 兜底由 itemIconHtml 的 onerror 决定展开，所以卡片与详情里都要同时有 img 与 icon-fallback。 */
+  const locCard = String(data.DETAIL_RENDERERS.locations(LOC[0] && LOC[0].id));
+  const locNoFb = LOC.filter((l) => !l.icon).map((l) => l.id);
+  log(locNoFb.length === 0 && /class="icon-fallback"/.test(locCard) && /img\/[a-z-]+\.png/.test(locCard),
+    "地点贴图都带 emoji 兜底（数据里有 icon，渲染出的卡片里有 icon-fallback）" +
+    (locNoFb.length ? "；缺 emoji 的 " + locNoFb.join(",") : ""));
+
   /* 26.4 详情能渲染，居民是可点 chip，没居民的不渲染空小节 */
   let locDetail = "";
   try { locDetail = String(data.DETAIL_RENDERERS.locations(LOC[0] && LOC[0].id)); } catch (e) { locDetail = "ERR:" + e.message; }

@@ -638,6 +638,39 @@ $items = @{
   "prof-tiller" = "Tiller.png"
   "prof-tracker" = "Tracker.png"
   "prof-trapper" = "Trapper.png"
+  # ---------- 地点（第三十四轮补；游戏截图，入库前按整数倍缩到不超过 96×96。
+  #            选图规则与例外见 docs/ROADMAP.md；这里只登记「id → Wiki 文件名」） ----------
+  "sewer"                 = "Sewer JA.png"    # 下水道（信息框）
+  "bookseller"            = "Bookseller.png"    # 书摊老板（信息框）
+  "farm"                  = "Standard Farm_thumb.png"    # 农场（指定）
+  "farm-maps"             = "Farm Map Selection.png"    # 农场地图（正文）
+  "farm-pond"             = "Farm_Pond.jpg"    # 农场池塘（正文）
+  "graveyard"             = "Graveyard.png"    # 墓园（信息框）
+  "shrine-night-terrors"  = "Dark Shrine of Night Terrors.png"    # 夜惊之黑暗神殿（正文）
+  "ginger-island"         = "Ginger Island.png"    # 姜岛（信息框）
+  "cave"                  = "Cave Entrance.png"    # 山洞（正文）
+  "witchs-swamp"          = "Witch's Swamp.png"    # 巫婆沼泽（正文）
+  "bus-stop"              = "BusStopForageLocations.png"    # 巴士站（正文）
+  "beach"                 = "Beach Overview.jpg"    # 沙滩（正文）
+  "desert"                = "Desert Trader.png"    # 沙漠（指定）
+  "mountains"             = "The Mountain.png"    # 深山（正文）
+  "volcano-dungeon"       = "VolcanoDungeon_Entryway.png"    # 火山地牢（正文）
+  "cindersap-forest"      = "CindersapForest.png"    # 煤矿森林（正文）
+  "the-mines"             = "MinesEntrance.png"    # 矿井（信息框）
+  "minecart"              = "Minecart_Mines.png"    # 矿车（指定）
+  "shrine-selfishness"    = "Dark Shrine of Selfishness.png"    # 私欲之黑暗神殿（正文）
+  "secret-woods"          = "SecretWoods.png"    # 秘密森林（信息框）
+  "mutant-bug-lair"       = "Mutant Bug Lair.png"    # 突变虫穴（正文）
+  "mastery-cave"          = "Mastery_Cave.png"    # 精通山洞（信息框）
+  "shrine-memory"         = "Dark Shrine of Memory.png"    # 记忆之黑暗神殿（正文）
+  "backwoods"             = "BackwoodsForageLocations ZH.png"    # 边远森林（正文）
+  "quarry"                = "Quarry.png"    # 采石场（指定）
+  "quarry-mine"           = "Quarry Mine Map.png"    # 采石场矿井（指定）
+  "railroad"              = "Railroad.png"    # 铁路（正文）
+  "tunnel"                = "The Tunnel entrance.jpg"    # 隧道（正文）
+  "summit"                = "The Summit.png"    # 顶峰（信息框）
+  "skull-cavern"          = "Skullkeyentrance.jpg"    # 骷髅洞穴（指定）
+  "pelican-town"          = "Pelican Town.png"    # 鹈鹕镇（指定）
 }
 
 $imgDir = Join-Path $Root "img"
