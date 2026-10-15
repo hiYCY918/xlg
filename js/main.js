@@ -1892,7 +1892,10 @@ const REGISTRY = [
     /* 需求也进索引：玩家常按「金色核桃」「五彩碎片」这类**目标物**找任务，而不是按任务名 */
     indexExtra: (q) => [q.objective, q.source, q.type, q.need, q.prereq]
       .concat((q.stages || []).map((s) => s.objective + " " + (s.need || ""))),
-    detail: (q) => detailHead(emojiIcon("📜"), q.name, esc(q.type) + " · " + esc(q.source)) +
+    /* 副标题只放类型：来源字段是 Wiki 的「触发条件」列，有的很长
+     * （「神秘的齐」那条是「放一个电池组在巴士站旁边通道的加密箱里」），
+     * 塞进副标题会把标题行撑得很难看——来源在下面的「来源与奖励」里已经列了。 */
+    detail: (q) => detailHead(emojiIcon("📜"), q.name, esc(q.type)) +
       detailSection("任务内容", `<p>${esc(q.objective)}</p>`) +
       (q.need ? detailSection("需求", `<p>${esc(q.need)}</p>`) : "") +
       /* 多阶段任务（「神秘的齐」是 rowspan=4）：只显示第 1 段会少给 3 段内容 */
