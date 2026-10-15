@@ -526,10 +526,19 @@ body::before {
 }
 .icon-fallback svg { width: 40px; height: 40px; display: block; }
 
-/* ===== 行内标签小图标 =====
- * 卡片上「生日 / 地点 / 礼物 / 售价…」前面那个小图标，由 main.js 的 labelIcon() 生成。
- * 原先这里是 emoji——同一张卡片上像素画与矢量 emoji 混排是两种视觉语言，
- * 而且 emoji 随系统字体变样（Windows / macOS / 手机各不相同）。
+/* ===== 行内标签（文字形式）=====
+ * 卡片上「生日 / 地点 / 售价…」这些标签现在是**文字**，由 main.js 的 label() 生成，自带全角冒号。
+ * 演进：emoji → 游戏贴图（两步）→ 文字。贴图那版视觉统一了，但**图标本身不说明它是什么**
+ * （`map-tab` 地图和 `weather-icon` 天气很容易认混），文字一眼就懂，
+ * 也不受平台字体、16px 尺寸网格、加载失败兜底这些问题影响。
+ * 用 muted 色压一档，让「标签」和「值」在视觉上分得开 —— 值里常有绿色可点链接，别跟标签抢。 */
+.meta-label { color: var(--muted); }
+
+/* ===== 行内标签小图标（方案 A：暂时留退路，已无调用点）=====
+ * 2026-10-15 改成文字标签后，labelIcon() 已被删除，下面这段 CSS 与 img/ 里那 8 张标签图标
+ * （gold / gift-icon / time-icon / map-tab / weather-icon / health / energy / attack-buff，
+ * 合计 3.7 KB）**暂时保留**，万一要退回图标版只需恢复 label() 的实现。
+ * 确定不再回头时，连同 scripts/make-label-icons.py 与 download-images.ps1 里那 8 条映射一起清掉。
  *
  * ⚠️ 素材统一按 **16px** 显示，尺寸必须落在 16px 网格上（R23/R83：除不尽会丢行丢列，
  *    而 .icon-img 挂着全局 image-rendering: pixelated，丢列会看得很清楚）：

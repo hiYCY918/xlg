@@ -2478,46 +2478,45 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(!/emojiIcon\s*\(/.test(mainSrc2),
     "已移除只吐 emoji 的 emojiIcon 助手（避免又有人拿它当模块图标）");
 
-  /* ---------- 29.8 行内标签图标（卡片上的小图标） ----------
-   * 卡片上「生日 / 地点 / 礼物 / 售价…」前面的小图标，原先用 emoji，现换成游戏贴图。
-   * 两件事必须守住：
-   *   ① 素材尺寸落在 **16px 网格**上 —— 除不尽会丢行丢列（R23/R83），
-   *      而 .icon-img 挂着全局 image-rendering: pixelated，丢列看得很清楚；
-   *   ② emoji 只能出现在兜底层里 —— 裸露回文案就等于这次改动白做了，
-   *      而它不会报错、不会白屏，只会「悄悄变回 emoji」。 */
-  const labelMainSrc = fs.readFileSync(path.join(__dirname, "..", "js", "main.js"), "utf8");
-  const labelRefs = [...new Set([...labelMainSrc.matchAll(/labelIcon\("([a-z0-9-]+)"/g)].map((m) => m[1]))];
+  /* ---------- 29.8 行内标签（文字形式） ----------
+   * 卡片上「生日 / 地点 / 售价…」这些标签现在的形态是**文字**，由 main.js 的 label() 生成。
+   * 演进：emoji → 游戏贴图（两步）→ 文字。这一步要守住三件事：
+   *   ① 标签确实是文字、且带全角冒号（与正文中文标点一致）；
+   *   ② 不得退回图标版 —— 贴图那版的问题不是难看，而是**图标本身不说明它是什么**
+   *      （map-tab 地图与 weather-icon 天气很容易认混），而且 emoji 那版还随系统字体变样；
+   *   ③ 文案里不得有裸露的标签 emoji（只能作为兜底参数或数据出现）。
+   * 之所以要断言：这三类退化都不会报错、不会白屏，只会「悄悄变回原样」。 */
+  const labelSrc = fs.readFileSync(path.join(__dirname, "..", "js", "main.js"), "utf8");
+  const labelCss = fs.readFileSync(path.join(__dirname, "..", "css", "style.css"), "utf8");
 
-  /* ① 引用的贴图都在，且尺寸能整数倍除到 16 */
-  const labelBad = [];
-  let labelSizes = [];
-  for (const id of labelRefs) {
-    const p = path.join(__dirname, "..", "img", id + ".png");
-    if (!fs.existsSync(p)) { labelBad.push(id + "（文件不存在）"); continue; }
-    const buf = fs.readFileSync(p);
-    const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
-    if (w % 16 !== 0) { labelBad.push(id + " 宽 " + w + " 除不尽 16"); continue; }
-    labelSizes.push(id + " " + w + "×" + h + " ÷" + (w / 16));
-  }
-  log(labelRefs.length > 0 && labelBad.length === 0,
-    "行内标签图标引用的 " + labelRefs.length + " 张贴图都在，且宽度都能整数倍除到 16px（" +
-    labelSizes.slice(0, 4).join("、") + (labelSizes.length > 4 ? " …" : "") + "）" +
-    (labelBad.length ? "：" + labelBad.join("；") : ""));
+  /* ① 有 label() 调用，标签文本都非空 */
+  const labelCalls = [...labelSrc.matchAll(/\blabel\("([^"]*)"\)/g)].map((m) => m[1]);
+  const labelEmpty = labelCalls.filter((x) => !x.trim());
+  log(labelCalls.length >= 20 && labelEmpty.length === 0,
+    "行内标签用文字形式，共 " + labelCalls.length + " 处，标签文本都非空" +
+    (labelEmpty.length ? "：有空标签" : ""));
 
-  /* ② 渲染出来的文案里，标签 emoji 不得裸露（只能待在 icon-fallback 里）。
-   * 这个清单是**已转换**的那些，新转换一个就加一个 —— 它守的是「别再退回去」。
-   * 有意保留的（没有合适的 16px 网格素材，或本身就是排版符号）：
-   *   ⚠️ 负收益警示、✔/✅ 已完成、🚫 休息日  —— 功能性符号，不是装饰
-   *   🏠 所需建筑（建筑贴图尺寸都除不尽）、👤 常驻居民、🏪/🛠️ 商店/来源、
-   *   🧺 材料、🧷 采集器、📐 占地、💥 暴击、✨ 附加属性/效果
-   * 哪天给它们找到了合尺寸的素材，加进这个数组即可。 */
+  /* ② 全角冒号 + .meta-label 样式 */
+  log(/function label\(text\)[\s\S]{0,160}?：<\/span>/.test(labelSrc),
+    "label() 用全角冒号「：」（与正文的中文标点一致）");
+  log(/\.meta-label\s*\{[^}]*color:/.test(labelCss),
+    ".meta-label 有样式（muted 色，让标签与值分得开）");
+
+  /* ③ 不得退回图标版 */
+  log(!/labelIcon\s*\(/.test(labelSrc),
+    "源码里没有 labelIcon 调用（退回图标版要连同本节断言一起改，别偷偷退）");
+
+  /* ④ 文案里不得有裸露的标签 emoji。
+   * 清单 = 曾经用图标表示、现已改成文字的那些；新加一个就补一个。 */
   const LABEL_EMOJI = ["🎂", "📍", "🎁", "💰", "⏰", "☀️", "🥚", "🧱", "🐾", "🌱", "🌲", "⚔️",
-    "❤️", "⚡", "💪", "🕘", "💎", "💝", "🎉"];
-  const stripFallback = (h) => String(h).replace(/<span class="icon-fallback">[\s\S]*?<\/span>/g, "");
+    "❤️", "⚡", "💪", "🕘", "💎", "💝", "🎉", "✨", "🏠", "👤", "🏪", "🛠️", "🧺", "🧷",
+    "📐", "💥", "⚠️", "✔", "✅", "🚫"];
+  const stripFallback = (h) => String(h).replace(/<span class="icon-fallback[^"]*">[\s\S]*?<\/span>/g, "");
+
+  /* ④a 渲染出来的详情 */
   const bareEmoji = [];
   for (const m of (data.MODULES || [])) {
-    const arr = arrays[m.id] || [];
-    for (const item of arr.slice(0, 12)) {
+    for (const item of (arrays[m.id] || []).slice(0, 12)) {
       let html = "";
       try { html = String(data.DETAIL_RENDERERS[m.id](item.id) || ""); } catch (e) { continue; }
       const bare = stripFallback(html);
@@ -2527,35 +2526,24 @@ console.log("\n=== 3. 渲染冒烟 ===");
     if (bareEmoji.length > 6) break;
   }
   log(bareEmoji.length === 0,
-    "详情文案里没有裸露的行内标签 emoji（只出现在 icon-fallback 兜底层）" +
+    "详情文案里没有裸露的标签 emoji" +
     (bareEmoji.length ? "：" + bareEmoji.slice(0, 6).join("；") : ""));
 
-  /* ②b 卡片区也要守。第一版只查了「渲染出来的详情」，于是「把某处标签改回裸 emoji」漏网
-   * —— 卡片才是用户看得最多的地方，不能只守一半。
-   * 这里改成**静态扫源码**（DOM 模拟里 #page 是空的，读不到卡片 HTML）：
-   * 标签 emoji 只允许作为**完整的字符串字面量**出现，即 `"🎂"` —— 那是兜底参数或数据数组；
-   * 一旦它出现在模板文案里（形如 `>🎂 ${...}`），前后就不是成对的引号，立刻报红。 */
-  const srcLines = labelMainSrc.split("\n");
+  /* ④b 源码（DOM 模拟里 #page 是空的，读不到卡片 HTML，所以静态扫源码）。 */
   const bareSrc = [];
-  for (const e of LABEL_EMOJI) {
-    const complete = new RegExp('"' + e + '"');
-    srcLines.forEach((line, i) => {
-      const trimmed = line.trim();
-      if (trimmed.startsWith("*") || trimmed.startsWith("//")) return;      /* 注释不算 */
-      if (line.indexOf(e) < 0) return;
-      if (complete.test(line)) return;                                      /* 完整的字符串字面量，合法 */
+  labelSrc.split("\n").forEach((line, i) => {
+    const trimmed = line.trim();
+    /* 注释整行跳过：/* 开头的块注释行也要算（漏了它，注释里的 ⚠️ 会被当成裸露 emoji） */
+    if (trimmed.startsWith("*") || trimmed.startsWith("//") || trimmed.startsWith("/*")) return;
+    for (const e of LABEL_EMOJI) {
+      if (line.indexOf(e) < 0) continue;
+      if (new RegExp('"' + e + '"').test(line)) continue;   /* 完整的字符串字面量：兜底参数或数据 */
       bareSrc.push("L" + (i + 1) + " 的 " + e);
-    });
-  }
+    }
+  });
   log(bareSrc.length === 0,
     "源码里没有裸露的标签 emoji（只作为 \"X\" 形式的兜底参数或数据出现）" +
     (bareSrc.length ? "：" + bareSrc.slice(0, 6).join("；") : ""));
-
-  /* ③ CSS 必须把它定成 16px、且不能退回 object-fit: contain 的方框（那会让 64×68 变成 0.235 倍）
-   * 自己读一次 CSS —— bgCss 是后面第 30 节才声明的，这里引用会撞 TDZ。 */
-  const labelCss = fs.readFileSync(path.join(__dirname, "..", "css", "style.css"), "utf8");
-  log(/\.label-icon \.icon-img \{[^}]*width:\s*16px/.test(labelCss) && /\.label-icon \.icon-img \{[^}]*height:\s*auto/.test(labelCss),
-    "行内标签图标按 16px 显示且高度自适应（不用方形框 + contain，否则 64×68 会变成非整数倍）");
 
   /* ---------- 30. 内容区背景（一张虚化的卡通画） ----------
    * 背景图是**生成物**（scripts/make-bg.py 从 scripts/bg-source.jpg 派生）。
