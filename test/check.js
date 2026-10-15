@@ -2504,8 +2504,15 @@ console.log("\n=== 3. 渲染冒烟 ===");
     labelSizes.slice(0, 4).join("、") + (labelSizes.length > 4 ? " …" : "") + "）" +
     (labelBad.length ? "：" + labelBad.join("；") : ""));
 
-  /* ② 渲染出来的文案里，标签 emoji 不得裸露（只能待在 icon-fallback 里） */
-  const LABEL_EMOJI = ["🎂", "📍", "🎁", "💰", "⏰", "☀️", "🥚", "🧱", "🐾", "🌱", "🌲", "⚔️"];
+  /* ② 渲染出来的文案里，标签 emoji 不得裸露（只能待在 icon-fallback 里）。
+   * 这个清单是**已转换**的那些，新转换一个就加一个 —— 它守的是「别再退回去」。
+   * 有意保留的（没有合适的 16px 网格素材，或本身就是排版符号）：
+   *   ⚠️ 负收益警示、✔/✅ 已完成、🚫 休息日  —— 功能性符号，不是装饰
+   *   🏠 所需建筑（建筑贴图尺寸都除不尽）、👤 常驻居民、🏪/🛠️ 商店/来源、
+   *   🧺 材料、🧷 采集器、📐 占地、💥 暴击、✨ 附加属性/效果
+   * 哪天给它们找到了合尺寸的素材，加进这个数组即可。 */
+  const LABEL_EMOJI = ["🎂", "📍", "🎁", "💰", "⏰", "☀️", "🥚", "🧱", "🐾", "🌱", "🌲", "⚔️",
+    "❤️", "⚡", "💪", "🕘", "💎", "💝", "🎉"];
   const stripFallback = (h) => String(h).replace(/<span class="icon-fallback">[\s\S]*?<\/span>/g, "");
   const bareEmoji = [];
   for (const m of (data.MODULES || [])) {

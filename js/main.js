@@ -440,7 +440,7 @@ function renderCombat() {
       ${itemIconHtml(m.id, m.name, MONSTER_ICON)}
       <h3>${esc(m.name)}</h3>
       <div><span class="badge red">${esc(m.type)}</span></div>
-      <div class="meta">❤️ 生命 ${monsterStat(m.hp)} · ⚡ 伤害 ${monsterStat(m.damage)}</div>
+      <div class="meta">${labelIcon("health", "❤️")} 生命 ${monsterStat(m.hp)} · ${labelIcon("attack-buff", "⚡")} 伤害 ${monsterStat(m.damage)}</div>
       <div class="meta">${labelIcon("map-tab", "📍")} ${esc(m.location)}</div>
       <div class="foot">掉落：<span class="chip-list">${m.drops.map((d) => `<span class="chip">${esc(d)}</span>`).join("")}</span></div>
     </div>`).join("") || emptyState("没有符合条件的怪物");
@@ -526,7 +526,7 @@ function renderFestivals() {
   wrap.className = "list";
   wrap.innerHTML = sorted.map((f) => `
     <div class="list-item clickable" data-id="${esc(f.id)}" role="button" tabindex="0">
-      <h3>🎉 ${esc(f.name)} <span class="badge ${seasonClass(f.season)}">${f.season} · ${f.day} 日</span></h3>
+      <h3>${labelIcon("pumpkin", "🎉")} ${esc(f.name)} <span class="badge ${seasonClass(f.season)}">${f.season} · ${f.day} 日</span></h3>
       <p class="desc">${esc(f.desc)}</p>
       <div class="kv"><span>地点：<b>${esc(f.location)}</b></span><span>时间：<b>${esc(f.time)}</b></span></div>
     </div>`).join("");
@@ -1037,7 +1037,7 @@ function renderProducts() {
       ${itemIconHtml(p.id, p.name, GENERIC_ICON)}
       <h3>${esc(p.name)}</h3>
       <div class="meta">${cardSellLine(p)}</div>
-      <div class="meta">💪 回复体力 ${p.edibility != null ? p.edibility : "—"}</div>
+      <div class="meta">${labelIcon("energy", "💪")} 回复体力 ${p.edibility != null ? p.edibility : "—"}</div>
       <div class="meta">${labelIcon("white-chicken", "🐾")} ${from.length ? from.map((a) => nameChip(a.name)).join(" ") : esc(p.source)}</div>
       <div class="foot"><span class="muted">${esc(p.quality ? "有品质分级，品质越高售价越高" : "无品质分级")}</span></div>
     </div>`;
@@ -1148,7 +1148,7 @@ function renderBuildings() {
     const isLoc = b.type === "城镇地点";
     const metas = isLoc
       ? [
-          b.openHours ? `🕘 ${esc(b.openHours)}` : null,
+          b.openHours ? `${labelIcon("time-icon", "🕘")} ${esc(b.openHours)}` : null,
           b.closed ? `🚫 休息：${esc(b.closed)}` : null,
           b.address ? `${labelIcon("map-tab", "📍")} ${esc(b.address)}` : null,
           b.occupants && b.occupants.length ? `👤 ${b.occupants.map((n) => nameChip(n)).join(" ")}` : null,
@@ -1244,7 +1244,7 @@ function renderRings() {
       <h3>${esc(r.name)}</h3>
       <div class="meta">✨ ${esc(ringEffectText(r))}</div>
       <div class="meta">${labelIcon("gold", "💰")} ${r.gprice != null ? "售价 " + r.gprice + " 金" : esc(r.gpriceText || "不可购买")}</div>
-      <div class="meta">💎 回收价 ${r.value != null ? r.value + " 金" : "—"}</div>
+      <div class="meta">${labelIcon("diamond", "💎")} 回收价 ${r.value != null ? r.value + " 金" : "—"}</div>
       <div class="foot"><span class="muted">${esc(r.source || "—")}</span></div>
     </div>`).join("") || emptyState("没有戒指");
   body.appendChild(grid);
@@ -1702,7 +1702,7 @@ function renderEvents() {
   wrap.className = "list";
   wrap.innerHTML = list.map((e) => `
     <div class="list-item clickable" data-id="${esc(e.id)}" role="button" tabindex="0">
-      <h3>✨ ${esc(e.name)} <span class="badge ${e.type === "随机事件" ? "gold" : "green"}">${esc(e.type)}</span></h3>
+      <h3>${labelIcon("fairy-rose", "✨")} ${esc(e.name)} <span class="badge ${e.type === "随机事件" ? "gold" : "green"}">${esc(e.type)}</span></h3>
       <p class="desc">${esc(e.desc)}</p>
       ${e.trigger ? `<div class="kv"><span>触发：<b>${esc(e.trigger)}</b></span></div>` : ""}
     </div>`).join("") || emptyState("没有符合条件的事件");
@@ -2525,7 +2525,7 @@ function giftUsesSection(name) {
   const list = GIFT_USES.get(name);
   if (!list || !list.length) return "";
   return detailSection("送礼对象", `<div class="chip-list">` +
-    list.map((n) => `<span class="chip chip-link" data-goto-module="npc" data-goto-id="${esc(n.id)}" role="button" tabindex="0" title="查看${esc(n.name)}">💝 ${esc(n.name)}</span>`).join("") +
+    list.map((n) => `<span class="chip chip-link" data-goto-module="npc" data-goto-id="${esc(n.id)}" role="button" tabindex="0" title="查看${esc(n.name)}">${labelIcon("gift-icon", "💝")} ${esc(n.name)}</span>`).join("") +
     `</div>`);
 }
 

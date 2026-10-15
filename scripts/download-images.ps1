@@ -732,6 +732,11 @@ $items = @{
   "time-icon"                       = "Time Icon.png"    # 时间
   "map-tab"                         = "Map Tab.png"    # 地点
   "weather-icon"                    = "Weather Icon.png"    # 天气（36×36，需补白，见上）
+  # 第三批（第四十八轮）：生命 / 体力 / 伤害。都是游戏 UI 图标，且尺寸正好落在 16px 网格上
+  #   Health.png 48×48（÷3）、Energy.png 48×48（÷3）、Attack Buff.png 64×64（÷4）
+  "health"                          = "Health.png"    # 生命值
+  "energy"                          = "Energy.png"    # 回复体力
+  "attack-buff"                     = "Attack Buff.png"    # 伤害（复用攻击增益图标）
 }
 
 $imgDir = Join-Path $Root "img"
