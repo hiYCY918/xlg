@@ -2166,7 +2166,82 @@ console.log("\n=== 3. 渲染冒烟 ===");
     log(false, "31 个地点全都有居民，无法核对空小节的处理");
   }
 
-  /* ---------- 27. 文档自一致性（R60 的执行手段） ----------
+  /* ---------- 27. 任务（四类 + 多阶段） ----------
+   * 这一版是**重建**（旧 10 条的名字与 id 都与 Wiki 对不上），所以断言要守住
+   * 「四类都在」「多阶段没丢」「正文里没有漏译的英文名」这三件重建最容易出错的事。 */
+  console.log("\n=== 27. 任务（四类 + 多阶段） ===");
+
+  const QS = data.QUESTS || [];
+  const Q_TYPES = ["主线", "特别任务", "齐先生", "委托"];
+  const qBy = {};
+  QS.forEach((q) => { qBy[q.type] = (qBy[q.type] || 0) + 1; });
+  log(QS.length >= 80,
+    "任务 " + QS.length + " 条：" + Q_TYPES.map((t) => t + " " + (qBy[t] || 0)).join(" / "));
+
+  /* 27.1 类型只能是这四种——多出第五种说明 Wiki 表结构变了而这里没跟上 */
+  const qTypeBad = QS.filter((q) => Q_TYPES.indexOf(q.type) < 0).map((q) => q.name + "(" + q.type + ")");
+  log(qTypeBad.length === 0 && Q_TYPES.every((t) => qBy[t] > 0),
+    "四种类型齐全且没有第五种类型" + (qTypeBad.length ? "：" + qTypeBad.join("、") : ""));
+
+  /* 27.2 字段完整。奖励这项要留意：**Wiki 表里就有几条奖励格是空的**
+   * （养殖动物 / 探索矿场 / 矿场深处 / 深入地底 / 开始铸造），
+   * 那不是解析漏了而是源头没有，所以只要求是字符串，并把「—」的条数报出来。 */
+  const qBad = [];
+  let noReward = 0;
+  for (const q of QS) {
+    if (!q.id || !q.name) qBad.push((q.name || "?") + " 缺 id/name");
+    if (!q.objective) qBad.push(q.name + " 缺任务内容");
+    if (!q.source) qBad.push(q.name + " 缺来源");
+    if (typeof q.reward !== "string" || !q.reward) qBad.push(q.name + " 奖励字段不是字符串");
+    else if (q.reward === "—") noReward++;
+  }
+  log(qBad.length === 0,
+    "每条都有 id/name/内容/来源与奖励字段（其中 " + noReward + " 条 Wiki 表里本就没有奖励，显示为「—」）" +
+    (qBad.length ? "：" + qBad.slice(0, 5).join("；") : ""));
+
+  /* 27.3 多阶段任务：stages 里每段都要有内容
+   * —— 「神秘的齐」在 Wiki 表里是 rowspan=4，只解析首行会静默少给 3 段 */
+  const staged = QS.filter((q) => q.stages && q.stages.length);
+  const stageBad = [];
+  for (const q of staged) for (const s of q.stages) if (!s.objective) stageBad.push(q.name + " 有空阶段");
+  log(staged.length > 0 && stageBad.length === 0,
+    "多阶段任务 " + staged.length + " 条（共 " + staged.reduce((n, q) => n + q.stages.length, 0) +
+    " 个后续阶段），每段都有内容" + (stageBad.length ? "：" + stageBad.join("；") : ""));
+
+  /* 27.4 正文里不应残留英文物品名
+   * —— 名字走「slug 查站内 id → 退回 Wiki 渲染出的官方中文名 → 两处都没有才保留英文」，
+   *    所以残留英文就说明两道映射都漏了。Joja 是专有名词，属于合法残留。 */
+  const EN_OK = ["Joja"];
+  const enBad = [];
+  for (const q of QS) {
+    const fields = [q.objective, q.need, q.reward, q.source, q.prereq,
+      ...(q.stages || []).map((s) => s.objective + " " + (s.need || ""))];
+    for (const f of fields) {
+      if (!f) continue;
+      const hits = (String(f).match(/[A-Za-z][A-Za-z'’-]{2,}/g) || []).filter((w) => EN_OK.indexOf(w) < 0);
+      if (hits.length) enBad.push(q.name + " → " + hits.slice(0, 3).join(","));
+    }
+  }
+  log(enBad.length === 0,
+    "任务正文里没有漏译的英文物品名（专有名词 " + EN_OK.join("/") + " 除外）" +
+    (enBad.length ? "：" + enBad.slice(0, 5).join("；") : ""));
+
+  /* 27.5 详情能渲染出内容/需求/奖励；多阶段任务要渲染出全部阶段 */
+  let qDetail = "";
+  const qSample = QS.find((q) => q.need) || QS[0];
+  try { qDetail = String(data.DETAIL_RENDERERS.quests(qSample.id)); } catch (e) { qDetail = "ERR:" + e.message; }
+  log(qDetail.indexOf("ERR:") !== 0 && qDetail.includes("任务内容") && qDetail.includes("来源与奖励"),
+    "任务详情渲染出内容与来源奖励" + (qDetail.indexOf("ERR:") === 0 ? "：" + qDetail : ""));
+  const qz = QS.find((q) => q.name === "神秘的齐");
+  if (qz) {
+    const h = String(data.DETAIL_RENDERERS.quests(qz.id));
+    log(h.includes("后续阶段") && h.includes("第 4 阶段"),
+      "多阶段任务渲染出全部后续阶段（神秘的齐：4 段）");
+  } else {
+    log(false, "找不到「神秘的齐」，无法核对多阶段渲染");
+  }
+
+  /* ---------- 28. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
    * （第三十轮一次查出 8 处：模块列表里「树木」重复、工匠制品 26→30 项、11→15 类机器、
@@ -2175,7 +2250,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
    *
    * 只查**能机器核对**的那几类，且正则一律锚定「描述现状」的句式——
    * README 里有历史叙述（如「模块数只有 17 个时就已需 ~1700px」），全文扫数字必然误报（R90）。 */
-  console.log("\n=== 27. 文档自一致性（R60） ===");
+  console.log("\n=== 28. 文档自一致性（R60） ===");
 
   const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
   const readmeLines = readme.split("\n");

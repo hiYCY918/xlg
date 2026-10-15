@@ -1889,12 +1889,28 @@ const REGISTRY = [
   {
     id: "quests", stateKey: ["quests"], sprite: "star-shard", icon: "📜", label: "任务",
     sub: "主线与委托任务的目标与奖励", data: "QUESTS", render: renderQuests,
-    indexExtra: (q) => [q.objective, q.source, q.type],
-    detail: (q) => detailHead(emojiIcon("📜"), q.name, esc(q.type)) +
-      detailSection("任务目标", `<p>${esc(q.objective)}</p>`) +
+    /* 需求也进索引：玩家常按「金色核桃」「五彩碎片」这类**目标物**找任务，而不是按任务名 */
+    indexExtra: (q) => [q.objective, q.source, q.type, q.need, q.prereq]
+      .concat((q.stages || []).map((s) => s.objective + " " + (s.need || ""))),
+    detail: (q) => detailHead(emojiIcon("📜"), q.name, esc(q.type) + " · " + esc(q.source)) +
+      detailSection("任务内容", `<p>${esc(q.objective)}</p>`) +
+      (q.need ? detailSection("需求", `<p>${esc(q.need)}</p>`) : "") +
+      /* 多阶段任务（「神秘的齐」是 rowspan=4）：只显示第 1 段会少给 3 段内容 */
+      (q.stages && q.stages.length
+        ? detailSection("后续阶段",
+          `<div class="quest-stages">${q.stages.map((s, i) => `
+            <div class="quest-stage">
+              <h5>第 ${i + 2} 阶段</h5>
+              <p>${esc(s.objective)}</p>
+              ${s.need ? `<p class="muted">需求：${esc(s.need)}</p>` : ""}
+            </div>`).join("")}</div>`)
+        : "") +
       detailSection("来源与奖励", kvGrid([
-        ["来源", q.source],
         ["类型", q.type],
+        ["来源", q.source],
+        ...(q.prereq ? [["前置条件", q.prereq]] : []),
+        ...(q.deadline ? [["最长时限", q.deadline]] : []),
+        ...(q.repeatable ? [["可否重复", "可以重复接取"]] : []),
         ["奖励", q.reward],
       ])),
   },

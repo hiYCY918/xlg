@@ -755,6 +755,19 @@ html, body {
 .loc-section h5 { margin: 0 0 3px; font-size: 13px; color: var(--wood); }
 .loc-section p { margin: 0; font-size: 13px; line-height: 1.65; color: var(--text); }
 
+/* ===== 任务：多阶段任务的后续阶段 =====
+ * 「神秘的齐」这张表用了 rowspan=4，4 行是同一任务的 4 个阶段；
+ * 只渲染第 1 段会静默少给 3 段内容，所以阶段单独成块。 */
+.quest-stages { display: flex; flex-direction: column; gap: 8px; }
+.quest-stage {
+  padding: 8px 10px;
+  background: var(--card);
+  border-left: 3px solid var(--wood);
+  border-radius: var(--radius-sm);
+}
+.quest-stage h5 { margin: 0 0 3px; font-size: 12px; color: var(--muted); font-weight: 700; }
+.quest-stage p { margin: 0; font-size: 13px; line-height: 1.65; color: var(--text); }
+
 /* 进度条 */
 .bundle-progress { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
 .bundle-bar {
