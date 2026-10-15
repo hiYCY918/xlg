@@ -95,6 +95,7 @@ game-guide/
 │   ├── deploy.bat / deploy.ps1              一键部署
 │   ├── download-images.bat / download-images.ps1   仅下载贴图
 │   ├── gen-static-pages.js  生成 static/ 与 sitemap.xml（`--check` 只校验同步，CI 用）
+│   ├── sync-doc-counts.js   把文档里的计数按 check.js 的真实结果写回（`--apply` 才写入）
 │   └── gen-seo-assets.py    重新生成 favicon / apple-touch-icon / og-cover（需 Pillow，不参与部署）
 ├── .github/workflows/pages.yml   GitHub Actions：先跑自检，通过才发布 dist/（只含站点文件）
 ├── .nojekyll         禁用 GitHub Pages 的 Jekyll 处理
@@ -103,9 +104,11 @@ game-guide/
 
 ## 开发流程（重要）
 
-**改数据/代码 → 自检 → 双击 `scripts\deploy.bat` 上线**：
+**开工先体检 → 改数据/代码 → 自检 → 双击 `scripts\deploy.bat` 上线**：
 
 ```bash
+node test/preflight.js         # 0. 开工前置体检：沙箱能否写盘 / 网络 / 基线 / 静态页 / git / 版本号
+                               #    一条命令回答「现在能不能干活、起点正不正常」，有阻塞项会写明怎么解
 node test/check.js             # 1. 一键全量自检（25 节 346 处断言，必须通过）
                                #    ① JS 语法 ② 数据完整性（注册表自洽 / id 唯一 / 贴图覆盖）
                                #    ③ 渲染冒烟（23 模块计数与 section）

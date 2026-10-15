@@ -103,11 +103,18 @@ const UNIVERSE = [
   ["戒指", ["戒指"], [], "RINGS"],
   /* 第二十八轮补：ARTISAN 一直有数据，但这个分类从未进过审计（碰巧才发现） */
   ["工匠物品", ["工匠物品"], [], "ARTISAN"],
+  /* 2026-10-15 补：这两个模块同样一直没被审计过（「打造」没有可用的 Wiki 分类，见下）。 */
+  ["古物", ["古物"], [], "ARTIFACTS"],
+  ["料理", ["烹饪"], [], "COOKING"],
+  /* 「打造」查过 Category:打造 只有 2 个页面（汇总页 + 蟹笼）——配方不在分类里，
+   * 所以 CRAFTING 无法用分类全集来审计。它的完整性靠打造模块自己的断言守（材料/分类/反向索引）。 */
 ];
 
 /* 分类/导航页而非内容条目，比对时排除 */
 const HUB_PAGES = new Set(["鱼", "怪物", "矿石", "晶球", "采集", "矿物", "节日", "NPC",
-  "古物", "资源", "种子", "工具", "建筑", "树木", "树", "果树", "动物", "武器", "戒指", "工匠物品", "打造", "地点", "资源"].map(norm));
+  "古物", "资源", "种子", "工具", "建筑", "树木", "树", "果树", "动物", "武器", "戒指", "工匠物品", "打造", "地点", "资源",
+  /* 2026-10-15：补上「料理」模块后，其分类汇总页「烹饪」也要排除 */
+  "烹饪"].map(norm));
 
 /* 有意不收录：经核对后判定不属于对应模块范围。明确记录，避免每次审计重复排查。 */
 const EXCLUDED = new Map(Object.entries({
@@ -163,9 +170,15 @@ const WATCH_CATS = [
 const SYSTEMS = [];
 
 (async () => {
+  /* ⚠️ 这里的数组清单**必须覆盖全部有名字的模块**，否则那个模块的物品不计入 ALL_NAMES，
+   * 于是「站内明明有」也会被报成缺口。
+   * 2026-10-15 发现：原先漏了 CRAFTING / COOKING / ARTIFACTS 三个——
+   * 「肥料 11 条」里有 10 条、「鱼饵 8 条」里有 7 条其实早就以打造配方的形式在站内，
+   * 却年年被报成「整块未覆盖」。待补总数因此被灌水（修正后见输出）。
+   * 判据：往 REGISTRY 里加了模块，这里和下面的 UNIVERSE 都要同步——否则审计会**安静地多报**。 */
   const data = new Function(
     fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS,RINGS,ARTISAN};"
+    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS,RINGS,ARTISAN,CRAFTING,COOKING,ARTIFACTS};"
   )();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */
