@@ -2545,6 +2545,21 @@ console.log("\n=== 3. 渲染冒烟 ===");
     "源码里没有裸露的标签 emoji（只作为 \"X\" 形式的兜底参数或数据出现）" +
     (bareSrc.length ? "：" + bareSrc.slice(0, 6).join("；") : ""));
 
+  /* 29.9 CSS 的 content 里不得出现 emoji
+   * ⚠️ 这条是补盲区：前几轮的 emoji 扫描只扫 js / data / html，**CSS 的 content 属性在视野外**，
+   * 于是 `.gold-text::before { content: "🪙 " }` 这类装饰一直留在界面上（16 处金额前都有），
+   * 最后是用户看出来的。凡是「改了也不报错」的形态都要有断言，否则就是没人看的地方（R97）。
+   * 注意正则**不能用 /g 配 .test()** —— lastIndex 会前进，导致隔行漏检（本轮真踩过：
+   * 第一遍扫描就是这么漏掉 `.neg-text::before` 那条的）。 */
+  const cssNoEmoji = fs.readFileSync(path.join(__dirname, "..", "css", "style.css"), "utf8");
+  const CONTENT_EMOJI = /content\s*:[^;]*[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u;
+  const cssEmojiHits = cssNoEmoji.split("\n")
+    .map((line, i) => ({ line, n: i + 1 }))
+    .filter((x) => CONTENT_EMOJI.test(x.line) && !/^\s*(\*|\/\*|\/\/)/.test(x.line));
+  log(cssEmojiHits.length === 0,
+    "CSS 的 content 里没有 emoji（它是 JS 侧扫描的盲区）" +
+    (cssEmojiHits.length ? "：" + cssEmojiHits.slice(0, 4).map((x) => "L" + x.n + " " + x.line.trim().slice(0, 40)).join("；") : ""));
+
   /* ---------- 30. 内容区背景（一张虚化的卡通画） ----------
    * 背景图是**生成物**（scripts/make-bg.py 从 scripts/bg-source.jpg 派生）。
    * 生成物会脱离源头独立腐化：删了图、换了文件名、改了配置，页面上只会静默少一层背景，

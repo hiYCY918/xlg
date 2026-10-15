@@ -597,9 +597,11 @@ body::before {
 .badge.red    { background: rgba(192,80,63,0.14); color: #a23c30; border-color: rgba(192,80,63,0.35); }
 .badge.brown  { background: rgba(107,69,38,0.12); color: #6b4526; border-color: rgba(107,69,38,0.3); }
 
-/* 金币图标 */
+/* 金币数值。**有意不加 🪙 前缀**（2026-10-15 去掉）：
+ * 金额前面那个金币 emoji 是多余的 —— 上下文里已经写着「售价：」「奖励：」「造价：」，
+ * 而 `::before` 里的 emoji 还躲过了全部基于 JS 的 emoji 扫描（它们只扫 js/html），
+ * 于是一直留在界面上。⚠️ 改 CSS 时注意：`content:` 属性同样能塞 emoji。 */
 .gold-text { color: #b07f15; font-weight: 700; }
-.gold-text::before { content: "🪙 "; font-weight: 400; }
 
 /* 难度星星 */
 .stars { color: var(--gold); letter-spacing: 1px; font-size: 12px; }
@@ -1059,12 +1061,13 @@ body::before {
   font-variant-numeric: tabular-nums;
   text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.7);
 }
-.profit-num::before { content: "🪙"; font-size: 13px; font-weight: 400; margin-right: 3px; }
+/* 数值前面**有意不加 🪙 / ⚠️ 前缀**（2026-10-15 去掉）：
+ * 金币前缀与「售价：/奖励：/造价：」这些标签重复；负值靠**红色 + 数字自带的负号**表达，
+ * 不比一个 emoji 弱（而且不用颜色也能从负号看出来，不构成只靠颜色传达信息）。
+ * 这两条原本还躲过了基于 JS 的 emoji 扫描 —— `content:` 属性能塞 emoji，改 CSS 时要留意。 */
 /* 负收益（如向日葵：种子价高于售价，靠掉落种子回本）——标红警示而非当成普通数字 */
 .profit-num.is-negative { color: var(--danger); }
-.profit-num.is-negative::before { content: "⚠️"; }
 .neg-text { color: var(--danger); font-weight: 700; }
-.neg-text::before { content: "⚠️ "; font-weight: 400; }
 .profit-unit { font-size: 12px; color: var(--muted); }
 .profit-tag {
   margin-left: auto;
