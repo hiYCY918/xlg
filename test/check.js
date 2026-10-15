@@ -146,7 +146,8 @@ const src =
   "RINGS,ringEffectText,renderRings," +
   "TREES,TREE_FILTERS,seedChip,ensureNavVisible," +
   "progressSnapshot,progressToJson,normalizeImported,mergeProgress,applyProgressText," +
-  "downloadProgressFile,copyProgressToClipboard,progressActions,PROGRESS_VERSION,MUSEUM_KEY};";
+  "downloadProgressFile,copyProgressToClipboard,progressActions,PROGRESS_VERSION,MUSEUM_KEY," +
+  "SKILLS};";
 
 let data;
 try {
@@ -1984,7 +1985,98 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(actThrew === null, "导出/导入控件可构造" + (actThrew ? "：" + actThrew : ""));
   store.clear();
 
-  /* ---------- 25. 文档自一致性（R60 的执行手段） ----------
+  /* ---------- 25. 技能（等级解锁 + 职业分支） ----------
+   * 这一节守的是这张表**最容易错的地方**：10 级的四个职业挂在 5 级两个分支之下。
+   * 「按出现顺序两两配对」在别的技能上可能碰巧对，在战场/钓鱼上就会错位——
+   * 所以断言必须查**分支归属**，而不只是查数量。 */
+  console.log("\n=== 25. 技能（等级解锁 + 职业分支） ===");
+
+  const SK = data.SKILLS || [];
+  log(SK.length === 5, "技能 5 个（" + SK.map((s) => s.name).join(" / ") + "）");
+
+  /* 25.1 结构：配方档固定为 1/2/3/4/6/7/8/9（5 级与 10 级是**职业档**，没有配方）+ 6 个职业 */
+  const RECIPE_LV = [1, 2, 3, 4, 6, 7, 8, 9];
+  const skBad = [];
+  for (const s of SK) {
+    const lvs = s.levels.map((l) => l.lv).sort((a, b) => a - b);
+    if (JSON.stringify(lvs) !== JSON.stringify(RECIPE_LV)) skBad.push(s.name + " 配方档=" + lvs.join(","));
+    const p5 = s.professions.filter((p) => p.tier === 5).length;
+    const p10 = s.professions.filter((p) => p.tier === 10).length;
+    if (p5 !== 2) skBad.push(s.name + " 5 级职业 " + p5 + " 个");
+    if (p10 !== 4) skBad.push(s.name + " 10 级职业 " + p10 + " 个");
+    if (s.professions.length !== 6) skBad.push(s.name + " 职业合计 " + s.professions.length);
+  }
+  log(skBad.length === 0,
+    "每个技能都是 8 档配方（1/2/3/4/6/7/8/9）+ 6 个职业（5 级 2 / 10 级 4）" +
+    (skBad.length ? "：" + skBad.join("；") : ""));
+
+  /* 25.2 分支归属：10 级职业的 branch 必须真的是**本技能**的 5 级职业名，且每个分支恰好 2 个 */
+  const brBad = [];
+  for (const s of SK) {
+    const lv5 = s.professions.filter((p) => p.tier === 5).map((p) => p.name);
+    for (const p of s.professions.filter((p) => p.tier === 10)) {
+      if (lv5.indexOf(p.branch) < 0) brBad.push(s.name + "/" + p.name + " 的分支「" + (p.branch || "空") + "」不在 5 级职业里");
+    }
+    for (const n of lv5) {
+      const got = s.professions.filter((p) => p.tier === 10 && p.branch === n).length;
+      if (got !== 2) brBad.push(s.name + "/" + n + " 名下 10 级职业 " + got + " 个");
+    }
+    /* 5 级职业本身不该带分支 */
+    for (const p of s.professions.filter((p) => p.tier === 5)) {
+      if (p.branch) brBad.push(s.name + "/" + p.name + "（5 级）不该有分支");
+    }
+  }
+  log(brBad.length === 0,
+    "10 级职业都归在真实存在的 5 级分支下，且每个分支恰好 2 个" + (brBad.length ? "：" + brBad.join("；") : ""));
+
+  /* 25.3 配方 chip 必须有落点：名字查不到就是死 chip（和礼物/材料那些缺口表同一个口径） */
+  let recipeRefs = 0;
+  const recipeGaps = [];
+  for (const s of SK) {
+    for (const l of s.levels) {
+      for (const n of l.items) {
+        recipeRefs++;
+        if (!data.NAME_INDEX.has(n)) recipeGaps.push(s.name + "/" + n);
+      }
+    }
+  }
+  log(recipeRefs > 0 && recipeGaps.length === 0,
+    "全部 " + recipeRefs + " 处配方引用都有落点" + (recipeGaps.length ? "：悬空 " + recipeGaps.slice(0, 5).join(",") : ""));
+
+  /* 25.4 贴图：技能图标 64×64、职业图标 48×48，都必须真的在 img/ 里
+   *（第三十轮那 4 张漏图就是这么漏的——详情里显示兜底 SVG 而没人发现） */
+  const skIconMiss = [];
+  for (const s of SK) {
+    if (!fs.existsSync(path.join(root, "img", s.id + ".png"))) skIconMiss.push(s.id);
+    for (const p of s.professions) {
+      if (!fs.existsSync(path.join(root, "img", p.icon + ".png"))) skIconMiss.push(p.icon);
+    }
+  }
+  log(skIconMiss.length === 0,
+    "技能与职业图标齐备（" + (SK.length + SK.reduce((n, s) => n + s.professions.length, 0)) + " 张）" +
+    (skIconMiss.length ? "：缺 " + skIconMiss.join(",") : ""));
+
+  /* 25.5 详情能渲染出来（渲染函数抛错会让整个模块白屏） */
+  let skDetail = "";
+  try { skDetail = String(data.DETAIL_RENDERERS.skills(SK[0] && SK[0].id)); } catch (e) { skDetail = "ERR:" + e.message; }
+  log(skDetail.indexOf("ERR:") !== 0 &&
+    skDetail.includes("等级解锁") && skDetail.includes("10 级") && skDetail.includes("chip-link"),
+    "技能详情渲染出等级表与职业分支，且配方是可点 chip" +
+    (skDetail.indexOf("ERR:") === 0 ? "：" + skDetail : ""));
+  /* 10 级职业要出现在它所属分支的那一组里，而不是随便哪儿 */
+  const fm = SK.find((s) => s.name === "耕种");
+  if (fm) {
+    const h = String(data.DETAIL_RENDERERS.skills(fm.id));
+    const zoo = h.indexOf("农业学家");            /* 农耕人的 10 级分支 */
+    const tiller = h.indexOf("选了「农耕人」之后");
+    const rancher = h.indexOf("选了「畜牧人」之后");
+    log(zoo > 0 && tiller > 0 && rancher > 0 && zoo > tiller && tiller > rancher,
+      "10 级职业渲染在它所属的 5 级分支分组内（耕种：畜牧人组 → 农耕人组 → 农业学家）");
+  } else {
+    log(false, "找不到「耕种」技能，无法核对分支分组");
+  }
+
+  /* ---------- 26. 文档自一致性（R60 的执行手段） ----------
    * 为什么要有这一节：R60 早就写了「文档里的数字是数据」，但在此之前 check.js 里
    * **没有任何一条断言读文档**——规则有、执行手段没有，于是 README 的数字反复腐化
    * （第三十轮一次查出 8 处：模块列表里「树木」重复、工匠制品 26→30 项、11→15 类机器、
@@ -1993,7 +2085,7 @@ console.log("\n=== 3. 渲染冒烟 ===");
    *
    * 只查**能机器核对**的那几类，且正则一律锚定「描述现状」的句式——
    * README 里有历史叙述（如「模块数只有 17 个时就已需 ~1700px」），全文扫数字必然误报（R90）。 */
-  console.log("\n=== 25. 文档自一致性（R60） ===");
+  console.log("\n=== 26. 文档自一致性（R60） ===");
 
   const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
   const readmeLines = readme.split("\n");

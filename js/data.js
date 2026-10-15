@@ -768,6 +768,121 @@ const ARTISAN = [
     source: "鱼饵制造机 • 鱼店" },
 ];
 
+/* ---------- 技能（等级解锁 + 职业选择） ----------
+ * 来源：中文 Wiki 的 5 个技能页（英文标题 Combat/Skill 等，中文名是重定向），2026-10-15。
+ * 每页一张等级表：配方档在 1/2/3/4/6/7/8/9 级，**5 级与 10 级是职业档**（没有配方）。
+ * 5 级二选一；10 级按 5 级所选分支各二选一（见 professions[].branch）。
+ * items 存的是**中文名**（与本站其它跨模块引用一致，渲染时走 NAME_INDEX 变成可跳转 chip）；
+ * Wiki 原表用的是英文名，经「英文 → slug → 站内 id」映射而来，108 个配方名全部命中，无一处靠猜。 */
+const SKILLS = [
+  {
+    id: "skill-farming", name: "耕种",
+    levels: [
+      { lv: 1, kind: "打造配方", items: ["稻草人", "初级肥料"] },
+      { lv: 2, kind: "打造配方", items: ["蛋黄酱机", "石围栏", "洒水器"] },
+      { lv: 3, kind: "打造/烹饪配方", items: ["蜂房", "生长激素", "农夫午餐"] },
+      { lv: 4, kind: "打造配方", items: ["罐头瓶", "初级保湿土壤", "铁围栏"] },
+      { lv: 6, kind: "打造配方", items: ["压酪机", "硬木围栏", "优质洒水器"] },
+      { lv: 7, kind: "打造配方", items: ["织布机", "高级保湿土壤"] },
+      { lv: 8, kind: "打造配方", items: ["产油机", "小桶", "高级生长激素"] },
+      { lv: 9, kind: "打造配方", items: ["种子生产器", "铱制洒水器", "高级肥料"] },
+    ],
+    professions: [
+      { name: "畜牧人", icon: "prof-rancher", tier: 5, branch: "", desc: ["畜产品价值提升20%。"] },
+      { name: "农耕人", icon: "prof-tiller", tier: 5, branch: "", desc: ["农作产品价值提升10%。"] },
+      { name: "鸡舍大师", icon: "prof-coopmaster", tier: 10, branch: "畜牧人", desc: ["更快的与笼里的动物交好。", "孵化时间减半。"] },
+      { name: "工匠", icon: "prof-artisan", tier: 10, branch: "农耕人", desc: ["精工制品（酒类、奶酪、油类等）价值上升40%。"], note: "（注意油实际上并没有受益于工匠职业）" },
+      { name: "牧羊人", icon: "prof-shepherd", tier: 10, branch: "畜牧人", desc: ["更快的与畜棚的动物交好。", "绵羊产毛变快。"] },
+      { name: "农业学家", icon: "prof-agriculturist", tier: 10, branch: "农耕人", desc: ["所有作物生长速度提高10%。"] },
+    ],
+  },
+  {
+    id: "skill-mining", name: "采矿",
+    levels: [
+      { lv: 1, kind: "合成配方", items: ["樱桃炸弹"] },
+      { lv: 2, kind: "合成配方", items: ["楼梯"] },
+      { lv: 3, kind: "烹饪配方", items: ["矿工特供"] },
+      { lv: 4, kind: "合成配方", items: ["辉石戒指"] },
+      { lv: 6, kind: "合成配方", items: ["炸弹"] },
+      { lv: 7, kind: "合成配方", items: [] },
+      { lv: 8, kind: "合成配方", items: ["超级炸弹"] },
+      { lv: 9, kind: "合成配方", items: ["宝石复制机"] },
+    ],
+    professions: [
+      { name: "矿工", icon: "prof-miner", tier: 5, branch: "", desc: ["每个金屬礦脈+1块矿石"] },
+      { name: "地质学家", icon: "prof-geologist", tier: 5, branch: "", desc: ["宝石可能会成对出现。"], note: "（50%的几率。也适用于破碎岩石产生的晶球。）" },
+      { name: "铁匠", icon: "prof-blacksmith-icon", tier: 10, branch: "矿工", desc: ["金属棒价值增加50%。"], note: "（适用于铜锭、铁锭、金锭、铱锭和放射性矿锭）" },
+      { name: "挖掘者", icon: "prof-excavator", tier: 10, branch: "地质学家", desc: ["找到晶球的几率加倍。"] },
+      { name: "勘探者", icon: "prof-prospector", tier: 10, branch: "矿工", desc: ["找到煤的几率变得双倍。"] },
+      { name: "宝石专家", icon: "prof-gemologist", tier: 10, branch: "地质学家", desc: ["宝石价值提高30%。"], note: "（适用于全部矿物和宝石）" },
+    ],
+  },
+  {
+    id: "skill-foraging", name: "采集",
+    levels: [
+      { lv: 1, kind: "合成配方", items: ["工作小食"] },
+      { lv: 2, kind: "合成配方", items: ["煤炭窑"] },
+      { lv: 3, kind: "合成配方", items: ["野炊工具", "苔藓汤"] },
+      { lv: 4, kind: "合成配方", items: ["树液采集器"] },
+      { lv: 6, kind: "合成配方", items: ["避雷针", "秋季种子"] },
+      { lv: 7, kind: "合成配方", items: ["冬季种子", "树肥"] },
+      { lv: 8, kind: "合成配方", items: ["救生汉堡"] },
+      { lv: 9, kind: "合成配方", items: ["雨水图腾"] },
+    ],
+    professions: [
+      { name: "护林人", icon: "prof-forester", tier: 5, branch: "", desc: ["伐木時木材掉落增加25%。"], note: "（适用于木材和硬木）" },
+      { name: "收集者", icon: "prof-gatherer", tier: 5, branch: "", desc: ["采摘时有概率获得双倍作物数量。"], note: "（20％的几率）" },
+      { name: "伐木工人", icon: "prof-lumberjack", tier: 10, branch: "护林人", desc: ["所有树木都有几率掉落硬木。"] },
+      { name: "植物学家", icon: "prof-botanist", tier: 10, branch: "收集者", desc: ["采集获得的物品总是铱星。"] },
+      { name: "萃取者", icon: "prof-tapper-icon", tier: 10, branch: "护林人", desc: ["树脂产品价值增加25%。"] },
+      { name: "追踪者", icon: "prof-tracker", tier: 10, branch: "收集者", desc: ["显示当前场景可采集物品的位置。"] },
+    ],
+  },
+  {
+    id: "skill-fishing", name: "钓鱼",
+    levels: [
+      { lv: 1, kind: "合成配方", items: [] },
+      { lv: 2, kind: "合成配方", items: [] },
+      { lv: 3, kind: "合成/烹饪配方", items: ["蟹笼", "海之菜肴"] },
+      { lv: 4, kind: "合成配方", items: ["高级鱼饵", "虫饵盒", "回收机"] },
+      { lv: 6, kind: "合成配方", items: ["鱼饵制造机", "旋式鱼饵", "陷阱浮标", "声纳浮漂"] },
+      { lv: 7, kind: "合成配方", items: ["软木塞浮标", "寻宝者"] },
+      { lv: 8, kind: "合成配方", items: ["高级虫饵盒", "倒刺钩", "精装旋式鱼饵"] },
+      { lv: 9, kind: "合成配方", items: ["磁铁", "海泡布丁"] },
+    ],
+    professions: [
+      { name: "渔夫", icon: "prof-fisher", tier: 5, branch: "", desc: ["鱼的价值提高25%。"] },
+      { name: "捕猎者", icon: "prof-trapper", tier: 5, branch: "", desc: ["建造蟹笼所需的材料用量会减少。"] },
+      { name: "垂钓者", icon: "prof-angler-icon", tier: 10, branch: "渔夫", desc: ["鱼价值增加50%。"] },
+      { name: "水手", icon: "prof-mariner", tier: 10, branch: "捕猎者", desc: ["蟹笼不再产生垃圾物品。"] },
+      { name: "海盗", icon: "prof-pirate", tier: 10, branch: "渔夫", desc: ["找到宝藏的机会加倍。"] },
+      { name: "诱饵大师", icon: "prof-luremaster", tier: 10, branch: "捕猎者", desc: ["蟹笼不再需要诱饵。"] },
+    ],
+  },
+  {
+    id: "skill-combat", name: "战斗",
+    levels: [
+      { lv: 1, kind: "合成配方", items: ["结实戒指", "虫肉块"] },
+      { lv: 2, kind: "合成配方", items: ["生命药水"] },
+      { lv: 3, kind: "烹饪配方", items: ["块茎拼盘"] },
+      { lv: 4, kind: "合成配方", items: ["战士戒指"] },
+      { lv: 6, kind: "合成配方", items: ["史莱姆压蛋器", "蒜油"] },
+      { lv: 7, kind: "合成配方", items: ["由巴的戒指", "荆棘戒指"] },
+      { lv: 8, kind: "合成配方", items: ["史莱姆孵化器", "爆炸弹丸"] },
+      { lv: 9, kind: "合成配方", items: ["铱环", "墨汁意大利饺"] },
+    ],
+    professions: [
+      { name: "战士", icon: "prof-fighter", tier: 5, branch: "", desc: ["所有攻击造成的伤害值将增加10%。", "（+15 生命值）"] },
+      { name: "侦查员", icon: "prof-scout", tier: 5, branch: "", desc: ["暴击几率提高50%。", "（+0 生命值）"], note: "（请注意增加是以 乘法 计算. 计算公式为: 暴击几率 = 暴击几率 * 1.5 ）" },
+      { name: "野蛮人", icon: "prof-brute", tier: 10, branch: "战士", desc: ["造成的伤害值增加15%。", "（+0 生命值）"], note: "（与战士相乘叠加）" },
+      { name: "特技者", icon: "prof-acrobat", tier: 10, branch: "侦查员", desc: ["特技的冷却时间减少一半。", "（+0 生命值）"] },
+      { name: "防御者", icon: "prof-defender", tier: 10, branch: "战士", desc: ["+25 生命值."] },
+      { name: "亡命徒", icon: "prof-desperado", tier: 10, branch: "侦查员", desc: ["对敌人的暴击将产生致命效果。", "（+0 生命值）"], note: "（2x 暴击伤害）" },
+    ],
+  },
+];
+
+
 /* ---------- 古物（博物馆收藏） ----------
  * 来源：中文 Wiki「古物」页的完整表格（2026-10-08），共 42 件。
  * 注：Wiki 的 Category:古物 有 43 个成员，其中「古代玩偶（黄）」与「古代玩偶（绿）」

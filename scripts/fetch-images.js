@@ -33,7 +33,9 @@ function readMap() {
   return map;
 }
 
-/* 批量取图片直链（MediaWiki 的 titles 单次上限 50） */
+/* 批量取图片直链（MediaWiki 的 titles 单次上限 50）
+ * 注意：返回的 p.title 里空格已归一下划线（"Farming Skill Icon.png" → "Farming_Skill_Icon.png"），
+ * 所以键**两种写法都存**，否则带空格的图名会查不到——「Farming Skill Icon.png」就这么漏过一次。 */
 async function resolveUrls(files) {
   const out = new Map();
   for (let i = 0; i < files.length; i += 50) {
@@ -44,7 +46,10 @@ async function resolveUrls(files) {
     const j = await fetchJson(url);
     for (const p of (j.query && j.query.pages) || []) {
       if (p.imageinfo && p.imageinfo[0]) {
-        out.set(String(p.title).replace(/^File:/, "").replace(/ /g, "_"), p.imageinfo[0].url);
+        const t = String(p.title).replace(/^File:/, "");
+        out.set(t, p.imageinfo[0].url);
+        out.set(t.replace(/ /g, "_"), p.imageinfo[0].url);
+        out.set(t.replace(/_/g, " "), p.imageinfo[0].url);
       }
     }
   }
@@ -57,8 +62,8 @@ function reportSize(id, buf) {
     return { ok: false, why: "不是 PNG（多半又拿到挑战页了）" };
   }
   const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
-  /* 站点在用的三档图标位：48（普通）、96（建筑截图）、128（NPC 立绘） */
-  const slot = w <= 48 ? 48 : (w <= 96 ? 96 : 128);
+  /* 站点在用的四档图标位：48（普通）、64（.icon-md，技能图标）、96（.icon-lg，建筑截图）、128（NPC 立绘） */
+  const slot = w <= 48 ? 48 : (w <= 64 ? 64 : (w <= 96 ? 96 : 128));
   const ratio = slot / w;
   return { ok: true, w, h, slot, ratio };
 }

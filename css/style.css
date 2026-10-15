@@ -445,6 +445,24 @@ html, body {
   object-fit: contain;
 }
 
+/* 中等图标位（64×64），给「技能」模块用。
+ * 为什么需要第三档：技能图标是 **64×64**（英文站 `Farming Skill Icon.png` 等 5 张，中文站没有这几个文件）。
+ * 塞进默认的 48 格要算 0.75、塞进 icon-lg 的 96 格要算 1.5——**两种都是非整数倍**，
+ * 而 .icon-img 上挂着全局的 image-rendering: pixelated，非整数缩放在这个渲染模式下会丢行丢列（R83/R23）。
+ * 64 格让原图 1:1 落地，不做任何重采样。
+ * 同样写 max-* 而不用 width:100%，理由与 icon-lg 一致：**禁止把小图放大**。 */
+.item-icon.icon-md {
+  width: 64px;
+  height: 64px;
+}
+.item-icon.icon-md .icon-img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 .icon-img {
   width: 100%;
   height: 100%;
@@ -678,6 +696,50 @@ html, body {
   border-radius: var(--radius-sm);
 }
 .progress-note { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }
+
+/* ===== 技能：等级表与职业块 =====
+ * 这一块的信息量比别的模块大（8 档配方 + 6 个职业），所以详情里用行式列表而不是卡片网格：
+ * 每级一行、配方 chip 横排在右，扫一眼就能看到「第 N 级解锁了什么」。 */
+.skill-levels { display: flex; flex-direction: column; gap: 6px; }
+.skill-level {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.skill-lv {
+  flex: 0 0 auto;
+  min-width: 56px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--wood);
+}
+.skill-kind { margin-left: auto; font-size: 12px; }
+
+.prof, .prof-branch { margin-bottom: 10px; }
+.prof {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.prof .item-icon { margin-bottom: 0; }
+.prof-body { min-width: 0; }
+.prof-body h4 { margin: 0 0 2px; font-size: 15px; color: var(--wood); }
+.prof-body p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--text); }
+.prof-branch h5 {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 700;
+}
 
 /* 进度条 */
 .bundle-progress { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }

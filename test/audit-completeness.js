@@ -116,7 +116,9 @@ const HUB_PAGES = new Set(["鱼", "怪物", "矿石", "晶球", "采集", "矿�
   /* 2026-10-15：补上「料理」模块后，其分类汇总页「烹饪」也要排除 */
   "烹饪",
   /* 2026-10-15：肥料分类里剩的「肥料」是汇总页（具体 11 种肥料早已在「打造」里），不是缺口 */
-  "肥料"].map(norm));
+  "肥料",
+  /* 2026-10-15：技能分类里的「技能」同样是汇总页 */
+  "技能"].map(norm));
 
 /* 有意不收录：经核对后判定不属于对应模块范围。明确记录，避免每次审计重复排查。 */
 const EXCLUDED = new Map(Object.entries({
@@ -148,6 +150,13 @@ const EXCLUDED = new Map(Object.entries({
   "荆棘戒指": "同上",
   "铱环": "同上",
   "辉石戒指": "同上",
+  /* 2026-10-15：技能页在中文 Wiki 上有**两套标题**——英文的 `X/Skill` 与中文的「耕种」等，
+   * 两者是同一页（中文名是重定向）。站内按中文名收录，故英文标题这几条不算缺口。 */
+  "Combat/Skill": "同一页的英文标题，站内已按中文名「战斗」收录",
+  "Farming/Skill": "同一页的英文标题，站内已按中文名「耕种」收录",
+  "Fishing/Skill": "同一页的英文标题，站内已按中文名「钓鱼」收录",
+  "Foraging/Skill": "同一页的英文标题，站内已按中文名「采集」收录",
+  "Mining/Skill": "同一页的英文标题，站内已按中文名「采矿」收录",
 }));
 
 /* 整块系统盘点：**只列本站还没有对应模块的系统**（已收录的从本表移除，
@@ -162,11 +171,11 @@ const WATCH_CATS = [
   ["家具", "整块未覆盖"],
   ["帽子", "整块未覆盖"],
   ["成就", "整块未覆盖"],
-  ["技能", "整块未覆盖"],
   ["秘密", "整块未覆盖"],
   ["地点", "部分覆盖（地名与区域）"],
-  /* 2026-10-15 移出清单：肥料 与 鱼饵 已经收干净了
-   * ——「针对性鱼饵」补进工匠制品；肥料那 11 种一直在「打造」里，只剩汇总页，已进 HUB_PAGES。
+  /* 2026-10-15 移出清单：肥料 / 鱼饵 / 技能 都已收干净
+   * ——「针对性鱼饵」补进工匠制品；肥料那 11 种一直在「打造」里（只剩汇总页）；
+   * 技能已建成独立模块（5 个技能，中文名与审计口径对齐，英文标题页登记为同页别名）。
    * 清单里留着已覆盖的分类，会让报告永远挂着一条不存在的问题。 */
 ];
 
@@ -178,10 +187,12 @@ const SYSTEMS = [];
    * 2026-10-15 发现：原先漏了 CRAFTING / COOKING / ARTIFACTS 三个——
    * 「肥料 11 条」里有 10 条、「鱼饵 8 条」里有 7 条其实早就以打造配方的形式在站内，
    * 却年年被报成「整块未覆盖」。待补总数因此被灌水（修正后见输出）。
-   * 判据：往 REGISTRY 里加了模块，这里和下面的 UNIVERSE 都要同步——否则审计会**安静地多报**。 */
+   * 判据：往 REGISTRY 里加了模块，这里和下面的 UNIVERSE 都要同步——否则审计会**安静地多报**。
+   * 2026-10-15 第二次踩：新加的 SKILLS 忘了加进来，「技能」当场被报成 10 条缺失
+   * （其实站内已经有耕种/采矿/采集/钓鱼/战斗了）。 */
   const data = new Function(
     fs.readFileSync(path.join(root, "js/data.js"), "utf8") +
-    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS,RINGS,ARTISAN,CRAFTING,COOKING,ARTIFACTS};"
+    "; return {CROPS,COLLECTIBLES,FISH,MINERALS,MONSTERS,QUESTS,NPCS,FESTIVALS,EVENTS,SEEDS,FRUIT_TREES,TREES,ANIMALS,ANIMAL_PRODUCTS,TOOLS,BUILDINGS,WEAPONS,RINGS,ARTISAN,CRAFTING,COOKING,ARTIFACTS,SKILLS};"
   )();
 
   /* 跨全部模块的全局名称集合：同一物品出现在多个模块不算缺失 */

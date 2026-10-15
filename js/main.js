@@ -1698,6 +1698,47 @@ function renderEvents() {
   body.appendChild(wrap);
 }
 
+/* ---- 技能（等级解锁与职业选择） ----
+ * 数据形态见 data.js 的 SKILLS 注释。渲染只做两件事：
+ * ① 卡片列出「5 级二选一」的两个职业名——那是玩家最常问的；
+ * ② 详情先按**等级**列配方（chip 可跳到打造/料理），再按**5 级分支**分组列 10 级职业。
+ *
+ * ⚠️ 10 级的四个职业**不能按出现顺序两两分组**：必须按数据里的 branch 字段归属，
+ *    而 branch 是解析时从表格的**列号**读出来的（同一列的上方就是那个分支的 5 级职业）。
+ *    这张表最容易错的地方就在这儿——按顺序配会在两个技能上悄悄错位。 */
+function skillProfBlock(p) {
+  return `
+    <div class="prof">
+      ${itemIconHtml(p.icon, p.name, GENERIC_ICON, "prof-icon")}
+      <div class="prof-body">
+        <h4>${esc(p.name)}${p.tier === 5 ? ` <span class="badge green">5 级</span>` : ""}</h4>
+        ${(p.desc || []).map((d) => `<p>${esc(d)}</p>`).join("")}
+        ${p.note ? `<p class="muted">${esc(p.note)}</p>` : ""}
+      </div>
+    </div>`;
+}
+
+function renderSkills() {
+  const body = $("#body-skills");
+  body.innerHTML = "";
+  const total = updateModuleCount(SECTION.skills);
+  setShown("skills", SKILLS.length, total);
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.innerHTML = SKILLS.map((s) => {
+    const lv5 = s.professions.filter((p) => p.tier === 5);
+    const recipes = s.levels.reduce((n, l) => n + l.items.length, 0);
+    return `
+      <div ${cardAttrs(s.id)}>
+        ${itemIconHtml(s.id, s.name, GENERIC_ICON, "icon-md")}
+        <h3>${esc(s.name)}</h3>
+        <div class="chip-list">${lv5.map((p) => `<span class="chip chip-machine">${esc(p.name)}</span>`).join("")}</div>
+        <div class="foot"><span class="muted">${s.levels.length} 档配方 · 解锁 ${recipes} 项 · ${s.professions.length} 个职业</span></div>
+      </div>`;
+  }).join("") || emptyState("暂无技能数据");
+  body.appendChild(grid);
+}
+
 /* ============================================================
  * 模块注册表（唯一事实来源）
  * ------------------------------------------------------------
@@ -2206,13 +2247,39 @@ const REGISTRY = [
       detailSection("佩戴建议", `<p>${esc("同时只能佩戴两枚戒指，效果可以叠加；" +
         "可打造的戒指在「打造」模块里有配方与材料。")}</p>`),
   },
+  {
+    id: "skills", stateKey: [], spriteFor: "", sprite: "skill-farming", icon: "🧑‍🌾", label: "技能",
+    sub: "各技能每级解锁的配方，以及 5 级 / 10 级的职业选择", data: "SKILLS", render: renderSkills,
+    /* 职业名与效果都进搜索索引：玩家常按「工匠」「农业学家」这类**职业名**找，而不是按技能名 */
+    indexExtra: (s) => s.professions.map((p) => p.name)
+      .concat(s.professions.reduce((a, p) => a.concat(p.desc || []), []))
+      .concat(s.levels.map((l) => l.kind)),
+    detail: (s) => detailHead(
+      itemIconHtml(s.id, s.name, GENERIC_ICON, "icon-md"), s.name,
+      s.levels.length + " 档配方 · " + s.professions.length + " 个职业") +
+      detailSection("等级解锁",
+        `<div class="skill-levels">${s.levels.map((l) => `
+          <div class="skill-level">
+            <span class="skill-lv">等级 ${l.lv}</span>
+            <div class="chip-list">${l.items.map((n) => nameChip(n)).join("")}</div>
+            <span class="muted skill-kind">${esc(l.kind)}</span>
+          </div>`).join("")}</div>`) +
+      detailSection("5 级：二选一（决定 10 级能选哪两个）",
+        s.professions.filter((p) => p.tier === 5).map(skillProfBlock).join("")) +
+      detailSection("10 级：在所选分支里再二选一",
+        s.professions.filter((p) => p.tier === 5).map((b) => `
+          <div class="prof-branch">
+            <h5>选了「${esc(b.name)}」之后</h5>
+            ${s.professions.filter((p) => p.tier === 10 && p.branch === b.name).map(skillProfBlock).join("")}
+          </div>`).join("")),
+  },
 ];
 
 /* 数据数组名 → 数组（在浏览器里等价于全局 const，自检时由数据侧驱动遍历） */
 const MODULE_DATA = {
   CROPS, COLLECTIBLES, FISH, MINERALS, MONSTERS, QUESTS, NPCS, FESTIVALS, EVENTS,
   BUNDLES, BUNDLE_ROOMS, COOKING, CRAFTING, ARTISAN, ARTIFACTS, MUSEUM_MINERALS, SEEDS, FRUIT_TREES, TREES, ANIMALS,
-  ANIMAL_PRODUCTS, TOOLS, BUILDINGS, WEAPONS, RINGS,
+  ANIMAL_PRODUCTS, TOOLS, BUILDINGS, WEAPONS, RINGS, SKILLS,
 };
 /* 打造的分类清单：从数据派生，新增分类自动出现在筛选栏（避免「内容存在但不可达」） */
 const CRAFT_CATS = [...new Set(CRAFTING.map((c) => c.cat))];
