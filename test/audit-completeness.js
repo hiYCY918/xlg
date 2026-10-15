@@ -11,29 +11,76 @@
  *   ① 逐模块完备度表（本站 / Wiki 全集 / 缺口）
  *   ② 缺口明细（已排除分类页与跨模块重复项）
  *   ③ 整块未覆盖的游戏系统
+ *   ④ **取数健康检查**（末尾）—— 结论行必须由它背书
+ *
+ * 取数走 test/wiki-fetch.js：直连被 Cloudflare 挡时自动落到 headless Chrome。
+ *
+ * ⚠️ 反向验证（改这段代码后必做一次，确认审计真的会报红而不是报「完整」）：
+ *     WIKI_API=https://zh.stardewvalleywiki.com/mediawiki/index.php node test/audit-completeness.js
+ *   预期：3 秒内以「已有 3 个分类取数失败，提前中止」退出，**退出码 1**。
+ *   2026-10-15 之前，同样的场景会打印每个模块「Wiki 0 / ✓ 完整」并汇总「缺口合计 0 项」。
  * ============================================================ */
 "use strict";
 
 const fs = require("fs");
 const path = require("path");
 const root = path.join(__dirname, "..");
-const ZH = "https://zh.stardewvalleywiki.com/mediawiki/api.php";
+/* 接口地址可用环境变量覆盖：反向验证（指向一个坏地址，确认审计会报红而不是报「完整」）需要它 */
+const ZH = process.env.WIKI_API || "https://zh.stardewvalleywiki.com/mediawiki/api.php";
+const { fetchJson, closeBrowser, stats } = require("./wiki-fetch");
 
-const q = (url) =>
-  fetch(url, { signal: AbortSignal.timeout(25000), headers: { "User-Agent": "StardewGuide/1.0" } }).then((r) => r.json());
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /* 归一化：去括号补充、去分隔符、统一大小写，便于跨来源匹配 */
 const norm = (s) => String(s).replace(/[（(].*?[)）]/g, "").replace(/[\s·・,，、]/g, "").toLowerCase();
 
+/* 取数失败的分类一律记下来，最后汇总成一条判据。
+ *
+ * 为什么必须有这个（2026-10-15）：原先 catMembers 用 `catch (e) { return []; }` 吞掉错误，
+ * 于是 Wiki 被 Cloudflare 挡住时，每个模块都显示「Wiki 0 / ✓ 完整」，结论是「缺口合计 0 项」——
+ * **「没抓到」被显示成了「没问题」**，而上一轮同一项是 532 条待补。
+ * 这条经验在本项目已反复出现（R94 / R97）：静默失败比报错危险得多。 */
+const fetchFails = [];
+
 async function catMembers(c, type) {
+  /* 连错三个就没必要再跑：要么接口地址不对、要么又被挡了。
+   * 早停是为了别让一次坏掉的审计卡几十分钟——但**绝不能因此改成静默通过**。 */
+  if (fetchFails.length >= 3) {
+    console.error("\n[FAIL] 已有 " + fetchFails.length + " 个分类取数失败，提前中止（继续跑没有意义）：");
+    fetchFails.slice(0, 3).forEach((f) => console.error("   · " + f));
+    console.error("  这「不是」内容已完整，而是「根本没抓到」。");
+    await closeBrowser();
+    process.exit(1);
+  }
   const url = ZH + "?action=query&list=categorymembers&cmtitle=" + encodeURIComponent("Category:" + c) +
     "&cmlimit=500&cmtype=" + type + "&format=json&formatversion=2";
+  let j;
   try {
-    const j = await q(url);
-    const ms = (j.query && j.query.categorymembers) || [];
-    return type === "page" ? ms.filter((m) => m.ns === 0).map((m) => m.title)
-                           : ms.map((m) => m.title.replace(/^Category:/, ""));
-  } catch (e) { return []; }
+    j = await fetchJson(url);
+  } catch (e) {
+    fetchFails.push("Category:" + c + " —— " + e.message.slice(0, 70));
+    throw e;
+  }
+  if (!j || !j.query) {
+    const msg = "响应里没有 query 字段（多半不是这个接口的正常返回）";
+    fetchFails.push("Category:" + c + " —— " + msg);
+    throw new Error(msg);
+  }
+  const ms = j.query.categorymembers || [];
+  return type === "page" ? ms.filter((m) => m.ns === 0).map((m) => m.title)
+                         : ms.map((m) => m.title.replace(/^Category:/, ""));
+}
+
+/* 把一组分类并成一个集合；单个分类失败不中断整轮审计（其余部分仍要出报告），
+ * 但失败会被记进 fetchFails，最后统一判红。 */
+async function bagOf(cats, type) {
+  const bag = new Set();
+  for (const c of cats) {
+    try {
+      (await catMembers(c, type)).forEach((t) => bag.add(t));
+    } catch (e) { /* 已记入 fetchFails */ }
+    await sleep(110);
+  }
+  return bag;
 }
 
 /* 各模块对应的 Wiki 分类全集（主分类 + 需并入的子分类） */
@@ -130,8 +177,8 @@ const SYSTEMS = [];
   const results = [];
   for (const [label, mainCats, subCats, key] of UNIVERSE) {
     const bag = new Set();
-    for (const c of mainCats) { (await catMembers(c, "page")).forEach((t) => bag.add(t)); await sleep(110); }
-    for (const c of subCats) { (await catMembers(c, "page")).forEach((t) => bag.add(t)); await sleep(110); }
+    (await bagOf(mainCats, "page")).forEach((t) => bag.add(t));
+    (await bagOf(subCats, "page")).forEach((t) => bag.add(t));
 
     const missing = [];
     const excluded = [];
@@ -172,9 +219,13 @@ const SYSTEMS = [];
   console.log("\n=== 整块未覆盖的游戏系统 ===");
   let sysTotal = 0;
   for (const [c, label] of SYSTEMS) {
-    const pages = await catMembers(c, "page");
-    const subs = await catMembers(c, "subcat");
-    if (!pages.length) { console.log("  " + label.padEnd(30) + "（分类「" + c + "」为空或不存在，跳过）"); continue; }
+    let pages = null;
+    let subs = [];
+    try {
+      pages = await catMembers(c, "page");
+      subs = await catMembers(c, "subcat");
+    } catch (e) { console.log("  " + label.padEnd(30) + "✗ 取数失败（已记入健康检查）"); continue; }
+    if (!pages.length) { console.log("  " + label.padEnd(30) + "（分类「" + c + "」确实为空，跳过）"); continue; }
     sysTotal += pages.length;
     console.log("  " + label.padEnd(30) + "Wiki " + String(pages.length).padStart(4) + " 条" +
       (subs.length ? "（+子分类 " + subs.length + "）" : ""));
@@ -182,11 +233,21 @@ const SYSTEMS = [];
   }
   console.log("\n整块系统条目合计：" + sysTotal + " 项（本站均无对应模块）");
   console.log("\n=== 观察清单：未覆盖 / 部分覆盖的分类（待办内容，非缺陷） ===");
+  let watchTotal = 0;
+  let watchCatsOk = 0;
   {
-    let watchTotal = 0;
     for (const [c, kind] of WATCH_CATS) {
-      const pages = await catMembers(c, "page");
-      if (!pages.length) { console.log("  " + c.padEnd(10) + "（分类不存在，跳过）"); continue; }
+      let pages = null;
+      try {
+        pages = await catMembers(c, "page");
+      } catch (e) {
+        /* 关键区别：这里以前写的是「（分类不存在，跳过）」，而真相是「没抓到」。
+         * 一个词之差，读报告的人会得出完全相反的结论。 */
+        console.log("  " + c.padEnd(10) + "✗ 取数失败（不是「分类不存在」，是根本没抓到）");
+        continue;
+      }
+      if (!pages.length) { console.log("  " + c.padEnd(10) + "（分类确实为空，跳过）"); continue; }
+      watchCatsOk++;
       const miss = pages.filter((n) => !ALL_NAMES.has(norm(n)) && !HUB_PAGES.has(norm(n)) && !EXCLUDED.has(n));
       watchTotal += miss.length;
       console.log("  " + c.padEnd(10) + String(miss.length).padStart(4) + " / " + String(pages.length).padEnd(4) +
@@ -195,4 +256,43 @@ const SYSTEMS = [];
     console.log("  合计待补条目：" + watchTotal + " 条");
   }
 
-  console.log("\n提示：种子与农作物、工匠制品与农作物存在重叠，合计值有重复计数，仅用于衡量量级。");})();
+  console.log("\n提示：种子与农作物、工匠制品与农作物存在重叠，合计值有重复计数，仅用于衡量量级。");
+
+  /* ============================================================
+   * 取数健康检查 —— 本脚本最重要的一段输出
+   *
+   * 上面的「缺口 0 项」只有在**确实取到了数据**时才成立。2026-10-15 的教训：
+   * Wiki 被 Cloudflare 挡住后，每个模块都打印「Wiki 0 / ✓ 完整」，合计「0 项」，
+   * 而真相是什么都没抓到。所以结论行必须由这一段来背书。
+   * ============================================================ */
+  console.log("\n=== 取数健康检查 ===");
+  const wikiMembers = results.reduce((n, r) => n + r.wiki, 0);
+  const emptyModules = results.filter((r) => r.wiki === 0).map((r) => r.label);
+  const catsQueried = UNIVERSE.reduce((n, [, m, s]) => n + m.length + s.length, 0) + SYSTEMS.length * 2 + WATCH_CATS.length;
+  const catsOk = catsQueried - fetchFails.length;
+  console.log("  分类请求：" + catsOk + " / " + catsQueried + " 个成功" +
+    (fetchFails.length ? "，**" + fetchFails.length + " 个失败**" : ""));
+  console.log("  取回成员：合计 " + wikiMembers + " 条（逐模块表里的 Wiki 列之和）");
+  console.log("  观察清单：" + watchCatsOk + " / " + WATCH_CATS.length + " 个分类取到数据");
+  console.log("  取数路径：直连 " + stats.fast + " 次 / 浏览器兜底 " + stats.chrome + " 次 / 失败 " + stats.failed + " 次");
+  if (fetchFails.length) {
+    console.log("  ✗ 失败清单（前 8 条）：");
+    fetchFails.slice(0, 8).forEach((f) => console.log("      " + f));
+  }
+
+  const problems = [];
+  if (fetchFails.length) problems.push(fetchFails.length + " 个分类取数失败");
+  if (wikiMembers === 0) problems.push("一条 Wiki 成员都没取到");
+  if (emptyModules.length) problems.push("以下模块的 Wiki 全集为 0（要么分类改过名，要么又没抓到）：" + emptyModules.join("、"));
+  if (watchCatsOk === 0) problems.push("观察清单一个分类都没取到");
+
+  await closeBrowser();
+  if (problems.length) {
+    console.log("\n[FAIL] 取数不健康 —— 上面所有「✓ 完整 / 缺口 0」都不可信：");
+    problems.forEach((p) => console.log("   · " + p));
+    console.log("  处置：先确认 Wiki 是否可达（本次走的是 headless Chrome 兜底），修好取数再重跑本审计。");
+    process.exit(1);
+  }
+  console.log("\n[OK] 取数健康：本报告的「缺口 N 项」是在真实取到数据的前提下得出的。");
+  process.exit(0);
+})();

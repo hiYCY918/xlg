@@ -23,9 +23,14 @@ const root = path.join(__dirname, "..");
 const EN_API = "https://stardewvalleywiki.com/mediawiki/api.php";
 const ZH_API = "https://zh.stardewvalleywiki.com/mediawiki/api.php";
 
-const q = (url) =>
-  fetch(url, { signal: AbortSignal.timeout(30000), headers: { "User-Agent": "StardewGuide/1.0" } }).then((r) => r.json());
+/* 取数走共用层（test/wiki-fetch.js）：直连被 Cloudflare 挡时自动落到 headless Chrome。
+ * 2026-10-15 起两个 Wiki 主机都上了 Cloudflare，原先的裸 fetch 一律 403。 */
+const { fetchJson, closeBrowser, stats } = require("./wiki-fetch");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* 批次失败一律记账：抓不到时「命中 0 条」会被误读成「这些条目都不存在」，
+ * 而真相是没抓到——两者必须能分开（同 audit-completeness.js 的取数健康检查）。 */
+const batchFails = [];
 
 /* id -> 英文条目名（第二轮交叉验证用；未覆盖的条目由中文轮兜底） */
 const EN = {
@@ -140,13 +145,22 @@ async function checkTitles(api, titles) {
   for (let i = 0; i < titles.length; i += 50) {
     const batch = titles.slice(i, i + 50);
     try {
-      const j = await q(api + "?action=query&titles=" + encodeURIComponent(batch.join("|")) +
+      const j = await fetchJson(api + "?action=query&titles=" + encodeURIComponent(batch.join("|")) +
         "&prop=info&redirects=1&format=json&formatversion=2");
+      if (!j || !j.query) throw new Error("响应里没有 query 字段");
       (j.query.pages || []).forEach((p) => { if (!p.missing) found.add(p.title); });
       (j.query.redirects || []).forEach((r) => found.add(r.from));
       (j.query.normalized || []).forEach((n) => { if (found.has(n.to)) found.add(n.from); });
     } catch (e) {
-      console.log("  ✗ 批次查询失败：" + e.message);
+      batchFails.push("批次 " + (i / 50 + 1) + "（" + batch.length + " 条）—— " + e.message.slice(0, 70));
+      /* 连错三批就没必要跑完 20 批，但**不能假装通过** */
+      if (batchFails.length >= 3) {
+        console.error("\n[FAIL] 已有 " + batchFails.length + " 个批次取数失败，提前中止（继续跑没有意义）：");
+        batchFails.slice(0, 3).forEach((f) => console.error("   · " + f));
+        console.error("  这「不是」条目不存在，而是「根本没抓到」。");
+        await closeBrowser();
+        process.exit(1);
+      }
     }
     await sleep(150);
   }
@@ -220,4 +234,28 @@ async function checkTitles(api, titles) {
   suspicious.forEach((x) => (byLabel[x.label] ||= []).push(x.name));
   for (const [l, list] of Object.entries(byLabel)) console.log("  " + l + "：" + list.join("、"));
   console.log("\n提示：史莱姆/蝙蝠变体、任务、心事件在中文 Wiki 无独立页（挂在「史莱姆」「任务」「随机事件」汇总页下），属已知情况。");
+
+  /* ============================================================
+   * 取数健康检查：把「没抓到」与「真的不存在」分开
+   * 没有这一段时，一次全站抓取失败的输出会长成「命中 0 / 964」，
+   * 读起来像是「这 964 条全是编造的」——结论完全反了。
+   * ============================================================ */
+  console.log("\n=== 取数健康检查 ===");
+  console.log("  批次失败：" + batchFails.length + " 个");
+  console.log("  取数路径：直连 " + stats.fast + " 次 / 浏览器兜底 " + stats.chrome + " 次 / 失败 " + stats.failed + " 次");
+  const problems = [];
+  if (batchFails.length) problems.push(batchFails.length + " 个批次取数失败");
+  if (zhFound.size === 0) problems.push("中文轮一条都没命中（要么全站都不存在，要么根本没抓到）");
+  if (!withEn.length) problems.push("英文轮没有任何可核对条目（EN 映射表可能失效）");
+  if (bothMiss.length) problems.push("两轮均未命中 " + bothMiss.length + " 条，需人工确认");
+
+  await closeBrowser();
+  if (problems.length) {
+    console.log("\n[FAIL] 核对未通过：");
+    problems.forEach((p) => console.log("   · " + p));
+    batchFails.slice(0, 5).forEach((f) => console.log("   · " + f));
+    process.exit(1);
+  }
+  console.log("\n[OK] 存在性核对通过：全量 " + all.length + " 条两轮均命中，且取数健康。");
+  process.exit(0);
 })();

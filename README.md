@@ -81,12 +81,13 @@ game-guide/
 ├── img/              真实游戏贴图 897 张（下载脚本自动填充）
 ├── static/           预渲染的静态条目页（**生成物，勿手改**）
 │   └── fishing/      试点模块：1 个索引页 + 71 个条目页
-├── test/             测试与审计工具（离线 2 个 + 联网 2 个）
+├── test/             测试与审计工具
 │   ├── check.js      一键全量自检（25 节 346 处断言）· 离线
-│   ├── prerender-probe.js  预渲染可行性探针（落盘渲染后的 DOM，量体积/链接）· headless Chrome
+│   ├── wiki-fetch.js 共用取数层：先直连，被 Cloudflare 挡就落到 headless Chrome · 联网工具都走它
 │   ├── verify-wiki.js 存在性核对 · 双轮（防编造/错名）· 联网
-│   ├── scroll-shot.js 滚动截图 / 几何量测 · headless Chrome + CDP（sticky、独立滚动类问题必用）
-│   └── audit-completeness.js  完备性审计（防遗漏）· 联网
+│   ├── audit-completeness.js  完备性审计（防遗漏）· 联网，末尾有**取数健康检查**
+│   ├── prerender-probe.js  预渲染可行性探针（落盘渲染后的 DOM，量体积/链接）· headless Chrome
+│   └── scroll-shot.js 滚动截图 / 几何量测 · headless Chrome + CDP（sticky、独立滚动类问题必用）
 ├── docs/
 │   ├── PROBLEMS.md   开发问题记录与规避清单（必读）
 │   └── ROADMAP.md    分阶段方案（含预渲染的实测数据与决策）
