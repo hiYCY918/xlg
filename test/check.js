@@ -2478,6 +2478,78 @@ console.log("\n=== 3. 渲染冒烟 ===");
   log(!/emojiIcon\s*\(/.test(mainSrc2),
     "已移除只吐 emoji 的 emojiIcon 助手（避免又有人拿它当模块图标）");
 
+  /* ---------- 29.8 行内标签图标（卡片上的小图标） ----------
+   * 卡片上「生日 / 地点 / 礼物 / 售价…」前面的小图标，原先用 emoji，现换成游戏贴图。
+   * 两件事必须守住：
+   *   ① 素材尺寸落在 **16px 网格**上 —— 除不尽会丢行丢列（R23/R83），
+   *      而 .icon-img 挂着全局 image-rendering: pixelated，丢列看得很清楚；
+   *   ② emoji 只能出现在兜底层里 —— 裸露回文案就等于这次改动白做了，
+   *      而它不会报错、不会白屏，只会「悄悄变回 emoji」。 */
+  const labelMainSrc = fs.readFileSync(path.join(__dirname, "..", "js", "main.js"), "utf8");
+  const labelRefs = [...new Set([...labelMainSrc.matchAll(/labelIcon\("([a-z0-9-]+)"/g)].map((m) => m[1]))];
+
+  /* ① 引用的贴图都在，且尺寸能整数倍除到 16 */
+  const labelBad = [];
+  let labelSizes = [];
+  for (const id of labelRefs) {
+    const p = path.join(__dirname, "..", "img", id + ".png");
+    if (!fs.existsSync(p)) { labelBad.push(id + "（文件不存在）"); continue; }
+    const buf = fs.readFileSync(p);
+    const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+    if (w % 16 !== 0) { labelBad.push(id + " 宽 " + w + " 除不尽 16"); continue; }
+    labelSizes.push(id + " " + w + "×" + h + " ÷" + (w / 16));
+  }
+  log(labelRefs.length > 0 && labelBad.length === 0,
+    "行内标签图标引用的 " + labelRefs.length + " 张贴图都在，且宽度都能整数倍除到 16px（" +
+    labelSizes.slice(0, 4).join("、") + (labelSizes.length > 4 ? " …" : "") + "）" +
+    (labelBad.length ? "：" + labelBad.join("；") : ""));
+
+  /* ② 渲染出来的文案里，标签 emoji 不得裸露（只能待在 icon-fallback 里） */
+  const LABEL_EMOJI = ["🎂", "📍", "🎁", "💰", "⏰", "☀️", "🥚", "🧱", "🐾", "🌱", "🌲", "⚔️"];
+  const stripFallback = (h) => String(h).replace(/<span class="icon-fallback">[\s\S]*?<\/span>/g, "");
+  const bareEmoji = [];
+  for (const m of (data.MODULES || [])) {
+    const arr = arrays[m.id] || [];
+    for (const item of arr.slice(0, 12)) {
+      let html = "";
+      try { html = String(data.DETAIL_RENDERERS[m.id](item.id) || ""); } catch (e) { continue; }
+      const bare = stripFallback(html);
+      for (const e of LABEL_EMOJI) if (bare.indexOf(e) >= 0) { bareEmoji.push(m.id + "/" + item.id + " 里的 " + e); break; }
+      if (bareEmoji.length > 6) break;
+    }
+    if (bareEmoji.length > 6) break;
+  }
+  log(bareEmoji.length === 0,
+    "详情文案里没有裸露的行内标签 emoji（只出现在 icon-fallback 兜底层）" +
+    (bareEmoji.length ? "：" + bareEmoji.slice(0, 6).join("；") : ""));
+
+  /* ②b 卡片区也要守。第一版只查了「渲染出来的详情」，于是「把某处标签改回裸 emoji」漏网
+   * —— 卡片才是用户看得最多的地方，不能只守一半。
+   * 这里改成**静态扫源码**（DOM 模拟里 #page 是空的，读不到卡片 HTML）：
+   * 标签 emoji 只允许作为**完整的字符串字面量**出现，即 `"🎂"` —— 那是兜底参数或数据数组；
+   * 一旦它出现在模板文案里（形如 `>🎂 ${...}`），前后就不是成对的引号，立刻报红。 */
+  const srcLines = labelMainSrc.split("\n");
+  const bareSrc = [];
+  for (const e of LABEL_EMOJI) {
+    const complete = new RegExp('"' + e + '"');
+    srcLines.forEach((line, i) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("*") || trimmed.startsWith("//")) return;      /* 注释不算 */
+      if (line.indexOf(e) < 0) return;
+      if (complete.test(line)) return;                                      /* 完整的字符串字面量，合法 */
+      bareSrc.push("L" + (i + 1) + " 的 " + e);
+    });
+  }
+  log(bareSrc.length === 0,
+    "源码里没有裸露的标签 emoji（只作为 \"X\" 形式的兜底参数或数据出现）" +
+    (bareSrc.length ? "：" + bareSrc.slice(0, 6).join("；") : ""));
+
+  /* ③ CSS 必须把它定成 16px、且不能退回 object-fit: contain 的方框（那会让 64×68 变成 0.235 倍）
+   * 自己读一次 CSS —— bgCss 是后面第 30 节才声明的，这里引用会撞 TDZ。 */
+  const labelCss = fs.readFileSync(path.join(__dirname, "..", "css", "style.css"), "utf8");
+  log(/\.label-icon \.icon-img \{[^}]*width:\s*16px/.test(labelCss) && /\.label-icon \.icon-img \{[^}]*height:\s*auto/.test(labelCss),
+    "行内标签图标按 16px 显示且高度自适应（不用方形框 + contain，否则 64×68 会变成非整数倍）");
+
   /* ---------- 30. 内容区背景（一张虚化的卡通画） ----------
    * 背景图是**生成物**（scripts/make-bg.py 从 scripts/bg-source.jpg 派生）。
    * 生成物会脱离源头独立腐化：删了图、换了文件名、改了配置，页面上只会静默少一层背景，

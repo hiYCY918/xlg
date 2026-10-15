@@ -722,6 +722,16 @@ $items = @{
   "danger-in-the-deep-achievement"  = "Achievement Danger In The Deep.jpg"    # 深处的危险
   "infinite-power"                  = "Achievement Infinite Power.jpg"    # 无限力量
   "perfection"                      = "Achievement Perfection.jpg"    # 完美
+
+  # ---------- 界面小图标（第四十七轮补；卡片上的行内标签用，统一按 16px 显示）
+  #   ⚠️ 尺寸必须落在 16px 网格上，否则像素画会糊（R23/R83）：
+  #     48×48 的 ÷3 = 16 ✓；map-tab 是 64×68，按宽度 16 → 16×17，两轴同比 1/4 ✓；
+  #     weather-icon 是 36×36（除不尽），入库后由 scripts/make-label-icons.py 补白到 48×48。
+  "gift-icon"                       = "Gift Icon.png"    # 礼物
+  "gold"                            = "Gold.png"    # 售价
+  "time-icon"                       = "Time Icon.png"    # 时间
+  "map-tab"                         = "Map Tab.png"    # 地点
+  "weather-icon"                    = "Weather Icon.png"    # 天气（36×36，需补白，见上）
 }
 
 $imgDir = Join-Path $Root "img"

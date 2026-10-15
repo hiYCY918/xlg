@@ -526,6 +526,32 @@ body::before {
 }
 .icon-fallback svg { width: 40px; height: 40px; display: block; }
 
+/* ===== 行内标签小图标 =====
+ * 卡片上「生日 / 地点 / 礼物 / 售价…」前面那个小图标，由 main.js 的 labelIcon() 生成。
+ * 原先这里是 emoji——同一张卡片上像素画与矢量 emoji 混排是两种视觉语言，
+ * 而且 emoji 随系统字体变样（Windows / macOS / 手机各不相同）。
+ *
+ * ⚠️ 素材统一按 **16px** 显示，尺寸必须落在 16px 网格上（R23/R83：除不尽会丢行丢列，
+ *    而 .icon-img 挂着全局 image-rendering: pixelated，丢列会看得很清楚）：
+ *      48×48        ÷3  = 16      —— 多数界面图标与物品贴图
+ *      64×68       按宽度 ÷4 → 16×17 —— map-tab，所以这里用 width + height:auto，**不定死方框**
+ *      16×16        已是 1:1      —— weather-icon（由 scripts/make-label-icons.py 补白而来）
+ *    有意**不用** `object-fit: contain` + 方形框：那样 64×68 会被算成 0.235 倍，正好踩中上面那条。 */
+.label-icon {
+  position: relative;          /* .icon-fallback 是 absolute + inset:0，父级要定位 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -3px;
+  margin-right: 2px;
+}
+.label-icon .icon-img { width: 16px; height: auto; display: block; }
+.label-icon .icon-fallback { font-size: 13px; line-height: 1; }
+/* 空状态的大装饰图标：48px 正好是素材的 1:1（R23），不做任何重采样 */
+.label-icon.is-48 { vertical-align: 0; margin-right: 0; }
+.label-icon.is-48 .icon-img { width: 48px; }
+.label-icon.is-48 .icon-fallback { font-size: 40px; }
+
 /* NPC 头像 */
 .npc-icon { width: 64px; height: 64px; }
 .npc-fallback { font-size: 28px; line-height: 1; }

@@ -88,7 +88,9 @@ function chipBar(values, active, onClick) {
   return wrap;
 }
 function emptyState(text) {
-  return `<div class="empty-state"><div class="icon">🌱</div><p>${esc(text)}</p></div>`;
+  /* 空状态的大装饰图标也换成贴图（原来是 emoji）——尺寸用独立的 .icon-lg-48 类定成 48px，
+   * 正好是素材的 1:1，不做任何重采样（R23）。 */
+  return `<div class="empty-state"><div class="icon">${labelIcon("parsnip-seeds", "🌱", "is-48")}</div><p>${esc(text)}</p></div>`;
 }
 
 /* 安全更新计数（元素缺失时静默跳过，避免拖垮整个页面） */
@@ -168,6 +170,15 @@ function itemIconHtml(id, name, svgFallback, extraClass) {
              onerror="this.parentNode.classList.add('icon-failed'); this.remove()">
         <span class="icon-fallback">${svgFallback}</span>
       </span>`;
+}
+
+/* 行内标签小图标：卡片上「生日 / 地点 / 礼物 / 售价…」前面那个小图标。
+ * 原来是 emoji —— 同一张卡片上像素画与矢量 emoji 混排是两种视觉语言，而且 emoji 随系统字体变样。
+ * 现在用游戏贴图，emoji 退到兜底位（只由 onerror 触发，R65）。
+ * ⚠️ 素材尺寸必须落在 **16px 网格**上（R23/R83）：48×48 的 ÷3、map-tab 的 64×68 按宽度 ÷4、
+ *    weather-icon 由 scripts/make-label-icons.py 补白成 16×16。除不尽的会被 test/check.js 拦下。 */
+function labelIcon(sprite, emoji, extraClass) {
+  return `<span class="label-icon has-img${extraClass ? " " + extraClass : ""}"><img class="icon-img" src="img/${esc(sprite)}.png" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.add('icon-failed'); this.remove()"><span class="icon-fallback">${emoji}</span></span>`;
 }
 
 /* NPC 头像：真实立绘 + emoji 兜底（同样由 onerror 决定是否露出兜底） */
@@ -319,7 +330,7 @@ function renderCollect() {
       ${itemIconHtml(c.id, c.name, COLLECT_ICONS[c.id] || GENERIC_ICON)}
       <h3>${esc(c.name)}</h3>
       <div>${seasonBadges(c.season)}</div>
-      <div class="meta">📍 ${esc(c.location)}</div>
+      <div class="meta">${labelIcon("map-tab", "📍")} ${esc(c.location)}</div>
       <div class="foot">售价 <span class="gold-text">${c.sell}</span><br><span class="muted">${esc(c.use)}</span></div>
     </div>`).join("") || emptyState("该季节暂无采集物数据");
   body.appendChild(grid);
@@ -361,7 +372,7 @@ function renderFishing() {
       ${itemIconHtml(f.id, f.name, typeof FISH_ICON !== "undefined" ? FISH_ICON : GENERIC_ICON)}
       <h3>${esc(f.name)}</h3>
       <div><span class="badge brown">${esc(f.location)}</span> ${seasonBadges(f.season)}</div>
-      <div class="meta">⏰ ${esc(f.time)} · ☀️ ${esc(f.weather)}</div>
+      <div class="meta">${labelIcon("time-icon", "⏰")} ${esc(f.time)} · ${labelIcon("weather-icon", "☀️")} ${esc(f.weather)}</div>
       <div class="meta">难度 ${stars(f.difficulty)}</div>
       <div class="foot">售价 <span class="gold-text">${f.sell}</span><br><span class="muted">${esc(f.use)}</span></div>
     </div>`).join("") || emptyState("没有符合条件的鱼");
@@ -393,7 +404,7 @@ function renderMining() {
       ${itemIconHtml(m.id, m.name, MINERAL_ICON)}
       <h3>${esc(m.name)}</h3>
       <div><span class="badge brown">${esc(m.type)}</span></div>
-      <div class="meta">📍 ${esc(m.level)}</div>
+      <div class="meta">${labelIcon("map-tab", "📍")} ${esc(m.level)}</div>
       <div class="foot">售价 <span class="gold-text">${m.sell}</span><br><span class="muted">${esc(m.use)}</span></div>
     </div>`).join("") || emptyState("没有符合条件的矿物");
   body.appendChild(grid);
@@ -430,7 +441,7 @@ function renderCombat() {
       <h3>${esc(m.name)}</h3>
       <div><span class="badge red">${esc(m.type)}</span></div>
       <div class="meta">❤️ 生命 ${monsterStat(m.hp)} · ⚡ 伤害 ${monsterStat(m.damage)}</div>
-      <div class="meta">📍 ${esc(m.location)}</div>
+      <div class="meta">${labelIcon("map-tab", "📍")} ${esc(m.location)}</div>
       <div class="foot">掉落：<span class="chip-list">${m.drops.map((d) => `<span class="chip">${esc(d)}</span>`).join("")}</span></div>
     </div>`).join("") || emptyState("没有符合条件的怪物");
   body.appendChild(grid);
@@ -495,8 +506,8 @@ function renderNpc() {
       <div class="card clickable npc-card" data-id="${esc(n.id)}" role="button" tabindex="0">
         ${npcIconHtml(n.id, n.name, npcAvatar(idx))}
         <h3>${esc(n.name)}</h3>
-        <p class="loc">📍 ${esc(n.location)}</p>
-        <div class="meta">🎂 ${esc(n.birthday)} · ${n.marriageable ? '<span class="badge green">可结婚</span>' : '<span class="badge brown">不可结婚</span>'}</div>
+        <p class="loc">${labelIcon("map-tab", "📍")} ${esc(n.location)}</p>
+        <div class="meta">${labelIcon("pink-cake", "🎂")} ${esc(n.birthday)} · ${n.marriageable ? '<span class="badge green">可结婚</span>' : '<span class="badge brown">不可结婚</span>'}</div>
         <div class="foot">最爱：${n.loves.map(giftChip).join("")}</div>
       </div>`;
   }).join("") || emptyState("没有找到匹配的 NPC");
@@ -682,7 +693,7 @@ function renderBundles() {
     const rew = (b.rewards || []).map((r) => r.name + (r.qty > 1 ? " ×" + r.qty : "")).join("、") || "—";
 
     const chips = b.price
-      ? `<div class="bundle-items"><span class="bundle-price">💰 ${b.price} 金</span></div>`
+      ? `<div class="bundle-items"><span class="bundle-price">${labelIcon("gold", "💰")} ${b.price} 金</span></div>`
       : `<div class="bundle-items">` + (b.items || []).map((it, i) => {
         const on = bundleProgress(b.id).indexOf(i) >= 0;
         const label = bundleItemLabel(it);
@@ -833,7 +844,7 @@ function renderSeeds() {
       <h3>${esc(s.name)}</h3>
       <div class="meta">${esc(seasonLabel(s.season))} · 成熟 ${esc(seedGrowthText(s))}</div>
       <div class="meta">售价 <span class="gold-text">${esc(seedPriceText(s))}</span>${s.buy != null ? " · 购买 " + s.buy + " 金" : ""}</div>
-      <div class="meta">🌱 ${s.crop ? "成熟后得到 " + linkChip(s.crop) : "成熟结果不固定"}</div>
+      <div class="meta">${labelIcon("parsnip-seeds", "🌱")} ${s.crop ? "成熟后得到 " + linkChip(s.crop) : "成熟结果不固定"}</div>
       <div class="foot"><span class="muted">${esc(shortSource(s.source))}</span></div>
     </div>`).join("") || emptyState("没有符合条件的种子");
   body.appendChild(grid);
@@ -890,7 +901,7 @@ function renderFruitTrees() {
       <h3>${esc(t.name)}</h3>
       <div class="meta">${esc(seasonLabel(t.season))}结果 · 成熟 ${t.growth} 天</div>
       <div class="meta">果实 <b>${esc(t.fruit)}</b> · 售价 <span class="gold-text">${t.fruitSell} 金</span></div>
-      <div class="meta">🌱 由 ${saplingChip(t)} 种出</div>
+      <div class="meta">${labelIcon("parsnip-seeds", "🌱")} 由 ${saplingChip(t)} 种出</div>
       <div class="foot"><span class="muted">${t.island ? "姜岛上全年结果" : "需 3×3 空地，冬季不结果"}</span></div>
     </div>`).join("") || emptyState("没有符合条件的果树");
   body.appendChild(grid);
@@ -899,7 +910,7 @@ function renderFruitTrees() {
 function saplingChip(t) {
   const hit = NAME_INDEX.get(t.sapling);
   if (!hit) return `<span class="chip chip-plain">${esc(t.sapling)}</span>`;
-  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(t.sapling)}">🌱 ${esc(t.sapling)}</span>`;
+  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(t.sapling)}">${labelIcon("parsnip-seeds", "🌱")} ${esc(t.sapling)}</span>`;
 }
 
 /* ---- 树木 ---- */
@@ -932,7 +943,7 @@ function renderTrees() {
       <h3>${esc(t.name)}</h3>
       <div class="meta">成熟 ${esc(t.growth == null ? (t.growthText || "不定") : t.growth + " 天")}</div>
       <div class="meta">🧷 采集器 ${t.tapper ? "产出 " + esc(t.tapper) : "不可安装"}</div>
-      <div class="meta">${t.seed ? "🌱 由 " + seedChip(t.seed) + " 种出" : "🌲 野生，无法种植"}</div>
+      <div class="meta">${t.seed ? labelIcon("parsnip-seeds", "🌱") + " 由 " + seedChip(t.seed) + " 种出" : labelIcon("pine-tree", "🌲") + " 野生，无法种植"}</div>
       <div class="foot"><span class="muted">${esc(t.note || "砍倒可得木材，装采集器可稳定产出")}</span></div>
     </div>`).join("") || emptyState("没有符合条件的树木");
   body.appendChild(grid);
@@ -947,7 +958,7 @@ function nameChip(name, prefix) {
 }
 /* 种子 chip：落在种子模块（收口断言保证每棵树的 seed 都能在 SEEDS 里找到） */
 function seedChip(name) {
-  return nameChip(name, "🌱 ");
+  return nameChip(name, labelIcon("parsnip-seeds", "🌱") + " ");
 }
 
 /* ---- 动物 ---- */
@@ -978,8 +989,8 @@ function renderAnimals() {
       <h3>${esc(a.name)}</h3>
       <div class="meta"><span class="chip chip-plain">${esc(a.type)}</span></div>
       <div class="meta">🏠 ${a.building ? esc(a.building) : "无需建筑"}</div>
-      <div class="meta">💰 ${a.buyprice != null ? `<span class="coin">${a.buyprice}</span>` : esc(a.buyText || "不适用")}</div>
-      <div class="meta">🥚 ${a.produce && a.produce.length ? a.produce.map((p) => nameChip(p)).join(" ") : "无产出"}</div>
+      <div class="meta">${labelIcon("gold", "💰")} ${a.buyprice != null ? `<span class="coin">${a.buyprice}</span>` : esc(a.buyText || "不适用")}</div>
+      <div class="meta">${labelIcon("egg", "🥚")} ${a.produce && a.produce.length ? a.produce.map((p) => nameChip(p)).join(" ") : "无产出"}</div>
       <div class="foot"><span class="muted">${esc(a.note || (a.building ? "养在" + a.building + "里，每天可收获产物" : "农场宠物"))}</span></div>
     </div>`).join("") || emptyState("没有符合条件的动物");
   body.appendChild(grid);
@@ -1027,7 +1038,7 @@ function renderProducts() {
       <h3>${esc(p.name)}</h3>
       <div class="meta">${cardSellLine(p)}</div>
       <div class="meta">💪 回复体力 ${p.edibility != null ? p.edibility : "—"}</div>
-      <div class="meta">🐾 ${from.length ? from.map((a) => nameChip(a.name)).join(" ") : esc(p.source)}</div>
+      <div class="meta">${labelIcon("white-chicken", "🐾")} ${from.length ? from.map((a) => nameChip(a.name)).join(" ") : esc(p.source)}</div>
       <div class="foot"><span class="muted">${esc(p.quality ? "有品质分级，品质越高售价越高" : "无品质分级")}</span></div>
     </div>`;
   }).join("") || emptyState("没有符合条件的动物制品");
@@ -1035,9 +1046,9 @@ function renderProducts() {
 }
 /* 售价不一定是数字：鱼籽是「30 +（鱼的基础售价 × 0.5）」这样的公式 */
 function cardSellLine(p) {
-  if (p.sell != null) return `💰 售价 <span class="coin">${p.sell}</span>`;
-  if (p.sellText) return `💰 售价 ${esc(p.sellText)}`;
-  return `💰 不可出售`;
+  if (p.sell != null) return `${labelIcon("gold", "💰")} 售价 <span class="coin">${p.sell}</span>`;
+  if (p.sellText) return `${labelIcon("gold", "💰")} 售价 ${esc(p.sellText)}`;
+  return `${labelIcon("gold", "💰")} 不可出售`;
 }
 
 /* ---- 工具 ---- */
@@ -1084,7 +1095,7 @@ function renderTools() {
       ${itemIconHtml(t.id, t.name, GENERIC_ICON)}
       <h3>${esc(t.name)}</h3>
       <div class="meta"><span class="chip chip-plain">${esc(TOOL_CAT_OF.get(t.id) || "其它")}</span></div>
-      <div class="meta">💰 ${esc(toolCostText(t))}</div>
+      <div class="meta">${labelIcon("gold", "💰")} ${esc(toolCostText(t))}</div>
       <div class="meta">${t.soldby ? "🏪 " + nameChip(t.soldby) : "🛠️ " + esc(t.source || "—")}</div>
       <div class="foot"><span class="muted">${esc(t.tiers && t.tiers.length
         ? "共 " + t.tiers.length + " 级，最高：" + (top ? top.name : "")
@@ -1098,8 +1109,8 @@ function tierRows(t) {
   return (t.tiers || []).map((x, i) => `
     <div class="list-item">
       <div class="list-head"><b>${esc(x.name)}</b>${i === 0 ? ' <span class="chip chip-plain">初始</span>' : ""}</div>
-      <div class="meta">💰 ${esc(x.cost || "—")}${x.materials && x.materials.length
-        ? " · 🧱 " + x.materials.map((m) => nameChip(m.name) + " ×" + m.qty).join("、") : ""}</div>
+      <div class="meta">${labelIcon("gold", "💰")} ${esc(x.cost || "—")}${x.materials && x.materials.length
+        ? " · " + labelIcon("wood", "🧱") + " " + x.materials.map((m) => nameChip(m.name) + " ×" + m.qty).join("、") : ""}</div>
       <div class="muted">${esc(x.effect || "")}</div>
     </div>`).join("");
 }
@@ -1139,15 +1150,15 @@ function renderBuildings() {
       ? [
           b.openHours ? `🕘 ${esc(b.openHours)}` : null,
           b.closed ? `🚫 休息：${esc(b.closed)}` : null,
-          b.address ? `📍 ${esc(b.address)}` : null,
+          b.address ? `${labelIcon("map-tab", "📍")} ${esc(b.address)}` : null,
           b.occupants && b.occupants.length ? `👤 ${b.occupants.map((n) => nameChip(n)).join(" ")}` : null,
         ]
       : [
-          `💰 ${esc(buildingCostText(b))}`,
+          `${labelIcon("gold", "💰")} ${esc(buildingCostText(b))}`,
           b.materials && b.materials.length
-            ? `🧱 ${b.materials.map((m) => nameChip(m.name) + " ×" + m.qty).join("、")}` : null,
+            ? `${labelIcon("wood", "🧱")} ${b.materials.map((m) => nameChip(m.name) + " ×" + m.qty).join("、")}` : null,
           b.size ? `📐 ${esc(b.size)} 格` : null,
-          b.capacity != null ? `🐾 可养 ${b.capacity} 只` : null,
+          b.capacity != null ? `${labelIcon("white-chicken", "🐾")} 可养 ${b.capacity} 只` : null,
         ];
     return `
     <div ${cardAttrs(b.id)}>
@@ -1200,7 +1211,7 @@ function renderWeapons() {
       ${itemIconHtml(w.id, w.name, GENERIC_ICON)}
       <h3>${esc(w.name)}</h3>
       <div class="meta"><span class="chip chip-plain">${esc(w.type || "武器")}</span>${w.level != null ? ` <span class="chip chip-plain">Lv ${w.level}</span>` : ""}</div>
-      <div class="meta">⚔️ 伤害 ${esc(w.damage || "—")}</div>
+      <div class="meta">${labelIcon("galaxy-sword", "⚔️")} 伤害 ${esc(w.damage || "—")}</div>
       <div class="meta">💥 暴击 ${esc(critText(w.csc))}</div>
       <div class="meta">✨ ${esc(weaponStatText(w.stats))}</div>
       <div class="foot"><span class="muted">${w.gprice != null ? "商店售价 " + w.gprice + " 金" : "售价 " + (w.value != null ? w.value + " 金" : "—")}</span></div>
@@ -1232,7 +1243,7 @@ function renderRings() {
       ${itemIconHtml(r.id, r.name, GENERIC_ICON)}
       <h3>${esc(r.name)}</h3>
       <div class="meta">✨ ${esc(ringEffectText(r))}</div>
-      <div class="meta">💰 ${r.gprice != null ? "售价 " + r.gprice + " 金" : esc(r.gpriceText || "不可购买")}</div>
+      <div class="meta">${labelIcon("gold", "💰")} ${r.gprice != null ? "售价 " + r.gprice + " 金" : esc(r.gpriceText || "不可购买")}</div>
       <div class="meta">💎 回收价 ${r.value != null ? r.value + " 金" : "—"}</div>
       <div class="foot"><span class="muted">${esc(r.source || "—")}</span></div>
     </div>`).join("") || emptyState("没有戒指");
@@ -1664,7 +1675,7 @@ function renderArtifacts() {
         <button class="bundle-item${on ? " is-done" : ""}" data-donate="${esc(a.name)}" role="checkbox" aria-checked="${on ? "true" : "false"}" title="标记已捐赠">
           <span class="bundle-box">${on ? "✔" : ""}</span><span class="bundle-item-text">${on ? "已捐赠" : "未捐赠"}</span>
         </button>
-        <div class="foot">售价 <span class="gold-text">${a.sell}</span><br><span class="muted">📍 ${esc(a.from)}</span></div>
+        <div class="foot">售价 <span class="gold-text">${a.sell}</span><br><span class="muted">${labelIcon("map-tab", "📍")} ${esc(a.from)}</span></div>
       </div>`;
   }).join("") || emptyState("暂无古物数据");
   body.appendChild(grid);
@@ -1950,10 +1961,10 @@ const REGISTRY = [
     detail: (n) => detailHead(
       npcIconHtml(n.id, n.name, npcAvatar(NPCS.indexOf(n))),
       n.name,
-      `📍 ${esc(n.location)} · ${n.marriageable ? "可结婚" : "不可结婚"}`
+      `${labelIcon("map-tab", "📍")} ${esc(n.location)} · ${n.marriageable ? "可结婚" : "不可结婚"}`
     ) +
       detailSection("简介", `<p>${esc(n.desc)}</p>`) +
-      detailSection("生日", `<p>🎂 ${esc(n.birthday)}</p>`) +
+      detailSection("生日", `<p>${labelIcon("pink-cake", "🎂")} ${esc(n.birthday)}</p>`) +
       detailSection("最爱的礼物", `<div class="chip-list">${n.loves.map(giftChip).join("")}</div>` +
         (n.loves.some((g) => NAME_INDEX.has(g)) ? `<p class="muted">带下划线的礼物可点击查看该物品。</p>` : "")) +
       heartEventSection(n.name) +
@@ -2048,7 +2059,7 @@ const REGISTRY = [
       ])) +
       detailSection("获取途径", `<p>${esc(a.from)}</p>`) +
       detailSection("用途", `<p>${esc("可捐赠给博物馆推进收藏进度，也可直接出售（售价通常不高，建议优先捐赠）。")}</p>`) +
-      detailSection("相关", `<div class="chip-list"><span class="chip chip-link" data-goto-module="artifacts" data-goto-id="${esc(a.id)}" role="button" tabindex="0">🏺 博物馆进度</span></div>`),
+      detailSection("相关", `<div class="chip-list"><span class="chip chip-link" data-goto-module="artifacts" data-goto-id="${esc(a.id)}" role="button" tabindex="0">${labelIcon("ancient-doll", "🏺")} 博物馆进度</span></div>`),
   },
   {
     id: "artisan", stateKey: ["artisan"], spriteFor: "", sprite: "cheese-press", icon: "🧀", label: "工匠制品",
@@ -2075,7 +2086,7 @@ const REGISTRY = [
       detailSection("产出机器", `<div class="chip-list">${(a.machines || []).map((m) => {
         const rec = CRAFTING.find((c) => c.name === m);
         return rec
-          ? `<span class="chip chip-link" data-goto-module="crafting" data-goto-id="${esc(rec.id)}" role="button" tabindex="0" title="查看${esc(m)}">🔨 ${esc(m)}</span>`
+          ? `<span class="chip chip-link" data-goto-module="crafting" data-goto-id="${esc(rec.id)}" role="button" tabindex="0" title="查看${esc(m)}">${labelIcon("furnace", "🔨")} ${esc(m)}</span>`
           : `<span class="chip chip-machine">${esc(m)}</span>`;
       }).join("")}</div>` +
         ((a.machines || []).some((m) => CRAFTING.some((c) => c.name === m)) ? `<p class="muted">带下划线的机器可点击查看打造配方。</p>` : "")),
@@ -2506,8 +2517,8 @@ const GIFT_USES = (() => {
 function giftChip(name) {
   if (GIFT_PLACEHOLDERS.indexOf(name) >= 0) return `<span class="chip chip-plain">${esc(name)}</span>`;
   const hit = NAME_INDEX.get(name);
-  if (!hit) return `<span class="chip">🎁 ${esc(name)}</span>`;
-  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(name)}">🎁 ${esc(name)}</span>`;
+  if (!hit) return `<span class="chip">${labelIcon("gift-icon", "🎁")} ${esc(name)}</span>`;
+  return `<span class="chip chip-link" data-goto-module="${esc(hit.module)}" data-goto-id="${esc(hit.id)}" role="button" tabindex="0" title="查看${esc(name)}">${labelIcon("gift-icon", "🎁")} ${esc(name)}</span>`;
 }
 /* 详情页附加区块：该物品能送给谁 */
 function giftUsesSection(name) {
@@ -2531,7 +2542,7 @@ function cookedBySection(name) {
   const list = COOKED_BY.get(name);
   if (!list || !list.length) return "";
   return detailSection("用于料理", `<div class="chip-list">` +
-    list.map((c) => `<span class="chip chip-link" data-goto-module="cooking" data-goto-id="${esc(c.id)}" role="button" tabindex="0" title="查看${esc(c.name)}">🍳 ${esc(c.name)}</span>`).join("") +
+    list.map((c) => `<span class="chip chip-link" data-goto-module="cooking" data-goto-id="${esc(c.id)}" role="button" tabindex="0" title="查看${esc(c.name)}">${labelIcon("cookout-kit", "🍳")} ${esc(c.name)}</span>`).join("") +
     `</div>`);
 }
 /* 料理的原料 chip 与增益 chip：原料能对上站内条目的可跳转（如「南瓜」→ 农作物） */
@@ -2558,7 +2569,7 @@ function craftedBySection(name) {
   const list = CRAFTED_BY.get(name);
   if (!list || !list.length) return "";
   return detailSection("用于打造", `<div class="chip-list">` +
-    list.map((r) => `<span class="chip chip-link" data-goto-module="crafting" data-goto-id="${esc(r.id)}" role="button" tabindex="0" title="查看${esc(r.name)}">🔨 ${esc(r.name)}</span>`).join("") +
+    list.map((r) => `<span class="chip chip-link" data-goto-module="crafting" data-goto-id="${esc(r.id)}" role="button" tabindex="0" title="查看${esc(r.name)}">${labelIcon("furnace", "🔨")} ${esc(r.name)}</span>`).join("") +
     `</div>`);
 }
 /* 种子反向索引：结果物名 → 能种出它的种子（农作物/收集物详情页「由这些种子种出」一节用）。
@@ -2576,7 +2587,7 @@ function seededBySection(name) {
   const list = SEEDED_BY.get(name);
   if (!list || !list.length) return "";
   return detailSection("由这些种子种出", `<div class="chip-list">` +
-    list.map((s) => `<span class="chip chip-link" data-goto-module="seeds" data-goto-id="${esc(s.id)}" role="button" tabindex="0" title="查看${esc(s.name)}">🌱 ${esc(s.name)}</span>`).join("") +
+    list.map((s) => `<span class="chip chip-link" data-goto-module="seeds" data-goto-id="${esc(s.id)}" role="button" tabindex="0" title="查看${esc(s.name)}">${labelIcon("parsnip-seeds", "🌱")} ${esc(s.name)}</span>`).join("") +
     `</div>`);
 }
 /* 种子卡片/详情里的结果物 chip：交给 NAME_INDEX 自动落到农作物 / 收集物 / 任意模块 */
